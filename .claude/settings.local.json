@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(Start-Process \"e:\\\\Web\\\\tutor-hub.html\")"
+    ]
+  }
+}
