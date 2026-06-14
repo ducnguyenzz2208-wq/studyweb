@@ -3761,12 +3761,20 @@
     function loadDbData() {
       if (!_db || !_dbUserId) return;
 
-      // Materials
-      _db.from('materials').select('*').eq('owner_id', _dbUserId)
+      // Materials — load all visible (RLS controls access per role)
+      _db.from('materials').select('*').order('created_at', { ascending: false })
         .then(function (r) {
-          if (!r.error && r.data && r.data.length) {
+          if (!r.error && r.data) {
             materials = r.data.map(function (m) {
-              return { id: m.id, title: m.title, subject: m.subject || '', type: m.type || 'PDF', content: m.content || '', url: m.url || '', pinned: !!m.pinned };
+              return {
+                id: m.id, title: m.title, subject: m.subject || '',
+                class: m.class_name || '', type: m.type || 'PDF',
+                description: m.description || '', content: m.content || '',
+                url: m.url || '', fileName: m.file_name || '',
+                downloadUrl: m.url || '', pinned: !!m.pinned,
+                uploadDate: (m.created_at || '').split('T')[0],
+                ownerId: m.owner_id
+              };
             });
             if (currentSection === 'materials') renderMaterials();
           }
@@ -5354,11 +5362,15 @@
           '<td><span class="badge ' + (roleBadgeMap[u.role] || '') + '">' + escHtml(u.role) + '</span></td>' +
           '<td style="font-size:12px;">' + escHtml((u.createdAt || '').split('T')[0]) + '</td>' +
           '<td>' +
-          '<select class="filter-select" style="padding:4px 8px;font-size:12px;" onchange="changeUserRole(\'' + u.id + '\',this.value)">' +
-          ['Pending', 'Student', 'Teacher', 'Parent', 'Admin'].map(function (r) {
-            return '<option value="' + r + '"' + (u.role === r ? ' selected' : '') + '>' + r + '</option>';
-          }).join('') +
-          '</select>' +
+          (u.id === _dbUserId
+            ? '<span class="badge badge-danger">Admin (bạn)</span>'
+            : '<select class="filter-select" style="padding:4px 8px;font-size:12px;" onchange="changeUserRole(\'' + u.id + '\',this.value)">' +
+              ['Student', 'Teacher', 'Admin'].map(function (r) {
+                return '<option value="' + r + '"' + (u.role === r ? ' selected' : '') + '>' +
+                  ({ Student: 'Học sinh', Teacher: 'Giáo viên', Admin: 'Admin phụ' }[r] || r) + '</option>';
+              }).join('') +
+              '</select>'
+          ) +
           '</td>' +
           '</tr>';
       }).join('');
@@ -6951,53 +6963,79 @@
 
     function saveMaterial(id) {
       var title = document.getElementById('mMatTitle').value.trim();
-      if (!title) { showToast('Title is required.', 'error'); return; }
+      if (!title) { showToast('Tiêu đề là bắt buộc.', 'error'); return; }
       var fileInput = document.getElementById('mMatFile');
-      var downloadUrl = null;
-      var fileName = title.replace(/\s+/g, '_').toLowerCase();
+      var file = fileInput && fileInput.files && fileInput.files[0] ? fileInput.files[0] : null;
       var fileType = document.getElementById('mMatType').value;
-      var ext = { PDF: '.pdf', PPT: '.pptx', DOC: '.docx', XLS: '.xlsx', Image: '.png' }[fileType] || '.pdf';
+      var subject = document.getElementById('mMatSubject').value;
+      var classVal = document.getElementById('mMatClass') ? document.getElementById('mMatClass').value : '';
+      var description = document.getElementById('mMatDesc') ? document.getElementById('mMatDesc').value.trim() : '';
 
-      if (fileInput && fileInput.files && fileInput.files.length > 0) {
-        downloadUrl = URL.createObjectURL(fileInput.files[0]);
-        fileName = fileInput.files[0].name;
-      } else {
-        fileName = fileName + ext;
-      }
-
-      var today = new Date().toISOString().split('T')[0];
-      var data = {
-        title: title,
-        subject: document.getElementById('mMatSubject').value,
-        class: document.getElementById('mMatClass').value,
-        fileType: fileType,
-        description: document.getElementById('mMatDesc').value.trim(),
-        uploadDate: today,
-        fileName: fileName,
-        downloadUrl: downloadUrl,
-      };
-      if (id) {
-        var m = materials.find(function (x) { return x.id === id; });
-        if (m) {
-          if (!downloadUrl && m.downloadUrl) data.downloadUrl = m.downloadUrl;
-          if (!fileInput.files.length && m.fileName) data.fileName = m.fileName;
-          Object.assign(m, data);
+      function _doSave(fileUrl, fileName) {
+        var dbData = {
+          title: title, subject: subject, class_name: classVal,
+          type: fileType, description: description,
+          url: fileUrl != null ? fileUrl : '',
+          file_name: fileName != null ? fileName : '',
+        };
+        var localData = {
+          title: title, subject: subject, class: classVal,
+          type: fileType, description: description,
+          downloadUrl: fileUrl || '', fileName: fileName || '',
+          uploadDate: new Date().toISOString().split('T')[0],
+        };
+        if (id) {
+          var m = materials.find(function (x) { return x.id === id; });
+          if (m) {
+            if (!fileUrl && m.downloadUrl) { localData.downloadUrl = m.downloadUrl; dbData.url = m.downloadUrl; }
+            if (!fileName && m.fileName) { localData.fileName = m.fileName; dbData.file_name = m.fileName; }
+            Object.assign(m, localData);
+          }
+          if (_db) _db.from('materials').update(dbData).eq('id', String(id))
+            .then(function (r) { if (r.error) showToast('Lỗi lưu: ' + r.error.message, 'error'); });
+          showToast('Đã cập nhật tài liệu.', 'success');
+          closeModal(); renderMaterials();
+        } else {
+          if (_db) {
+            dbData.owner_id = _dbUserId;
+            _db.from('materials').insert(dbData).select().then(function (r) {
+              if (r.error) { showToast('Lỗi tải lên: ' + r.error.message, 'error'); return; }
+              var newId = r.data && r.data[0] ? r.data[0].id : (nextMatId++);
+              materials.unshift(Object.assign({ id: newId, ownerId: _dbUserId }, localData));
+              renderMaterials();
+            });
+          } else {
+            localData.id = nextMatId++;
+            materials.unshift(localData);
+          }
+          showToast('Đã tải lên tài liệu.', 'success');
+          closeModal(); renderMaterials();
         }
-        showToast('Material updated.', 'success');
-      } else {
-        data.id = nextMatId++;
-        materials.push(data);
-        showToast('Material uploaded.', 'success');
       }
-      closeModal();
-      renderMaterials();
+
+      if (file && _db) {
+        var safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+        var path = 'materials/' + (_dbUserId || 'anon') + '/' + Date.now() + '_' + safeName;
+        _db.storage.from('materials').upload(path, file, { upsert: true })
+          .then(function (r) {
+            if (r.error) { showToast('Lỗi tải file: ' + r.error.message, 'error'); return; }
+            var pubUrl = _db.storage.from('materials').getPublicUrl(path).data.publicUrl;
+            _doSave(pubUrl, file.name);
+          });
+      } else {
+        _doSave(null, null);
+      }
     }
 
     function deleteMaterial(id) {
-      if (!confirm('Delete this material?')) return;
+      if (!confirm('Xóa tài liệu này?')) return;
       materials = materials.filter(function (m) { return m.id !== id; });
-      showToast('Material deleted.', 'error');
+      showToast('Đã xóa tài liệu.', 'success');
       renderMaterials();
+      if (_db) {
+        _db.from('materials').delete().eq('id', String(id))
+          .then(function (r) { if (r.error) showToast('Lỗi xóa: ' + r.error.message, 'error'); });
+      }
     }
 
     // ============================================================
