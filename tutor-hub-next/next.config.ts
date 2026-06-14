@@ -1,8 +1,6 @@
 import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
-  // Vercel CI: skip ESLint during build (run separately in lint step if needed)
-  eslint: { ignoreDuringBuilds: true },
   // Allow the iframe to run Supabase CDN scripts
   async headers() {
     return [
