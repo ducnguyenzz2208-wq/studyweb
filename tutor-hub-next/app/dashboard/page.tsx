@@ -13,12 +13,17 @@ export default function DashboardPage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { router.replace('/login'); return }
 
-    // Load profile from DB
-    const { data: profile } = await supabase
+    // Load profile from DB — always fresh, never rely on session claims
+    const { data: profile, error: profileErr } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', user.id)
       .single()
+
+    if (profileErr) {
+      // Likely RLS recursion (500) — run migration 001_fix_rls_recursion.sql
+      console.error('[DashboardPage] profiles fetch failed:', profileErr.message, profileErr.code)
+    }
 
     const frame = iframeRef.current
     if (!frame) return
@@ -30,6 +35,7 @@ export default function DashboardPage() {
       user: {
         id: user.id,
         email: user.email ?? '',
+        // Never fall back to 'Pending' silently — use null so iframe can show proper error
         role: profile?.role ?? 'Pending',
         name: profile?.name
           ?? user.user_metadata?.full_name
