@@ -3711,6 +3711,13 @@
     // Default subjects shown before DB loads; replaced when subjects table is fetched.
     var SUBJECTS = ['Math', 'English', 'Physics', 'Chemistry', 'Literature', 'Chinese', 'IT'];
 
+    // Sync section when user hits browser back/forward
+    window.addEventListener('hashchange', function () {
+      if (!currentUser) return;
+      var id = window.location.hash.replace(/^#/, '');
+      if (id && id !== currentSection) showSection(id);
+    });
+
     // Receive auth payload from Next.js parent frame
     window.addEventListener('message', function (event) {
       if (event.origin !== window.location.origin) return;
@@ -3758,27 +3765,31 @@
     }
 
     // Pull all user data from Supabase and overwrite in-memory arrays
+    function loadMaterials() {
+      if (!_db) return;
+      _db.from('materials').select('*').order('created_at', { ascending: false })
+        .then(function (r) {
+          if (r.error) { console.error('loadMaterials error:', r.error); return; }
+          materials = (r.data || []).map(function (m) {
+            return {
+              id: m.id, title: m.title, subject: m.subject || '',
+              class: m.class_name || '', type: m.type || 'PDF',
+              description: m.description || '', content: m.content || '',
+              fileName: m.file_name || '', pinned: !!m.pinned,
+              downloadUrl: m.file_url || m.url || '',
+              uploadDate: (m.created_at || '').split('T')[0],
+              ownerId: m.owner_id
+            };
+          });
+          if (currentSection === 'materials') renderMaterials();
+        });
+    }
+
     function loadDbData() {
       if (!_db || !_dbUserId) return;
 
       // Materials — load all visible (RLS controls access per role)
-      _db.from('materials').select('*').order('created_at', { ascending: false })
-        .then(function (r) {
-          if (!r.error && r.data) {
-            materials = r.data.map(function (m) {
-              return {
-                id: m.id, title: m.title, subject: m.subject || '',
-                class: m.class_name || '', type: m.type || 'PDF',
-                description: m.description || '', content: m.content || '',
-                url: m.url || '', fileName: m.file_name || '',
-                downloadUrl: m.url || '', pinned: !!m.pinned,
-                uploadDate: (m.created_at || '').split('T')[0],
-                ownerId: m.owner_id
-              };
-            });
-            if (currentSection === 'materials') renderMaterials();
-          }
-        });
+      loadMaterials();
 
       // Flashcard decks + cards
       _db.from('flashcard_decks').select('*, flashcards(*)').eq('owner_id', _dbUserId)
@@ -4301,8 +4312,10 @@
       document.getElementById('main').style.display = 'block';
       renderNavigation();
       updateNotifBadge();
-      // init section based on role
-      var first = DEFAULT_SECTION[currentUser.role] || 'dashboard';
+      // init section: prefer URL hash so reload restores the tab
+      var hashSection = window.location.hash.replace(/^#/, '');
+      var defaultSection = DEFAULT_SECTION[currentUser.role] || 'dashboard';
+      var first = (hashSection && canAccessSection(hashSection)) ? hashSection : defaultSection;
       showSection(first);
       renderWelcome();
       // init charts (only if not yet initialized)
@@ -5688,6 +5701,7 @@
         return;
       }
       currentSection = id;
+      history.replaceState(null, '', '#' + id);
       document.querySelectorAll('.section').forEach(function (s) { s.classList.remove('active'); });
       var secEl = document.getElementById('section-' + id);
       if (secEl) secEl.classList.add('active');
@@ -6984,59 +6998,59 @@
       var classVal = document.getElementById('mMatClass') ? document.getElementById('mMatClass').value : '';
       var description = document.getElementById('mMatDesc') ? document.getElementById('mMatDesc').value.trim() : '';
 
-      function _doSave(fileUrl, fileName) {
+      function _doSave(fileUrl, fileName, filePath) {
+        var existingMat = id ? materials.find(function (x) { return x.id === id; }) : null;
+        var resolvedUrl = fileUrl || (existingMat && existingMat.downloadUrl) || '';
+        var resolvedName = fileName || (existingMat && existingMat.fileName) || '';
+        var resolvedPath = filePath || '';
+
         var dbData = {
           title: title, subject: subject, class_name: classVal,
           type: fileType, description: description,
-          url: fileUrl != null ? fileUrl : '',
-          file_name: fileName != null ? fileName : '',
+          url: resolvedUrl, file_url: resolvedUrl,
+          file_path: resolvedPath, file_name: resolvedName,
         };
-        var localData = {
-          title: title, subject: subject, class: classVal,
-          type: fileType, description: description,
-          downloadUrl: fileUrl || '', fileName: fileName || '',
-          uploadDate: new Date().toISOString().split('T')[0],
-        };
+
         if (id) {
-          var m = materials.find(function (x) { return x.id === id; });
-          if (m) {
-            if (!fileUrl && m.downloadUrl) { localData.downloadUrl = m.downloadUrl; dbData.url = m.downloadUrl; }
-            if (!fileName && m.fileName) { localData.fileName = m.fileName; dbData.file_name = m.fileName; }
-            Object.assign(m, localData);
+          if (existingMat) Object.assign(existingMat, { title: title, subject: subject, class: classVal, type: fileType, description: description, downloadUrl: resolvedUrl, fileName: resolvedName });
+          if (_db) {
+            _db.from('materials').update(dbData).eq('id', String(id))
+              .then(function (r) {
+                if (r.error) { showToast('Lỗi lưu: ' + r.error.message, 'error'); return; }
+                showToast('Đã cập nhật tài liệu.', 'success');
+                closeModal(); loadMaterials();
+              });
+          } else {
+            showToast('Đã cập nhật tài liệu.', 'success');
+            closeModal(); renderMaterials();
           }
-          if (_db) _db.from('materials').update(dbData).eq('id', String(id))
-            .then(function (r) { if (r.error) showToast('Lỗi lưu: ' + r.error.message, 'error'); });
-          showToast('Đã cập nhật tài liệu.', 'success');
-          closeModal(); renderMaterials();
         } else {
           if (_db) {
             dbData.owner_id = _dbUserId;
             _db.from('materials').insert(dbData).select().then(function (r) {
-              if (r.error) { showToast('Lỗi tải lên: ' + r.error.message, 'error'); return; }
-              var newId = r.data && r.data[0] ? r.data[0].id : (nextMatId++);
-              materials.unshift(Object.assign({ id: newId, ownerId: _dbUserId }, localData));
-              renderMaterials();
+              if (r.error) { console.error('Insert material failed:', r.error); showToast('Lỗi tải lên: ' + r.error.message, 'error'); return; }
+              showToast('Đã tải lên tài liệu.', 'success');
+              closeModal(); loadMaterials();
             });
           } else {
-            localData.id = nextMatId++;
-            materials.unshift(localData);
+            materials.unshift({ id: nextMatId++, title: title, subject: subject, class: classVal, type: fileType, description: description, downloadUrl: resolvedUrl, fileName: resolvedName, uploadDate: new Date().toISOString().split('T')[0] });
+            showToast('Đã tải lên tài liệu.', 'success');
+            closeModal(); renderMaterials();
           }
-          showToast('Đã tải lên tài liệu.', 'success');
-          closeModal(); renderMaterials();
         }
       }
 
       if (file && _db) {
         var safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-        var path = 'materials/' + (_dbUserId || 'anon') + '/' + Date.now() + '_' + safeName;
-        _db.storage.from('materials').upload(path, file, { upsert: true })
+        var storagePath = (_dbUserId || 'anon') + '/' + Date.now() + '_' + safeName;
+        _db.storage.from('materials').upload(storagePath, file, { upsert: true })
           .then(function (r) {
-            if (r.error) { showToast('Lỗi tải file: ' + r.error.message, 'error'); return; }
-            var pubUrl = _db.storage.from('materials').getPublicUrl(path).data.publicUrl;
-            _doSave(pubUrl, file.name);
+            if (r.error) { console.error('Storage upload failed:', r.error); showToast('Lỗi tải file: ' + r.error.message, 'error'); return; }
+            var pubUrl = _db.storage.from('materials').getPublicUrl(storagePath).data.publicUrl;
+            _doSave(pubUrl, file.name, storagePath);
           });
       } else {
-        _doSave(null, null);
+        _doSave(null, null, null);
       }
     }
 
