@@ -4571,7 +4571,9 @@
         if (newSubject !== undefined) updates.subject = newSubject;
         persistProfile(updates);
         // Also update Supabase auth metadata (display_name)
-        _db.auth.updateUser({ data: { full_name: newName } }).then(function () { });
+        _db.auth.updateUser({ data: { full_name: newName } }).then(function (r) {
+          if (r.error) { console.error('auth.updateUser failed:', r.error); }
+        });
       }
 
       _profileEditing = false;
@@ -5153,21 +5155,30 @@
         var path = 'submissions/' + assignmentId + '/' + sub.id + '_' + file.name;
         _db.storage.from('tutor-hub').upload(path, file, { upsert: true })
           .then(function (r) {
-            if (!r.error) {
-              sub.fileUrl = path;
-              _db.from('assignment_submissions').insert({
-                assignment_id: String(assignmentId), student_id: _dbUserId,
-                student_name: sub.studentName, type: type, content: sub.content,
-                file_url: path, grade: null, feedback: null,
-              }).then(function () { });
+            if (r.error) {
+              console.error('Storage upload failed:', r.error);
+              showToast('Lỗi upload file: ' + r.error.message, 'error');
+              return;
             }
+            sub.fileUrl = path;
+            _db.from('assignment_submissions').insert({
+              assignment_id: String(assignmentId), student_id: _dbUserId,
+              student_name: sub.studentName, type: type, content: sub.content,
+              file_url: path, grade: null, feedback: null,
+            }).then(function (r) {
+              if (r.error) { console.error('Insert submission failed:', r.error); showToast('Lỗi lưu bài: ' + r.error.message, 'error'); }
+              else { renderAssignments(); }
+            });
           });
       } else if (_db && _dbUserId) {
         _db.from('assignment_submissions').insert({
           assignment_id: String(assignmentId), student_id: _dbUserId,
           student_name: sub.studentName, type: type, content: sub.content,
           file_url: null, grade: null, feedback: null,
-        }).then(function () { });
+        }).then(function (r) {
+          if (r.error) { console.error('Insert submission failed:', r.error); showToast('Lỗi lưu bài: ' + r.error.message, 'error'); }
+          else { renderAssignments(); }
+        });
       }
 
       submissions.push(sub);
@@ -5226,7 +5237,9 @@
       showToast('Đã lưu điểm cho ' + s.studentName, 'success');
       if (_db && _dbUserId) {
         _db.from('assignment_submissions').update({ grade: s.grade, feedback: s.feedback })
-          .eq('id', String(submissionId)).then(function () { });
+          .eq('id', String(submissionId)).then(function (r) {
+            if (r.error) { console.error('Save grade failed:', r.error); showToast('Lỗi lưu điểm: ' + r.error.message, 'error'); }
+          });
       }
     }
 
