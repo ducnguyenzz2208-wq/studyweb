@@ -3728,10 +3728,6 @@
       if (window.supabase && cfg.supabaseUrl && cfg.supabaseKey) {
         _db = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseKey);
         _dbUserId = cfg.user.id;
-        // Restore auth session so RLS policies pass
-        if (cfg.accessToken && cfg.refreshToken) {
-          _db.auth.setSession({ access_token: cfg.accessToken, refresh_token: cfg.refreshToken });
-        }
       }
 
       // Build currentUser from authenticated profile
@@ -3750,8 +3746,18 @@
       setLang(u.language || 'vi');
       showApp();
 
-      // Load persisted data from Supabase (non-blocking)
-      if (_db) { setTimeout(loadDbData, 200); }
+      // Restore the auth session FIRST, then load data.
+      // setSession() is async — querying before it resolves sends requests
+      // with no JWT and RLS rejects them (401), wiping materials/students.
+      if (_db) {
+        if (cfg.accessToken && cfg.refreshToken) {
+          _db.auth.setSession({ access_token: cfg.accessToken, refresh_token: cfg.refreshToken })
+            .then(function () { loadDbData(); })
+            .catch(function (err) { console.error('setSession failed:', err); loadDbData(); });
+        } else {
+          setTimeout(loadDbData, 200);
+        }
+      }
     });
 
     // ── DATA PERSISTENCE HELPERS ─────────────────────────────────
@@ -4316,10 +4322,15 @@
       document.getElementById('main').style.display = 'block';
       renderNavigation();
       updateNotifBadge();
-      // init section: prefer URL hash so reload restores the tab
+      // init section: restore the last tab on reload.
+      // The iframe reloads without its hash, so localStorage is the real source;
+      // hash is only meaningful for in-session back/forward navigation.
       var hashSection = window.location.hash.replace(/^#/, '');
+      var savedSection = '';
+      try { savedSection = localStorage.getItem('th_section') || ''; } catch (e) { }
+      var pref = hashSection || savedSection;
       var defaultSection = DEFAULT_SECTION[currentUser.role] || 'dashboard';
-      var first = (hashSection && canAccessSection(hashSection)) ? hashSection : defaultSection;
+      var first = (pref && canAccessSection(pref)) ? pref : defaultSection;
       showSection(first);
       renderWelcome();
       // init charts (only if not yet initialized)
@@ -5706,6 +5717,9 @@
       }
       currentSection = id;
       history.replaceState(null, '', '#' + id);
+      // Persist across full reloads — the iframe reloads without its hash,
+      // so localStorage is what actually restores the tab.
+      try { localStorage.setItem('th_section', id); } catch (e) { }
       document.querySelectorAll('.section').forEach(function (s) { s.classList.remove('active'); });
       var secEl = document.getElementById('section-' + id);
       if (secEl) secEl.classList.add('active');
