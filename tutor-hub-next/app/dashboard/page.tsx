@@ -10,8 +10,9 @@ export default function DashboardPage() {
 
   const initApp = useCallback(async () => {
     const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { router.replace('/login'); return }
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) { router.replace('/login'); return }
+    const user = session.user
 
     // Load profile from DB — always fresh, never rely on session claims
     const { data: profile, error: profileErr } = await supabase
@@ -32,6 +33,8 @@ export default function DashboardPage() {
       type: 'TUTOR_HUB_INIT',
       supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL!,
       supabaseKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      accessToken: session.access_token,
+      refreshToken: session.refresh_token,
       user: {
         id: user.id,
         email: user.email ?? '',

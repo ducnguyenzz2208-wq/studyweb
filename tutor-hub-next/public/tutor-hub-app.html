@@ -3728,6 +3728,10 @@
       if (window.supabase && cfg.supabaseUrl && cfg.supabaseKey) {
         _db = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseKey);
         _dbUserId = cfg.user.id;
+        // Restore auth session so RLS policies pass
+        if (cfg.accessToken && cfg.refreshToken) {
+          _db.auth.setSession({ access_token: cfg.accessToken, refresh_token: cfg.refreshToken });
+        }
       }
 
       // Build currentUser from authenticated profile
