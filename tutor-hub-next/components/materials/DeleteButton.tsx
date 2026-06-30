@@ -13,7 +13,7 @@ export default function DeleteButton({ id, filePath }: Props) {
       disabled={isPending}
       onClick={() => {
         if (!confirm('Delete this material?')) return
-        startTransition(() => deleteMaterial(id, filePath))
+        startTransition(async () => { await deleteMaterial(id, filePath) })
       }}
       style={{
         padding: '8px 14px',

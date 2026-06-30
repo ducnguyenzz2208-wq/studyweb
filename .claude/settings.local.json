@@ -1,7 +1,13 @@
 {
   "permissions": {
     "allow": [
-      "PowerShell(Start-Process \"e:\\\\Web\\\\tutor-hub.html\")"
+      "PowerShell(Start-Process \"e:\\\\Web\\\\tutor-hub.html\")",
+      "Bash(git pull *)",
+      "Bash(git stash *)",
+      "Bash(timeout 30 git push origin main)",
+      "Bash(npm install *)",
+      "Bash(npm run *)",
+      "Bash(git rm *)"
     ]
   }
 }
