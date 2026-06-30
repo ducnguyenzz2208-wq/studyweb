@@ -3620,25 +3620,16 @@
 
     <!-- ASSIGNMENTS -->
     <div class="section content" id="section-assignments">
-      <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between;">
+      <div class="page-header">
         <div>
-          <h2>Bài tập &amp; Nộp bài</h2>
-          <p>Giao bài, nộp bài và chấm điểm.</p>
+          <h2>Lớp học</h2>
+          <p>Bảng tin bài tập theo lớp — đăng bài, nộp bài, chấm điểm.</p>
         </div>
-        <button class="btn btn-primary" id="createAssignBtn" style="display:none;" onclick="openAssignmentModal()">+
-          Giao bài mới</button>
       </div>
-      <div class="filter-bar">
-        <select class="filter-select" id="assignClassFilter" onchange="renderAssignments()">
-          <option value="">Tất cả lớp</option>
-        </select>
-        <select class="filter-select" id="assignStatusFilter" onchange="renderAssignments()">
-          <option value="">Tất cả</option>
-          <option value="open">Đang mở</option>
-          <option value="closed">Đã đóng</option>
-        </select>
+      <div style="display:flex;gap:16px;align-items:flex-start;">
+        <aside id="classSidebar" style="width:240px;flex-shrink:0;"></aside>
+        <div id="classFeed" style="flex:1;min-width:0;"></div>
       </div>
-      <div id="assignmentsList"></div>
     </div>
 
     <!-- USER MANAGEMENT (Admin only) -->
@@ -3702,6 +3693,7 @@
     var currentUser = null;
     var currentLang = 'en';
     var currentSection = 'dashboard';
+    var currentClassId = null;   // lớp đang chọn trong feed
 
     // ── SUPABASE INTEGRATION ─────────────────────────────────────
     var _db = null;          // Supabase client (set by postMessage or direct init)
@@ -3870,6 +3862,25 @@
           });
       }
 
+      // Student / Parent: load the classes they belong to (via class_members),
+      // so the feed sidebar can show their classes.
+      if (currentUser.role === 'Student' || currentUser.role === 'Parent') {
+        _db.from('class_members').select('class_id').eq('user_id', _dbUserId)
+          .then(function (r) {
+            if (r.error || !r.data || !r.data.length) return;
+            var ids = r.data.map(function (m) { return m.class_id; });
+            _db.from('classes').select('*').in('id', ids).then(function (rc) {
+              if (!rc.error && rc.data) {
+                classes = rc.data.map(function (c) {
+                  return { id: c.id, name: c.name, subject: c.subject || '', schedule: c.schedule || '', room: c.room || '', maxStudents: c.max_students || 30 };
+                });
+                populateClassDropdowns();
+                if (currentSection === 'assignments') renderAssignments();
+              }
+            });
+          });
+      }
+
       // Subjects (all roles) — load from DB and repopulate dropdowns
       _db.from('subjects').select('name').eq('owner_id', _dbUserId)
         .then(function (r) {
@@ -3888,7 +3899,8 @@
           assignments = r.data.map(function (a) {
             return {
               id: a.id, title: a.title, subject: a.subject || '',
-              class: a.class_name || '', dueDate: a.due_date || '',
+              class: a.class_name || '', classId: a.class_id || null,
+              dueDate: a.due_date || '',
               status: a.status || 'open', description: a.description || '',
               teacherId: a.owner_id,
               createdAt: (a.created_at || '').split('T')[0],
@@ -3900,9 +3912,9 @@
         }
       });
 
-      // Submissions — teacher sees all (rely on RLS); student sees own
+      // Submissions — option B: every class member sees all submissions in their
+      // class. RLS scopes the rows, so no client-side student filter here.
       var subQ = _db.from('assignment_submissions').select('*').order('submitted_at', { ascending: false });
-      if (currentUser.role === 'Student') subQ = subQ.eq('student_id', _dbUserId);
       subQ.then(function (r) {
         if (!r.error && r.data) {
           submissions = r.data.map(function (s) {
@@ -4913,6 +4925,262 @@
     // ASSIGNMENTS
     // ============================================================
     function renderAssignments() {
+      renderClassSidebar();
+      renderClassFeed();
+    }
+
+    function qid(v) { return "'" + String(v == null ? '' : v).replace(/'/g, "\\'") + "'"; }
+    function _classesForFeed() { return classes.slice(); }
+
+    function renderClassSidebar() {
+      var el = document.getElementById('classSidebar');
+      if (!el) return;
+      var isTeacher = currentUser && (currentUser.role === 'Teacher' || currentUser.role === 'Admin');
+      var cls = _classesForFeed();
+      if (!cls.length) {
+        el.innerHTML = '<div class="card" style="padding:16px;color:var(--text-muted);font-size:13px;">' +
+          (isTeacher ? 'Chưa có lớp. Tạo lớp ở mục Lớp học (Classes).' : 'Bạn chưa được thêm vào lớp nào.') + '</div>';
+        return;
+      }
+      if (!currentClassId || !cls.some(function (c) { return c.id === currentClassId; })) currentClassId = cls[0].id;
+      var bySubject = {};
+      cls.forEach(function (c) { var s = c.subject || 'Khác'; (bySubject[s] = bySubject[s] || []).push(c); });
+      var html = '<div class="card" style="padding:10px;">';
+      Object.keys(bySubject).forEach(function (subj) {
+        html += '<div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text-muted);padding:6px 8px 2px;">📚 ' + escHtml(subj) + '</div>';
+        bySubject[subj].forEach(function (c) {
+          var active = c.id === currentClassId;
+          html += '<div onclick="selectClass(' + qid(c.id) + ')" style="display:flex;align-items:center;justify-content:space-between;gap:6px;padding:8px 10px;border-radius:8px;cursor:pointer;margin-bottom:2px;' +
+            (active ? 'background:var(--primary,#3b82f6);color:#fff;' : '') + '">' +
+            '<span style="font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">🏫 ' + escHtml(c.name) + '</span>' +
+            (isTeacher ? '<button onclick="event.stopPropagation();openMembersModal(' + qid(c.id) + ')" title="Thành viên" style="background:none;border:none;cursor:pointer;font-size:14px;' + (active ? 'color:#fff;' : 'color:var(--text-muted);') + '">👥</button>' : '') +
+            '</div>';
+        });
+      });
+      html += '</div>';
+      el.innerHTML = html;
+    }
+
+    function selectClass(id) { currentClassId = id; renderAssignments(); }
+
+    function renderClassFeed() {
+      var el = document.getElementById('classFeed');
+      if (!el) return;
+      var isTeacher = currentUser && (currentUser.role === 'Teacher' || currentUser.role === 'Admin');
+      var cls = _classesForFeed();
+      var cur = cls.find(function (c) { return c.id === currentClassId; });
+      if (!cur) { el.innerHTML = '<div class="card" style="padding:24px;text-align:center;color:var(--text-muted);">Chọn một lớp ở bên trái để xem bài tập.</div>'; return; }
+      var posts = assignments.filter(function (a) { return a.classId === currentClassId; });
+      var header = '<div class="card" style="margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;gap:8px;">' +
+        '<div><div style="font-weight:700;font-size:18px;">🏫 ' + escHtml(cur.name) + '</div>' +
+        '<div style="font-size:13px;color:var(--text-muted);">' + escHtml(cur.subject || '') + '</div></div>' +
+        (isTeacher ? '<button class="btn btn-primary" onclick="openAssignmentModal()">+ Đăng bài</button>' : '') +
+        '</div>';
+      var feed = posts.length ? posts.map(renderPostCard).join('') :
+        '<div class="card" style="padding:24px;text-align:center;color:var(--text-muted);">Chưa có bài tập nào trong lớp này.</div>';
+      el.innerHTML = header + feed;
+    }
+
+    function renderPostCard(a) {
+      var isTeacher = currentUser && (currentUser.role === 'Teacher' || currentUser.role === 'Admin');
+      var isStudent = currentUser && currentUser.role === 'Student';
+      var subs = submissions.filter(function (s) { return s.assignmentId === a.id; });
+      var statusBadge = a.status === 'open'
+        ? '<span class="badge badge-success">Đang mở</span>'
+        : '<span class="badge badge-warning">Đã đóng</span>';
+      var attach = a.attachmentUrl
+        ? '<div style="margin-top:8px;"><a class="btn btn-sm btn-ghost" href="' + escAttr(a.attachmentUrl) + '" target="_blank" rel="noopener">📎 Tệp đính kèm</a></div>' : '';
+      var teacherActions = isTeacher
+        ? '<button class="btn btn-sm btn-ghost" onclick="openAssignmentModal(' + qid(a.id) + ')" title="Sửa">✏️</button>' +
+          '<button class="btn btn-sm btn-ghost" onclick="deleteAssignment(' + qid(a.id) + ')" title="Xóa">🗑</button>' : '';
+      var thread = subs.map(function (s) { return renderSubmissionRow(a, s); }).join('');
+      var mySub = isStudent ? subs.find(function (s) { return s.studentId === _dbUserId; }) : null;
+      var composer = '';
+      if (isStudent && a.status === 'open') {
+        composer = '<div style="display:flex;gap:6px;margin-top:10px;align-items:center;">' +
+          '<input class="form-input" id="subInput_' + a.id + '" placeholder="' + (mySub ? 'Cập nhật bài nộp...' : 'Viết bài nộp...') + '" style="flex:1;" value="' + escAttr(mySub ? mySub.content : '') + '">' +
+          '<input type="file" id="subFile_' + a.id + '" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" style="display:none;" onchange="_subFilePicked(' + qid(a.id) + ')">' +
+          '<button class="btn btn-sm btn-ghost" onclick="document.getElementById(\'subFile_' + a.id + '\').click()" title="Đính kèm tệp">📎</button>' +
+          '<span id="subFileName_' + a.id + '" style="font-size:11px;color:var(--text-muted);max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>' +
+          '<button class="btn btn-sm btn-primary" onclick="submitWork(' + qid(a.id) + ')">' + (mySub ? 'Cập nhật' : 'Nộp') + '</button>' +
+          '</div>';
+      }
+      return '<div class="card" style="margin-bottom:14px;">' +
+        '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">' +
+        '<div style="display:flex;gap:10px;align-items:center;min-width:0;">' +
+        '<div style="width:40px;height:40px;border-radius:50%;background:var(--primary,#3b82f6);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0;">' + escHtml((a.subject || 'GV').slice(0, 1).toUpperCase()) + '</div>' +
+        '<div style="min-width:0;"><div style="font-weight:700;overflow:hidden;text-overflow:ellipsis;">' + escHtml(a.title) + '</div>' +
+        '<div style="font-size:12px;color:var(--text-muted);">' + escHtml(a.subject || '') + ' · 📅 ' + escHtml(a.dueDate || 'không hạn') + ' ' + statusBadge + '</div></div>' +
+        '</div>' +
+        '<div style="display:flex;gap:4px;flex-shrink:0;">' + teacherActions + '</div>' +
+        '</div>' +
+        (a.description ? '<div style="margin-top:10px;font-size:14px;white-space:pre-wrap;">' + escHtml(a.description) + '</div>' : '') +
+        attach +
+        '<div style="margin-top:12px;border-top:1px solid var(--border);padding-top:10px;">' +
+        '<div style="font-size:13px;font-weight:600;color:var(--text-muted);margin-bottom:6px;">💬 Bài nộp (' + subs.length + ')</div>' +
+        (thread || '<div style="font-size:13px;color:var(--text-muted);">Chưa có bài nộp.</div>') +
+        composer +
+        '</div>' +
+        '</div>';
+    }
+
+    function renderSubmissionRow(a, s) {
+      var isTeacher = currentUser && (currentUser.role === 'Teacher' || currentUser.role === 'Admin');
+      var fileLink = s.fileUrl ? ' <a href="' + escAttr(s.fileUrl) + '" target="_blank" rel="noopener" style="font-size:12px;">📎 tệp</a>' : '';
+      var gradeBox = '';
+      if (s.grade !== null && s.grade !== undefined) {
+        gradeBox = '<div style="margin-top:4px;background:var(--bg);border-radius:8px;padding:6px 10px;font-size:13px;">' +
+          '<strong style="color:var(--success);">Điểm: ' + s.grade + '/10</strong>' +
+          (s.feedback ? '<div style="color:var(--text-muted);margin-top:2px;">📝 ' + escHtml(s.feedback) + '</div>' : '') + '</div>';
+      }
+      var gradeBtn = isTeacher ? ' <button class="btn btn-sm btn-ghost" style="padding:1px 6px;font-size:11px;" onclick="openGradeModal(' + qid(s.id) + ')">' + (s.grade != null ? 'Sửa điểm' : 'Chấm') + '</button>' : '';
+      return '<div style="display:flex;gap:10px;padding:8px 0;">' +
+        '<div style="width:32px;height:32px;border-radius:50%;background:var(--purple,#8b5cf6);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;">' + escHtml((s.studentName || '?').slice(0, 1).toUpperCase()) + '</div>' +
+        '<div style="flex:1;min-width:0;">' +
+        '<div style="background:var(--bg);border-radius:10px;padding:8px 12px;">' +
+        '<div style="font-weight:600;font-size:13px;">' + escHtml(s.studentName || 'Học sinh') + '</div>' +
+        '<div style="font-size:14px;word-break:break-word;">' + escHtml(s.content || '') + fileLink + '</div>' +
+        '</div>' +
+        '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">' + escHtml(s.submittedAt || '') + gradeBtn + '</div>' +
+        gradeBox +
+        '</div></div>';
+    }
+
+    function _subFilePicked(assignmentId) {
+      var fi = document.getElementById('subFile_' + assignmentId);
+      var span = document.getElementById('subFileName_' + assignmentId);
+      if (fi && span) span.textContent = (fi.files && fi.files[0]) ? fi.files[0].name : '';
+    }
+
+    function submitWork(assignmentId) {
+      var inp = document.getElementById('subInput_' + assignmentId);
+      var text = inp ? inp.value.trim() : '';
+      var fi = document.getElementById('subFile_' + assignmentId);
+      var file = fi && fi.files && fi.files[0] ? fi.files[0] : null;
+      if (!text && !file) { showToast('Nhập nội dung hoặc đính kèm tệp.', 'error'); return; }
+      if (!_db || !_dbUserId) { showToast('Chưa kết nối tài khoản.', 'error'); return; }
+      function _save(fileUrl) {
+        var payload = {
+          assignment_id: String(assignmentId), student_id: _dbUserId,
+          student_name: currentUser.name, type: file ? 'file' : 'text', content: text,
+        };
+        if (fileUrl) payload.file_url = fileUrl;
+        _db.from('assignment_submissions').upsert(payload, { onConflict: 'assignment_id,student_id' }).select()
+          .then(function (r) {
+            if (r.error) { showToast('Lỗi nộp bài: ' + r.error.message, 'error'); return; }
+            showToast('Đã nộp bài.', 'success');
+            reloadSubmissions();
+          });
+      }
+      if (file) {
+        var safe = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+        var path = 'assignments/' + assignmentId + '/' + _dbUserId + '_' + Date.now() + '_' + safe;
+        _db.storage.from('materials').upload(path, file, { upsert: true }).then(function (r) {
+          if (r.error) { showToast('Lỗi tải tệp: ' + r.error.message, 'error'); return; }
+          var url = _db.storage.from('materials').getPublicUrl(path).data.publicUrl;
+          _save(url);
+        });
+      } else { _save(null); }
+    }
+
+    function reloadSubmissions() {
+      if (!_db) { renderAssignments(); return; }
+      _db.from('assignment_submissions').select('*').order('submitted_at', { ascending: false }).then(function (r) {
+        if (!r.error && r.data) {
+          submissions = r.data.map(function (s) {
+            return { id: s.id, assignmentId: s.assignment_id, studentId: s.student_id, studentName: s.student_name || '', submittedAt: (s.submitted_at || '').split('T')[0], type: s.type || 'text', content: s.content || '', fileUrl: s.file_url || null, grade: (s.grade != null ? Number(s.grade) : null), feedback: s.feedback || null };
+          });
+        }
+        renderAssignments();
+      });
+    }
+
+    function openGradeModal(subId) {
+      var s = submissions.find(function (x) { return x.id === subId; });
+      if (!s) return;
+      var html = '<div class="modal-header"><h3>Chấm điểm: ' + escHtml(s.studentName || '') + '</h3><button class="modal-close" onclick="closeModal()">✕</button></div>' +
+        '<div class="modal-body">' +
+        (s.content ? '<div style="background:var(--bg);border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:14px;">' + escHtml(s.content) + (s.fileUrl ? ' <a href="' + escAttr(s.fileUrl) + '" target="_blank">📎 tệp</a>' : '') + '</div>' : '') +
+        '<div class="form-group"><label>Điểm (0-10)</label><input class="form-input" type="number" min="0" max="10" step="0.5" id="gGrade" value="' + (s.grade != null ? s.grade : '') + '"></div>' +
+        '<div class="form-group"><label>Nhận xét</label><textarea class="form-textarea" id="gFeedback">' + escHtml(s.feedback || '') + '</textarea></div>' +
+        '</div><div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal()">Hủy</button>' +
+        '<button class="btn btn-primary" onclick="saveGradeInline(' + qid(subId) + ')">Lưu điểm</button></div>';
+      openModal(html);
+    }
+
+    function saveGradeInline(subId) {
+      var g = document.getElementById('gGrade').value;
+      var fb = document.getElementById('gFeedback').value.trim();
+      var grade = g === '' ? null : Number(g);
+      if (!_db) return;
+      _db.from('assignment_submissions').update({ grade: grade, feedback: fb }).eq('id', String(subId)).then(function (r) {
+        if (r.error) { showToast('Lỗi lưu điểm: ' + r.error.message, 'error'); return; }
+        closeModal(); showToast('Đã lưu điểm.', 'success'); reloadSubmissions();
+      });
+    }
+
+    function deleteAssignment(id) {
+      if (!confirm('Xóa bài tập này? Mọi bài nộp sẽ bị xóa theo.')) return;
+      assignments = assignments.filter(function (a) { return a.id !== id; });
+      renderAssignments();
+      if (_db) _db.from('assignments').delete().eq('id', String(id)).then(function (r) { if (r.error) showToast('Lỗi xóa: ' + r.error.message, 'error'); });
+    }
+
+    function openMembersModal(classId) {
+      var cls = classes.find(function (c) { return c.id === classId; });
+      var html = '<div class="modal-header"><h3>👥 Thành viên: ' + escHtml(cls ? cls.name : '') + '</h3><button class="modal-close" onclick="closeModal()">✕</button></div>' +
+        '<div class="modal-body">' +
+        '<div style="display:flex;gap:8px;margin-bottom:12px;">' +
+        '<input class="form-input" id="memEmail" placeholder="Email học sinh..." style="flex:1;">' +
+        '<button class="btn btn-primary" onclick="addMember(' + qid(classId) + ')">Thêm</button>' +
+        '</div>' +
+        '<div id="memList" style="font-size:14px;color:var(--text-muted);">Đang tải...</div>' +
+        '</div>';
+      openModal(html);
+      loadMembers(classId);
+    }
+
+    function loadMembers(classId) {
+      if (!_db) return;
+      _db.rpc('list_class_members', { _class_id: classId }).then(function (r) {
+        var el = document.getElementById('memList');
+        if (!el) return;
+        if (r.error) { el.innerHTML = 'Lỗi: ' + escHtml(r.error.message); return; }
+        if (!r.data || !r.data.length) { el.innerHTML = 'Chưa có thành viên nào. Thêm bằng email ở trên.'; return; }
+        el.innerHTML = r.data.map(function (m) {
+          return '<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);">' +
+            '<div><div style="font-weight:600;color:var(--text);">' + escHtml(m.name || '') + '</div><div style="font-size:12px;">' + escHtml(m.email || '') + '</div></div>' +
+            '<button class="btn btn-sm btn-ghost" onclick="removeMember(' + qid(m.member_id) + ',' + qid(classId) + ')">Xóa</button>' +
+            '</div>';
+        }).join('');
+      });
+    }
+
+    function addMember(classId) {
+      var inp = document.getElementById('memEmail');
+      var email = inp ? inp.value.trim() : '';
+      if (!email) return;
+      if (!_db) return;
+      _db.rpc('add_class_member', { _class_id: classId, _email: email }).then(function (r) {
+        if (r.error) { showToast('Lỗi: ' + r.error.message, 'error'); return; }
+        if (r.data === 'no_user') { showToast('Không tìm thấy tài khoản với email này.', 'error'); return; }
+        if (r.data === 'not_owner') { showToast('Bạn không phải chủ lớp này.', 'error'); return; }
+        if (inp) inp.value = '';
+        showToast('Đã thêm thành viên.', 'success');
+        loadMembers(classId);
+      });
+    }
+
+    function removeMember(memberId, classId) {
+      if (!_db) return;
+      _db.from('class_members').delete().eq('id', String(memberId)).then(function (r) {
+        if (r.error) { showToast('Lỗi xóa: ' + r.error.message, 'error'); return; }
+        loadMembers(classId);
+      });
+    }
+
+    // ── Legacy list renderer (thay bằng class feed ở trên; giữ dormant) ──
+    function renderAssignmentsLegacy() {
       var isTeacherOrAdmin = currentUser && (currentUser.role === 'Teacher' || currentUser.role === 'Admin');
       var isStudent = currentUser && currentUser.role === 'Student';
       var isParent = currentUser && currentUser.role === 'Parent';
@@ -5031,8 +5299,9 @@
     function openAssignmentModal(id) {
       var a = id ? assignments.find(function (x) { return x.id === id; }) : null;
       var title = a ? 'Sửa bài tập' : 'Giao bài mới';
-      var classOpts = classes.map(function (c) { return '<option value="' + c.name + '"' + (a && a.class === c.name ? ' selected' : '') + '>' + escHtml(c.name) + '</option>'; }).join('');
-      var aid = JSON.stringify(id || null);
+      var selClassId = a ? a.classId : currentClassId;
+      var classOpts = classes.map(function (c) { return '<option value="' + escAttr(c.id) + '"' + (c.id === selClassId ? ' selected' : '') + '>' + escHtml(c.name) + '</option>'; }).join('');
+      var aid = id ? qid(id) : 'null';
       var existingAttach = a && a.attachmentUrl
         ? '<div style="font-size:12px;color:var(--text-muted);margin-top:4px;">Đính kèm hiện tại: <a href="' + escHtml(a.attachmentUrl) + '" target="_blank">xem tệp</a></div>'
         : '';
@@ -5066,9 +5335,13 @@
       var fileInput = document.getElementById('mAFile');
       var file = fileInput && fileInput.files && fileInput.files[0] ? fileInput.files[0] : null;
 
+      var selClassId = document.getElementById('mAClass').value;
+      var selClass = classes.find(function (c) { return c.id === selClassId; });
+      if (!selClass) { showToast('Vui lòng chọn lớp (tạo lớp ở mục Lớp học nếu chưa có).', 'error'); return; }
       var data = {
         title: title,
-        class: document.getElementById('mAClass').value,
+        classId: selClassId,
+        class: selClass.name,
         subject: document.getElementById('mASubject').value,
         dueDate: document.getElementById('mADue').value,
         status: document.getElementById('mAStatus').value,
@@ -5084,10 +5357,10 @@
             Object.assign(a, data);
             if (_db && _dbUserId) {
               _db.from('assignments').update({
-                title: a.title, subject: a.subject, class_name: a.class,
+                title: a.title, subject: a.subject, class_name: a.class, class_id: a.classId || null,
                 due_date: a.dueDate, status: a.status, description: a.description,
                 attachment_url: a.attachmentUrl || null,
-              }).eq('id', String(id)).then(function (r) { if (r.error) console.warn('save assign', r.error.message); });
+              }).eq('id', String(id)).then(function (r) { if (r.error) showToast('Lỗi lưu: ' + r.error.message, 'error'); });
             }
           }
           showToast('Đã cập nhật bài tập.', 'success');
@@ -5099,10 +5372,14 @@
           if (_db && _dbUserId) {
             _db.from('assignments').insert({
               owner_id: _dbUserId, title: data.title, subject: data.subject,
-              class_name: data.class, due_date: data.dueDate, status: data.status,
+              class_name: data.class, class_id: data.classId || null,
+              due_date: data.dueDate, status: data.status,
               description: data.description, attachment_url: data.attachmentUrl || null,
               grades_published: false,
-            }).then(function (r) { if (r.error) console.warn('insert assign', r.error.message); });
+            }).select().then(function (r) {
+              if (r.error) { showToast('Lỗi đăng bài: ' + r.error.message, 'error'); return; }
+              if (r.data && r.data[0]) { data.id = r.data[0].id; renderAssignments(); }
+            });
           }
           showToast('Đã giao bài tập mới.', 'success');
         }
@@ -5110,16 +5387,17 @@
         renderAssignments();
       }
 
-      // If a file was selected, upload first
+      // If a file was selected, upload first (public 'materials' bucket)
       if (file && _db) {
-        var path = 'assignments/' + (id || 'new_' + Date.now()) + '/' + file.name;
-        _db.storage.from('tutor-hub').upload(path, file, { upsert: true })
+        var safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+        var path = 'assignments/' + (id || 'new') + '/' + (_dbUserId || 'anon') + '_' + Date.now() + '_' + safeName;
+        _db.storage.from('materials').upload(path, file, { upsert: true })
           .then(function (r) {
             if (!r.error) {
-              var pubUrl = _db.storage.from('tutor-hub').getPublicUrl(path).data.publicUrl;
+              var pubUrl = _db.storage.from('materials').getPublicUrl(path).data.publicUrl;
               _finishSave(pubUrl || path);
             } else {
-              console.warn('attach upload', r.error.message);
+              showToast('Lỗi tải tệp đính kèm: ' + r.error.message, 'error');
               _finishSave(undefined); // save without attachment on error
             }
           });
@@ -5657,6 +5935,7 @@
     function getInitials(name) { return name.split(' ').map(function (n) { return n[0]; }).join('').toUpperCase(); }
     function avgScore(s) { return Math.round((s.mathScore + s.engScore) / 2); }
     function escHtml(str) { var d = document.createElement('div'); d.textContent = str; return d.innerHTML; }
+    function escAttr(str) { return String(str == null ? '' : str).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
     function getAttendHistory(student) {
       var seed = student.id * 13;
