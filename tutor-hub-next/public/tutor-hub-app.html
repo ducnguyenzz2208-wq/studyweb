@@ -3694,6 +3694,7 @@
     var currentLang = 'en';
     var currentSection = 'dashboard';
     var currentClassId = null;   // lớp đang chọn trong feed
+    var _savingAssignment = false; // chống bấm Lưu nhiều lần khi đang upload
 
     // ── SUPABASE INTEGRATION ─────────────────────────────────────
     var _db = null;          // Supabase client (set by postMessage or direct init)
@@ -4181,8 +4182,8 @@
     ];
 
     var ROLE_SECTIONS = {
-      Teacher: ['dashboard', 'students', 'classes', 'assignments', 'homework', 'attendance', 'scores', 'payments', 'schedule', 'materials', 'flashcards', 'reports', 'settings'],
-      Admin: ['dashboard', 'students', 'classes', 'assignments', 'homework', 'attendance', 'scores', 'payments', 'schedule', 'materials', 'flashcards', 'reports', 'users', 'subjects', 'settings'],
+      Teacher: ['dashboard', 'students', 'classes', 'assignments', 'attendance', 'scores', 'payments', 'schedule', 'materials', 'flashcards', 'reports', 'settings'],
+      Admin: ['dashboard', 'students', 'classes', 'assignments', 'attendance', 'scores', 'payments', 'schedule', 'materials', 'flashcards', 'reports', 'users', 'subjects', 'settings'],
       Parent: ['parent-portal', 'materials', 'flashcards', 'schedule', 'payments', 'settings'],
       Student: ['student-portal', 'assignments', 'materials', 'flashcards', 'schedule', 'settings'],
       Pending: ['settings'],
@@ -4376,7 +4377,6 @@
       {
         group: 'Academic', items: [
           { id: 'assignments', icon: '📋', key: 'nav.assignments' },
-          { id: 'homework', icon: '📝', key: 'nav.homework' },
           { id: 'flashcards', icon: '🃏', key: 'nav.flashcards' },
           { id: 'materials', icon: '📂', key: 'nav.materials' },
           { id: 'attendance', icon: '✅', key: 'nav.attendance' },
@@ -5334,7 +5334,7 @@
         '</div>' +
         '<div class="modal-footer">' +
         '<button class="btn btn-ghost" onclick="closeModal()">Hủy</button>' +
-        '<button class="btn btn-primary" onclick="saveAssignment(' + aid + ')">Lưu</button>' +
+        '<button class="btn btn-primary" id="saveAssignBtn" onclick="saveAssignment(' + aid + ')">Lưu</button>' +
         '</div>';
       openModal(html);
     }
@@ -5348,6 +5348,15 @@
       var selClassId = document.getElementById('mAClass').value;
       var selClass = classes.find(function (c) { return c.id === selClassId; });
       if (!selClass) { showToast('Vui lòng chọn lớp (tạo lớp ở mục Lớp học nếu chưa có).', 'error'); return; }
+      if (_savingAssignment) return;
+      _savingAssignment = true;
+      var _saveBtn = document.getElementById('saveAssignBtn');
+      if (_saveBtn) { _saveBtn.disabled = true; _saveBtn.textContent = 'Đang lưu…'; }
+      function _resetSaving() {
+        _savingAssignment = false;
+        var b = document.getElementById('saveAssignBtn');
+        if (b) { b.disabled = false; b.textContent = 'Lưu'; }
+      }
       var data = {
         title: title,
         classId: selClassId,
@@ -5393,6 +5402,7 @@
           }
           showToast('Đã giao bài tập mới.', 'success');
         }
+        _savingAssignment = false;
         closeModal();
         renderAssignments();
       }
@@ -5410,6 +5420,10 @@
               showToast('Lỗi tải tệp đính kèm: ' + r.error.message, 'error');
               _finishSave(undefined); // save without attachment on error
             }
+          })
+          .catch(function (e) {
+            showToast('Lỗi mạng khi tải tệp. Thử lại.', 'error');
+            _resetSaving(); // mở lại nút Lưu, modal vẫn mở
           });
       } else {
         _finishSave(undefined);
