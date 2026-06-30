@@ -3642,7 +3642,10 @@
       <div class="card">
         <div class="card-header">
           <div class="card-title">Danh sách người dùng</div>
-          <button class="btn btn-sm btn-primary" onclick="loadUsersFromDb()">🔄 Tải lại</button>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-sm btn-primary" onclick="openAddMemberToClass()">+ Thêm học sinh vào lớp</button>
+            <button class="btn btn-sm btn-ghost" onclick="loadUsersFromDb()">🔄 Tải lại</button>
+          </div>
         </div>
         <table>
           <thead>
@@ -4183,7 +4186,7 @@
     ];
 
     var ROLE_SECTIONS = {
-      Teacher: ['dashboard', 'students', 'classes', 'assignments', 'attendance', 'scores', 'payments', 'schedule', 'materials', 'flashcards', 'reports', 'settings'],
+      Teacher: ['dashboard', 'students', 'classes', 'assignments', 'attendance', 'scores', 'payments', 'schedule', 'materials', 'flashcards', 'reports', 'users', 'settings'],
       Admin: ['dashboard', 'students', 'classes', 'assignments', 'attendance', 'scores', 'payments', 'schedule', 'materials', 'flashcards', 'reports', 'users', 'subjects', 'settings'],
       Parent: ['parent-portal', 'materials', 'flashcards', 'schedule', 'payments', 'settings'],
       Student: ['student-portal', 'assignments', 'materials', 'flashcards', 'schedule', 'settings'],
@@ -5733,8 +5736,36 @@
     }
 
     // ============================================================
-    // USER MANAGEMENT (Admin only)
+    // USER MANAGEMENT (Admin + Teacher)
     // ============================================================
+    function openAddMemberToClass() {
+      var cls = _classesForFeed();
+      if (!cls.length) { showToast('Chưa có lớp. Tạo lớp ở mục Lớp học trước.', 'error'); return; }
+      var opts = cls.map(function (c) { return '<option value="' + escAttr(c.id) + '">' + escHtml(c.name) + '</option>'; }).join('');
+      var html = '<div class="modal-header"><h3>Thêm học sinh vào lớp</h3><button class="modal-close" onclick="closeModal()">✕</button></div>' +
+        '<div class="modal-body">' +
+        '<div class="form-group"><label>Lớp</label><select class="form-select" id="amClass">' + opts + '</select></div>' +
+        '<div class="form-group"><label>Email tài khoản học sinh</label><input class="form-input" id="amEmail" placeholder="hs@email.com"></div>' +
+        '<div class="hint">Học sinh phải có tài khoản đăng nhập với email này.</div>' +
+        '</div><div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal()">Hủy</button>' +
+        '<button class="btn btn-primary" onclick="addMemberToClass()">Thêm</button></div>';
+      openModal(html);
+    }
+
+    function addMemberToClass() {
+      var classId = (document.getElementById('amClass') || {}).value || '';
+      var email = ((document.getElementById('amEmail') || {}).value || '').trim();
+      if (!classId || !email) { showToast('Chọn lớp và nhập email.', 'error'); return; }
+      if (!_db) return;
+      _db.rpc('add_class_member', { _class_id: classId, _email: email }).then(function (r) {
+        if (r.error) { showToast('Lỗi: ' + r.error.message, 'error'); return; }
+        if (r.data === 'no_user') { showToast('Không tìm thấy tài khoản với email này.', 'error'); return; }
+        if (r.data === 'not_owner') { showToast('Bạn không có quyền với lớp này.', 'error'); return; }
+        closeModal(); showToast('Đã thêm học sinh vào lớp.', 'success');
+        if (currentSection === 'assignments') renderAssignments();
+      });
+    }
+
     function renderUserManagement() {
       var list = document.getElementById('userMgmtList');
       if (!list) return;
@@ -5743,23 +5774,27 @@
         return;
       }
       var roleBadgeMap = { Admin: 'badge-danger', Teacher: 'badge-info', Student: 'badge-success', Parent: 'badge-warning', Pending: 'badge-warning' };
+      var iAmAdmin = currentUser && currentUser.role === 'Admin';
       list.innerHTML = appUsers.map(function (u) {
+        var actionCell;
+        if (u.id === _dbUserId) {
+          actionCell = '<span class="badge ' + (roleBadgeMap[u.role] || '') + '">' + escHtml(u.role) + ' (bạn)</span>';
+        } else if (iAmAdmin) {
+          actionCell = '<select class="filter-select" style="padding:4px 8px;font-size:12px;" onchange="changeUserRole(\'' + u.id + '\',this.value)">' +
+            ['Student', 'Teacher', 'Admin'].map(function (r) {
+              return '<option value="' + r + '"' + (u.role === r ? ' selected' : '') + '>' +
+                ({ Student: 'Học sinh', Teacher: 'Giáo viên', Admin: 'Admin phụ' }[r] || r) + '</option>';
+            }).join('') +
+            '</select>';
+        } else {
+          actionCell = '<span style="font-size:12px;color:var(--text-muted);">Chỉ admin đổi vai trò</span>';
+        }
         return '<tr>' +
           '<td>' + escHtml(u.name || '—') + '</td>' +
           '<td style="font-size:12px;color:var(--text-muted);">' + escHtml(u.email) + '</td>' +
           '<td><span class="badge ' + (roleBadgeMap[u.role] || '') + '">' + escHtml(u.role) + '</span></td>' +
           '<td style="font-size:12px;">' + escHtml((u.createdAt || '').split('T')[0]) + '</td>' +
-          '<td>' +
-          (u.id === _dbUserId
-            ? '<span class="badge badge-danger">Admin (bạn)</span>'
-            : '<select class="filter-select" style="padding:4px 8px;font-size:12px;" onchange="changeUserRole(\'' + u.id + '\',this.value)">' +
-              ['Student', 'Teacher', 'Admin'].map(function (r) {
-                return '<option value="' + r + '"' + (u.role === r ? ' selected' : '') + '>' +
-                  ({ Student: 'Học sinh', Teacher: 'Giáo viên', Admin: 'Admin phụ' }[r] || r) + '</option>';
-              }).join('') +
-              '</select>'
-          ) +
-          '</td>' +
+          '<td>' + actionCell + '</td>' +
           '</tr>';
       }).join('');
     }
