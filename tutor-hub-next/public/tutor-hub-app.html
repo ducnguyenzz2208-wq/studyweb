@@ -3357,6 +3357,7 @@
         <h2>Parent Portal</h2>
         <p>View your child's academic progress and account details.</p>
       </div>
+      <div class="card" id="parentEnrollCard" style="margin-bottom:16px;"></div>
       <div class="portal-select-bar">
         <label>Select Child:</label>
         <select class="filter-select" id="parentChildSelect" onchange="renderParentPortal()">
@@ -5140,6 +5141,9 @@
       var cls = classes.find(function (c) { return c.id === classId; });
       var html = '<div class="modal-header"><h3>👥 Thành viên: ' + escHtml(cls ? cls.name : '') + '</h3><button class="modal-close" onclick="closeModal()">✕</button></div>' +
         '<div class="modal-body">' +
+        '<div style="font-weight:600;margin-bottom:6px;">📩 Yêu cầu chờ duyệt</div>' +
+        '<div id="reqList" style="font-size:14px;color:var(--text-muted);margin-bottom:16px;">Đang tải...</div>' +
+        '<div style="font-weight:600;margin-bottom:6px;">Thành viên</div>' +
         '<div style="display:flex;gap:8px;margin-bottom:12px;">' +
         '<input class="form-input" id="memEmail" placeholder="Email học sinh..." style="flex:1;">' +
         '<button class="btn btn-primary" onclick="addMember(' + qid(classId) + ')">Thêm</button>' +
@@ -5147,7 +5151,48 @@
         '<div id="memList" style="font-size:14px;color:var(--text-muted);">Đang tải...</div>' +
         '</div>';
       openModal(html);
+      loadClassRequests(classId);
       loadMembers(classId);
+    }
+
+    function loadClassRequests(classId) {
+      var el = document.getElementById('reqList');
+      if (!el || !_db) return;
+      _db.from('enrollment_requests').select('*').eq('class_id', classId).eq('status', 'pending').order('created_at', { ascending: true })
+        .then(function (r) {
+          if (r.error) { el.innerHTML = 'Lỗi: ' + escHtml(r.error.message); return; }
+          if (!r.data || !r.data.length) { el.innerHTML = 'Không có yêu cầu nào.'; return; }
+          el.innerHTML = r.data.map(function (q) {
+            return '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);">' +
+              '<div><div style="font-weight:600;color:var(--text);">' + escHtml(q.student_name || q.student_email) + '</div>' +
+              '<div style="font-size:12px;">' + escHtml(q.student_email) + '</div></div>' +
+              '<div style="display:flex;gap:6px;flex-shrink:0;">' +
+              '<button class="btn btn-sm btn-primary" onclick="approveReq(' + qid(q.id) + ',' + qid(classId) + ')">Duyệt</button>' +
+              '<button class="btn btn-sm btn-ghost" onclick="rejectReq(' + qid(q.id) + ',' + qid(classId) + ')">Từ chối</button>' +
+              '</div></div>';
+          }).join('');
+        });
+    }
+
+    function approveReq(reqId, classId) {
+      if (!_db) return;
+      _db.rpc('approve_enrollment', { _request_id: reqId }).then(function (r) {
+        if (r.error) { showToast('Lỗi: ' + r.error.message, 'error'); return; }
+        if (r.data === 'no_user') { showToast('Không tìm thấy tài khoản học sinh với email này.', 'error'); return; }
+        if (r.data === 'not_allowed') { showToast('Bạn không có quyền duyệt lớp này.', 'error'); return; }
+        if (r.data === 'not_found') { showToast('Yêu cầu không tồn tại.', 'error'); return; }
+        showToast('Đã duyệt — học sinh vào lớp.', 'success');
+        loadClassRequests(classId); loadMembers(classId);
+      });
+    }
+
+    function rejectReq(reqId, classId) {
+      if (!_db) return;
+      _db.from('enrollment_requests').update({ status: 'rejected' }).eq('id', String(reqId)).then(function (r) {
+        if (r.error) { showToast('Lỗi: ' + r.error.message, 'error'); return; }
+        showToast('Đã từ chối.', 'success');
+        loadClassRequests(classId);
+      });
     }
 
     function loadMembers(classId) {
@@ -6722,7 +6767,73 @@
     function initParentPortal() {
       var sel = document.getElementById('parentChildSelect');
       sel.innerHTML = students.map(function (s) { return '<option value="' + s.id + '">' + escHtml(s.name) + '</option>'; }).join('');
+      renderParentEnroll();
       renderParentPortal();
+    }
+
+    // ── PARENT: đăng ký lớp cho con ──────────────────────────────
+    function renderParentEnroll() {
+      var el = document.getElementById('parentEnrollCard');
+      if (!el) return;
+      el.innerHTML =
+        '<div class="card-header"><div class="card-title">📩 Đăng ký lớp cho con</div>' +
+        '<button class="btn btn-sm btn-primary" onclick="openEnrollModal()">+ Gửi yêu cầu</button></div>' +
+        '<div id="parentReqList" style="font-size:14px;color:var(--text-muted);">Đang tải yêu cầu...</div>';
+      loadMyEnrollRequests();
+    }
+
+    function loadMyEnrollRequests() {
+      var el = document.getElementById('parentReqList');
+      if (!el || !_db || !_dbUserId) { if (el) el.innerHTML = ''; return; }
+      _db.from('enrollment_requests').select('*, classes(name)').eq('requester_id', _dbUserId).order('created_at', { ascending: false })
+        .then(function (r) {
+          if (r.error) { el.innerHTML = 'Lỗi tải: ' + escHtml(r.error.message); return; }
+          if (!r.data || !r.data.length) { el.innerHTML = 'Chưa có yêu cầu nào.'; return; }
+          var badge = { pending: 'badge-warning', approved: 'badge-success', rejected: 'badge-danger' };
+          var label = { pending: 'Chờ duyệt', approved: 'Đã duyệt', rejected: 'Bị từ chối' };
+          el.innerHTML = r.data.map(function (q) {
+            var cn = (q.classes && q.classes.name) ? q.classes.name : '(lớp)';
+            return '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);">' +
+              '<div><div style="font-weight:600;color:var(--text);">🏫 ' + escHtml(cn) + '</div>' +
+              '<div style="font-size:12px;">HS: ' + escHtml(q.student_name || q.student_email) + '</div></div>' +
+              '<span class="badge ' + (badge[q.status] || '') + '">' + (label[q.status] || q.status) + '</span>' +
+              '</div>';
+          }).join('');
+        });
+    }
+
+    function openEnrollModal() {
+      if (!_db) { showToast('Chưa kết nối.', 'error'); return; }
+      // Lấy danh sách lớp mà phụ huynh có thể đăng ký (RLS cho phép đọc)
+      _db.from('classes').select('id, name, subject').order('name').then(function (r) {
+        var opts = (r.data || []).map(function (c) {
+          return '<option value="' + escAttr(c.id) + '">' + escHtml(c.name) + (c.subject ? ' (' + escHtml(c.subject) + ')' : '') + '</option>';
+        }).join('');
+        var html = '<div class="modal-header"><h3>Đăng ký lớp cho con</h3><button class="modal-close" onclick="closeModal()">✕</button></div>' +
+          '<div class="modal-body">' +
+          '<div class="form-group"><label>Chọn lớp</label><select class="form-select" id="enrClass">' + (opts || '<option value="">(chưa có lớp)</option>') + '</select></div>' +
+          '<div class="form-group"><label>Email tài khoản học sinh (con)</label><input class="form-input" id="enrEmail" placeholder="con@email.com"></div>' +
+          '<div class="form-group"><label>Tên con (tuỳ chọn)</label><input class="form-input" id="enrName" placeholder="Họ tên học sinh"></div>' +
+          '<div class="hint">Yêu cầu sẽ gửi tới giáo viên chủ lớp & admin. Khi được duyệt, tài khoản học sinh tự vào lớp.</div>' +
+          '</div><div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal()">Hủy</button>' +
+          '<button class="btn btn-primary" onclick="submitEnroll()">Gửi yêu cầu</button></div>';
+        openModal(html);
+      });
+    }
+
+    function submitEnroll() {
+      var classId = (document.getElementById('enrClass') || {}).value || '';
+      var email = ((document.getElementById('enrEmail') || {}).value || '').trim();
+      var name = ((document.getElementById('enrName') || {}).value || '').trim();
+      if (!classId) { showToast('Chọn lớp.', 'error'); return; }
+      if (!email) { showToast('Nhập email học sinh.', 'error'); return; }
+      _db.from('enrollment_requests').insert({
+        class_id: classId, requester_id: _dbUserId,
+        student_email: email, student_name: name || null, status: 'pending',
+      }).then(function (r) {
+        if (r.error) { showToast('Lỗi gửi: ' + r.error.message, 'error'); return; }
+        closeModal(); showToast('Đã gửi yêu cầu.', 'success'); loadMyEnrollRequests();
+      });
     }
 
     function renderParentPortal() {
