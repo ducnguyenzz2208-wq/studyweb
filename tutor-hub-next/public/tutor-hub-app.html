@@ -3809,15 +3809,17 @@
       _db.from('flashcard_decks').select('*, flashcards(*)').eq('owner_id', _dbUserId)
         .then(function (r) {
           if (!r.error && r.data && r.data.length) {
+            // Giữ id số nguyên cho UI (onclick an toàn), lưu dbId=UUID cho thao tác DB
             flashcardDecks = r.data.map(function (d) {
               return {
-                id: d.id, name: d.name, subject: d.subject || '', description: d.description || '',
+                id: nextDeckId++, dbId: d.id, title: d.name, subject: d.subject || '', class: '', tags: [],
+                lastUpdated: (d.updated_at || d.created_at || '').split('T')[0],
                 cards: (d.flashcards || []).map(function (c) {
-                  return { id: c.id, front: c.front, back: c.back, difficulty: c.difficulty || 'medium', isFavorite: !!c.is_favorite, rating: c.rating || 0 };
+                  return { id: nextCardId++, dbId: c.id, front: c.front, back: c.back, hint: '', example: '', difficulty: c.difficulty || 'medium', isFavorite: !!c.is_favorite, rating: c.rating || 0 };
                 })
               };
             });
-            if (currentSection === 'flashcards') renderFlashcardDeck();
+            if (currentSection === 'flashcards') renderDecks();
           }
         });
 
@@ -7366,34 +7368,47 @@
       if (!title) { showToast('Vui lòng nhập tên bộ thẻ.', 'error'); return; }
       var tags = document.getElementById('mDeckTags').value.split(',').map(function (t) { return t.trim(); }).filter(Boolean);
       var today = new Date().toISOString().split('T')[0];
+      var subject = document.getElementById('mDeckSubject').value;
+      var cls = document.getElementById('mDeckClass').value;
       if (id) {
         var d = flashcardDecks.find(function (x) { return x.id === id; });
         if (d) {
-          d.title = title;
-          d.subject = document.getElementById('mDeckSubject').value;
-          d.class = document.getElementById('mDeckClass').value;
-          d.tags = tags;
-          d.lastUpdated = today;
+          d.title = title; d.subject = subject; d.class = cls; d.tags = tags; d.lastUpdated = today;
+          if (_db && _dbUserId && d.dbId) {
+            _db.from('flashcard_decks').update({ name: title, subject: subject }).eq('id', d.dbId)
+              .then(function (r) { if (r.error) showToast('Lỗi lưu bộ thẻ: ' + r.error.message, 'error'); });
+          }
         }
         showToast('Đã cập nhật bộ thẻ.', 'success');
+        closeModal(); renderDecks();
+      } else if (_db && _dbUserId) {
+        _db.from('flashcard_decks').insert({ owner_id: _dbUserId, name: title, subject: subject }).select()
+          .then(function (r) {
+            if (r.error) { showToast('Lỗi tạo bộ thẻ: ' + r.error.message, 'error'); return; }
+            flashcardDecks.push({
+              id: nextDeckId++, dbId: (r.data && r.data[0]) ? r.data[0].id : null,
+              title: title, subject: subject, class: cls, tags: tags, lastUpdated: today, cards: []
+            });
+            showToast('Đã tạo bộ thẻ mới.', 'success');
+            closeModal(); renderDecks();
+          });
       } else {
-        flashcardDecks.push({
-          id: nextDeckId++, title: title,
-          subject: document.getElementById('mDeckSubject').value,
-          class: document.getElementById('mDeckClass').value,
-          tags: tags, lastUpdated: today, cards: []
-        });
+        flashcardDecks.push({ id: nextDeckId++, title: title, subject: subject, class: cls, tags: tags, lastUpdated: today, cards: [] });
         showToast('Đã tạo bộ thẻ mới.', 'success');
+        closeModal(); renderDecks();
       }
-      closeModal();
-      renderDecks();
     }
 
     function deleteDeck(id) {
       if (!confirm('Xóa bộ thẻ này và toàn bộ thẻ con?')) return;
-      flashcardDecks = flashcardDecks.filter(function (d) { return d.id !== id; });
+      var d = flashcardDecks.find(function (x) { return x.id === id; });
+      flashcardDecks = flashcardDecks.filter(function (x) { return x.id !== id; });
       showToast('Đã xóa bộ thẻ.', 'info');
       renderDecks();
+      if (_db && d && d.dbId) {
+        _db.from('flashcard_decks').delete().eq('id', d.dbId)
+          .then(function (r) { if (r.error) showToast('Lỗi xóa bộ thẻ: ' + r.error.message, 'error'); });
+      }
     }
 
     // ============================================================
@@ -7453,26 +7468,48 @@
         example: document.getElementById('mCardExample').value.trim(),
         difficulty: document.getElementById('mCardDiff').value,
       };
+      var today = new Date().toISOString().split('T')[0];
       if (cardId) {
         var c = d.cards.find(function (x) { return x.id === cardId; });
         if (c) Object.assign(c, data);
+        if (_db && _dbUserId && c && c.dbId) {
+          _db.from('flashcards').update({ front: front, back: back, difficulty: data.difficulty }).eq('id', c.dbId)
+            .then(function (r) { if (r.error) showToast('Lỗi lưu thẻ: ' + r.error.message, 'error'); });
+        }
+        d.lastUpdated = today;
         showToast('Đã cập nhật thẻ.', 'success');
+        closeModal(); openDeckDetail(deckId);
+      } else if (_db && _dbUserId && d.dbId) {
+        _db.from('flashcards').insert({ deck_id: d.dbId, owner_id: _dbUserId, front: front, back: back, difficulty: data.difficulty }).select()
+          .then(function (r) {
+            if (r.error) { showToast('Lỗi thêm thẻ: ' + r.error.message, 'error'); return; }
+            data.id = nextCardId++;
+            data.dbId = (r.data && r.data[0]) ? r.data[0].id : null;
+            d.cards.push(data);
+            d.lastUpdated = today;
+            showToast('Đã thêm thẻ mới.', 'success');
+            closeModal(); openDeckDetail(deckId);
+          });
       } else {
         data.id = nextCardId++;
         d.cards.push(data);
+        d.lastUpdated = today;
         showToast('Đã thêm thẻ mới.', 'success');
+        closeModal(); openDeckDetail(deckId);
       }
-      d.lastUpdated = new Date().toISOString().split('T')[0];
-      closeModal();
-      openDeckDetail(deckId);
     }
 
     function deleteCard(deckId, cardId) {
       if (!confirm('Xóa thẻ này?')) return;
       var d = flashcardDecks.find(function (x) { return x.id === deckId; });
-      if (d) d.cards = d.cards.filter(function (c) { return c.id !== cardId; });
+      var c = d ? d.cards.find(function (x) { return x.id === cardId; }) : null;
+      if (d) d.cards = d.cards.filter(function (x) { return x.id !== cardId; });
       showToast('Đã xóa thẻ.', 'error');
       openDeckDetail(deckId);
+      if (_db && c && c.dbId) {
+        _db.from('flashcards').delete().eq('id', c.dbId)
+          .then(function (r) { if (r.error) showToast('Lỗi xóa thẻ: ' + r.error.message, 'error'); });
+      }
     }
 
     function duplicateCard(deckId, cardId) {
