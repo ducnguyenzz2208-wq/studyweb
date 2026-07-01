@@ -6379,6 +6379,13 @@
       var title = s ? 'Edit Student' : 'Add Student';
       var html = '<div class="modal-header"><h3>' + title + '</h3><button class="modal-close" onclick="closeModal()">✕</button></div>' +
         '<div class="modal-body">' +
+        '<div class="form-group"><label>Email tài khoản (tra cứu để gán tên)</label>' +
+        '<div style="display:flex;gap:8px;">' +
+        '<input class="form-input" id="mStudentEmail" placeholder="hocsinh@gmail.com" value="' + (s ? escAttr(s.email || '') : '') + '" style="flex:1;">' +
+        '<button class="btn btn-ghost" type="button" onclick="lookupStudentEmail()">🔎 Tra cứu</button>' +
+        '</div>' +
+        '<div class="hint">Nhập email rồi bấm Tra cứu để tự điền tên từ tài khoản đã đăng ký.</div>' +
+        '<div id="mStudentLookup" style="font-size:12px;margin-top:4px;"></div></div>' +
         '<div class="form-row">' +
         '<div class="form-group"><label>Name</label><input class="form-input" id="mStudentName" value="' + (s ? escHtml(s.name) : '') + '"></div>' +
         '<div class="form-group"><label>Class</label><select class="form-select" id="mStudentClass">' +
@@ -6402,11 +6409,31 @@
       openModal(html);
     }
 
+    function lookupStudentEmail() {
+      var email = ((document.getElementById('mStudentEmail') || {}).value || '').trim();
+      var out = document.getElementById('mStudentLookup');
+      if (!email) { showToast('Nhập email để tra cứu.', 'error'); return; }
+      if (!_db) { showToast('Chưa kết nối.', 'error'); return; }
+      if (out) out.innerHTML = '<span style="color:var(--text-muted);">Đang tra cứu...</span>';
+      _db.rpc('find_account', { _email: email }).then(function (r) {
+        if (r.error) { if (out) out.innerHTML = '<span style="color:var(--danger);">Lỗi: ' + escHtml(r.error.message) + '</span>'; return; }
+        if (!r.data || !r.data.length) {
+          if (out) out.innerHTML = '<span style="color:var(--danger);">Không tìm thấy tài khoản với email này.</span>';
+          return;
+        }
+        var acc = r.data[0];
+        var nameInp = document.getElementById('mStudentName');
+        if (nameInp) nameInp.value = acc.name || nameInp.value;
+        if (out) out.innerHTML = '<span style="color:var(--success);">✓ Tìm thấy: <strong>' + escHtml(acc.name || acc.email) + '</strong>' + (acc.role ? ' (' + escHtml(acc.role) + ')' : '') + ' — đã gán tên.</span>';
+      });
+    }
+
     function saveStudent(id) {
       var name = document.getElementById('mStudentName').value.trim();
       if (!name) { showToast('Name is required.', 'error'); return; }
       var data = {
         name: name,
+        email: ((document.getElementById('mStudentEmail') || {}).value || '').trim(),
         class: document.getElementById('mStudentClass').value,
         mathScore: parseInt(document.getElementById('mStudentMath').value) || 0,
         engScore: parseInt(document.getElementById('mStudentEng').value) || 0,
@@ -6414,28 +6441,52 @@
         parentContact: document.getElementById('mStudentParent').value.trim(),
         notes: document.getElementById('mStudentNotes').value.trim(),
       };
+      var dbRow = {
+        name: data.name, email: data.email || null, class_name: data.class,
+        math_score: data.mathScore, eng_score: data.engScore, attendance: data.attendance,
+      };
+      function _done(msg) {
+        closeModal(); renderStudents();
+        var kpi = document.getElementById('kpiStudents');
+        if (kpi) kpi.textContent = students.length;
+        showToast(msg, 'success');
+      }
       if (id) {
         var s = students.find(function (x) { return x.id === id; });
         if (s) Object.assign(s, data);
-        showToast('Student updated successfully.', 'success');
+        if (_db && _dbUserId && /-/.test(String(id))) {
+          _db.from('students').update(dbRow).eq('id', String(id))
+            .then(function (r) { if (r.error) showToast('Lỗi lưu HS: ' + r.error.message, 'error'); });
+        }
+        _done('Đã cập nhật học sinh.');
+      } else if (_db && _dbUserId) {
+        dbRow.owner_id = _dbUserId;
+        _db.from('students').insert(dbRow).select().then(function (r) {
+          if (r.error) { showToast('Lỗi thêm HS: ' + r.error.message, 'error'); return; }
+          data.id = (r.data && r.data[0]) ? r.data[0].id : nextStudentId++;
+          data.gender = 'M'; data.paymentStatus = 'Pending';
+          students.push(data);
+          _done('Đã thêm học sinh.');
+        });
       } else {
         data.id = nextStudentId++;
         data.gender = 'M';
         data.paymentStatus = 'Pending';
         students.push(data);
-        showToast('Student added successfully.', 'success');
+        _done('Student added successfully.');
       }
-      closeModal();
-      renderStudents();
-      document.getElementById('kpiStudents').textContent = students.length;
     }
 
     function deleteStudent(id) {
       if (!confirm('Delete this student?')) return;
       students = students.filter(function (s) { return s.id !== id; });
-      showToast('Student deleted.', 'error');
+      showToast('Đã xóa học sinh.', 'success');
       renderStudents();
       document.getElementById('kpiStudents').textContent = students.length;
+      if (_db && /-/.test(String(id))) {
+        _db.from('students').delete().eq('id', String(id))
+          .then(function (r) { if (r.error) showToast('Lỗi xóa HS: ' + r.error.message, 'error'); });
+      }
     }
 
     // ============================================================
