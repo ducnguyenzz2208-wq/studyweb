@@ -3400,31 +3400,27 @@
         <p>Customize your Tutor Hub experience.</p>
       </div>
       <div class="settings-group">
-        <h3>Teacher Profile</h3>
+        <h3>Hồ sơ tài khoản</h3>
         <div class="setting-row">
           <div>
             <div class="setting-label">Display Name</div>
             <div class="setting-desc">Your name shown in the app</div>
           </div>
-          <input class="settings-input" id="settingName" value="Ms. Thompson" oninput="updateProfile()">
+          <input class="settings-input" id="settingName" value="" oninput="updateProfile()">
         </div>
         <div class="setting-row">
           <div>
             <div class="setting-label">Role</div>
-            <div class="setting-desc">Your teaching subject</div>
+            <div class="setting-desc">Vai trò tài khoản</div>
           </div>
-          <select class="filter-select" id="settingRole" onchange="updateProfile()">
-            <option value="Math Teacher">Math Teacher</option>
-            <option value="English Teacher">English Teacher</option>
-            <option value="Admin">Admin</option>
-          </select>
+          <input class="settings-input" id="settingRole" value="" readonly style="background:var(--bg);">
         </div>
         <div class="setting-row">
           <div>
             <div class="setting-label">Email</div>
             <div class="setting-desc">Contact email</div>
           </div>
-          <input class="settings-input" value="thompson@tutorhub.edu">
+          <input class="settings-input" id="settingEmail" value="" readonly style="background:var(--bg);">
         </div>
       </div>
 
@@ -3446,7 +3442,7 @@
         </div>
       </div>
 
-      <div class="settings-group">
+      <div class="settings-group" id="settingsDemoGroup">
         <h3>Demo Account Switcher</h3>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
           <div class="demo-btn" onclick="quickLogin('teacher@tutorhub.com')"
@@ -3796,6 +3792,14 @@
         });
     }
 
+    function _mapStudentRow(s) {
+      return {
+        id: s.id, name: s.name, email: s.email || '', class: s.class_name || '',
+        grade: s.grade || '', mathScore: s.math_score || 0, engScore: s.eng_score || 0,
+        attendance: s.attendance || 0, gender: 'M', paymentStatus: 'Pending'
+      };
+    }
+
     function loadDbData() {
       if (!_db || !_dbUserId) return;
 
@@ -3859,12 +3863,11 @@
 
         _db.from('students').select('*').eq('owner_id', _dbUserId)
           .then(function (r) {
-            if (!r.error && r.data && r.data.length) {
-              students = r.data.map(function (s) {
-                return { id: s.id, name: s.name, email: s.email || '', class: s.class_name || '', grade: s.grade || '', math: s.math_score || 0, eng: s.eng_score || 0, attendance: s.attendance || 0 };
-              });
+            if (!r.error && r.data) {
+              students = r.data.map(_mapStudentRow);
               if (currentSection === 'students') renderStudents();
               if (currentSection === 'dashboard') { renderDashLists(); }
+              var kpi = document.getElementById('kpiStudents'); if (kpi) kpi.textContent = students.length;
             }
           });
 
@@ -3904,6 +3907,16 @@
               }
             });
           });
+
+        // Student: load own student record (điểm/điểm danh của chính mình)
+        if (currentUser.role === 'Student') {
+          _db.from('students').select('*').then(function (r) {
+            if (!r.error && r.data) {
+              students = r.data.map(_mapStudentRow);
+              if (currentSection === 'student-portal') initStudentPortal();
+            }
+          });
+        }
       }
 
       // Subjects (all roles) — load from DB and repopulate dropdowns
@@ -5827,6 +5840,29 @@
       });
     }
 
+    function openAssignClassModal(teacherId, teacherName) {
+      var cls = _classesForFeed(); // admin thấy tất cả lớp thật
+      if (!cls.length) { showToast('Chưa có lớp nào. Tạo lớp ở mục Lớp học.', 'error'); return; }
+      var opts = cls.map(function (c) { return '<option value="' + escAttr(c.id) + '">' + escHtml(c.name) + '</option>'; }).join('');
+      var html = '<div class="modal-header"><h3>Phân lớp cho: ' + escHtml(teacherName) + '</h3><button class="modal-close" onclick="closeModal()">✕</button></div>' +
+        '<div class="modal-body">' +
+        '<div class="form-group"><label>Chọn lớp giao cho giáo viên này</label><select class="form-select" id="acClass">' + opts + '</select></div>' +
+        '<div class="hint">Giáo viên sẽ phụ trách lớp: đăng bài, duyệt học sinh, chấm điểm.</div>' +
+        '</div><div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal()">Hủy</button>' +
+        '<button class="btn btn-primary" onclick="assignClassTeacher(' + qid(teacherId) + ')">Phân lớp</button></div>';
+      openModal(html);
+    }
+
+    function assignClassTeacher(teacherId) {
+      var classId = (document.getElementById('acClass') || {}).value;
+      if (!classId) { showToast('Chọn lớp.', 'error'); return; }
+      if (!_db) return;
+      _db.from('classes').update({ owner_id: teacherId }).eq('id', String(classId)).then(function (r) {
+        if (r.error) { showToast('Lỗi phân lớp: ' + r.error.message, 'error'); return; }
+        closeModal(); showToast('Đã phân lớp cho giáo viên.', 'success');
+      });
+    }
+
     function renderUserManagement() {
       var list = document.getElementById('userMgmtList');
       if (!list) return;
@@ -5847,6 +5883,9 @@
                 ({ Student: 'Học sinh', Teacher: 'Giáo viên', Admin: 'Admin phụ' }[r] || r) + '</option>';
             }).join('') +
             '</select>';
+          if (u.role === 'Teacher') {
+            actionCell += ' <button class="btn btn-sm btn-ghost" onclick="openAssignClassModal(' + qid(u.id) + ',' + qid(u.name || u.email) + ')">🏫 Phân lớp</button>';
+          }
         } else {
           actionCell = '<span style="font-size:12px;color:var(--text-muted);">Chỉ admin đổi vai trò</span>';
         }
@@ -6202,6 +6241,7 @@
       if (id === 'assignments') renderAssignments();
       if (id === 'users') { loadUsersFromDb(); }
       if (id === 'subjects') { renderSubjects(); }
+      if (id === 'settings') { renderSettings(); }
       if (id === 'dashboard') { renderWelcome(); renderDashLists(); renderStudents(); }
     }
 
@@ -6246,6 +6286,15 @@
       }
     }
 
+    function renderSettings() {
+      if (!currentUser) return;
+      var n = document.getElementById('settingName'); if (n) n.value = currentUser.name || '';
+      var e = document.getElementById('settingEmail'); if (e) e.value = currentUser.email || '';
+      var r = document.getElementById('settingRole'); if (r) r.value = currentUser.role || '';
+      // Ẩn "Demo Account Switcher" khi đã đăng nhập thật (có Supabase)
+      var demo = document.getElementById('settingsDemoGroup'); if (demo) demo.style.display = _db ? 'none' : '';
+    }
+
     function updateProfile() {
       var name = document.getElementById('settingName').value;
       var role = document.getElementById('settingRole').value;
@@ -6254,6 +6303,11 @@
       var initials = name.split(' ').map(function (w) { return w[0]; }).join('').toUpperCase().slice(0, 2);
       document.getElementById('sidebarAvatar').textContent = initials;
       document.getElementById('topAvatar').textContent = initials;
+      // Lưu tên mới vào hồ sơ Supabase
+      if (_db && _dbUserId && name && name.trim()) {
+        _db.from('profiles').update({ name: name.trim() }).eq('id', _dbUserId)
+          .then(function (r) { if (r.error) console.warn('save profile name', r.error.message); });
+      }
     }
 
     // ============================================================
@@ -7132,33 +7186,56 @@
     // STUDENT PORTAL
     // ============================================================
     function initStudentPortal() {
+      var isStudent = currentUser && currentUser.role === 'Student';
       var sel = document.getElementById('studentPortalSelect');
-      sel.innerHTML = students.map(function (s) { return '<option value="' + s.id + '">' + escHtml(s.name) + '</option>'; }).join('');
+      // Ẩn ô "Select Student" với tài khoản học sinh (tự hiện dữ liệu của mình)
+      var bar = sel ? sel.closest('.portal-select-bar') : null;
+      if (bar) bar.style.display = isStudent ? 'none' : '';
+      if (sel) sel.innerHTML = students.map(function (s) { return '<option value="' + s.id + '">' + escHtml(s.name) + '</option>'; }).join('');
       renderStudentPortal();
     }
 
+    function _myStudentRecord() {
+      if (currentUser && currentUser.email) {
+        var byEmail = students.find(function (s) { return (s.email || '').toLowerCase() === currentUser.email.toLowerCase(); });
+        if (byEmail) return byEmail;
+      }
+      return students[0] || null;
+    }
+
     function renderStudentPortal() {
-      var id = parseInt(document.getElementById('studentPortalSelect').value);
-      var s = students.find(function (x) { return x.id === id; });
-      if (!s) return;
+      var isStudent = currentUser && currentUser.role === 'Student';
+      var s;
+      if (isStudent) {
+        s = _myStudentRecord();
+      } else {
+        var id = document.getElementById('studentPortalSelect').value;
+        s = students.find(function (x) { return String(x.id) === String(id); });
+      }
+      var myClass = (s && s.class) || (classes[0] ? classes[0].name : '');
+      if (!s) {
+        s = { name: currentUser ? currentUser.name : '', class: myClass, mathScore: 0, engScore: 0, attendance: 0 };
+      }
       var avg2 = avgScore(s);
       var g = getGrade(avg2);
 
       document.getElementById('studentKPI').innerHTML =
         '<div class="portal-card"><h4>Your Grade</h4><div class="big-num ' + gradeClass(g) + '">' + g + '</div><div style="color:var(--text-muted);font-size:13px;margin-top:4px">Score: ' + avg2 + '/100</div></div>' +
         '<div class="portal-card"><h4>Attendance</h4><div class="big-num col-green">' + s.attendance + '%</div><div style="color:var(--text-muted);font-size:13px;margin-top:4px">Keep it up!</div></div>' +
-        '<div class="portal-card"><h4>Class</h4><div style="font-size:22px;font-weight:800;margin-top:8px">' + escHtml(s.class) + '</div><div style="color:var(--text-muted);font-size:13px;margin-top:4px">Current enrollment</div></div>';
+        '<div class="portal-card"><h4>Class</h4><div style="font-size:22px;font-weight:800;margin-top:8px">' + escHtml(myClass || '—') + '</div><div style="color:var(--text-muted);font-size:13px;margin-top:4px">Current enrollment</div></div>';
 
-      var sHw = homework.filter(function (h) { return h.class === s.class; });
+      // Bài tập thật của lớp học sinh + trạng thái nộp bài của chính mình
+      var myAssigns = assignments.filter(function (a) { return a.class === myClass; });
       document.getElementById('studentHwCard').innerHTML =
-        '<div class="card-header"><div class="card-title">My Homework</div></div>' +
-        (sHw.length ? sHw.map(function (h) {
-          var done = h.status === 'Graded';
+        '<div class="card-header"><div class="card-title">Bài tập của tôi</div></div>' +
+        (myAssigns.length ? myAssigns.map(function (a) {
+          var mySub = submissions.find(function (x) { return x.assignmentId === a.id && x.studentId === _dbUserId; });
+          var done = !!mySub;
           return '<div class="hw-item"><div class="hw-check ' + (done ? 'done' : 'pending') + '">' + (done ? '✓' : '!') + '</div><div>' +
-            '<div class="hw-title">' + escHtml(h.title) + '</div>' +
-            '<div class="hw-meta">' + escHtml(h.subject) + ' · Due ' + escHtml(h.due) + ' · <span class="badge ' + (done ? 'badge-success' : h.status === 'Overdue' ? 'badge-danger' : 'badge-warning') + '" style="padding:2px 8px;font-size:10px">' + escHtml(h.status) + '</span></div>' +
+            '<div class="hw-title">' + escHtml(a.title) + '</div>' +
+            '<div class="hw-meta">' + escHtml(a.subject || '') + ' · Hạn ' + escHtml(a.dueDate || '') + ' · <span class="badge ' + (done ? 'badge-success' : 'badge-warning') + '" style="padding:2px 8px;font-size:10px">' + (done ? 'Đã nộp' : 'Chưa nộp') + '</span></div>' +
             '</div></div>';
-        }).join('') : '<div class="empty">No homework assigned.</div>');
+        }).join('') : '<div class="empty">Chưa có bài tập.</div>');
 
       var areas = [];
       if (s.mathScore < 70) areas.push({ label: 'Algebra', color: '#ef4444' });
