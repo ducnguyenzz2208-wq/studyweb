@@ -3799,6 +3799,21 @@
     function loadDbData() {
       if (!_db || !_dbUserId) return;
 
+      // "Chỉ dữ liệu thật" — bỏ toàn bộ data demo khi đã kết nối DB.
+      // Các mảng bên dưới sẽ được nạp lại từ Supabase; nếu chưa có gì thì để trống.
+      students = [];
+      classes = [];
+      scheduleItems = [];
+      schedule = [];
+      payments = [];
+      homework = [];
+      flashcardDecks = [];
+      assignments = [];
+      submissions = [];
+      assignmentComments = [];
+      populateClassDropdowns();
+      populateSubjectDropdowns();
+
       // Materials — load all visible (RLS controls access per role)
       loadMaterials();
 
@@ -3823,16 +3838,8 @@
           }
         });
 
-      // Schedule
-      _db.from('schedule_events').select('*').eq('owner_id', _dbUserId)
-        .then(function (r) {
-          if (!r.error && r.data && r.data.length) {
-            schedule = r.data.map(function (e) {
-              return { id: e.id, title: e.title, subject: e.subject || '', date: e.date || '', time: e.time || '', duration: e.duration || '', type: e.type || 'Class', notes: e.notes || '' };
-            });
-            if (currentSection === 'schedule') renderSchedule();
-          }
-        });
+      // Schedule (nạp vào scheduleItems — mảng mà UI dùng)
+      loadSchedule();
 
       // Teacher / Admin: load classes, students, homework
       if (currentUser.role === 'Teacher' || currentUser.role === 'Admin') {
@@ -4785,6 +4792,23 @@
       openModal(html);
     }
 
+    function loadSchedule() {
+      if (!_db || !_dbUserId) return;
+      _db.from('schedule_events').select('*').eq('owner_id', _dbUserId).order('date', { ascending: true })
+        .then(function (r) {
+          if (r.error) { console.warn('load schedule', r.error.message); return; }
+          scheduleItems = (r.data || []).map(function (e) {
+            return {
+              id: nextSchedId++, dbId: e.id,
+              class: e.class_name || e.title || '', teacher: e.teacher || '',
+              date: e.date || '', time: e.time || '', room: e.room || '',
+              status: e.status || 'Upcoming', notes: e.notes || '', duration: e.duration || 60
+            };
+          });
+          if (currentSection === 'schedule') renderSchedule();
+        });
+    }
+
     function saveSchedule(id) {
       var data = {
         class: document.getElementById('mSchedClass').value,
@@ -4796,25 +4820,49 @@
         notes: document.getElementById('mSchedNotes').value,
         duration: 60
       };
+      var dbRow = {
+        title: data.class, class_name: data.class, teacher: data.teacher,
+        subject: '', date: data.date, time: data.time, room: data.room,
+        status: data.status, type: data.status, notes: data.notes, duration: data.duration
+      };
       if (id) {
         var s = scheduleItems.find(function (x) { return x.id === id; });
         if (s) Object.assign(s, data);
-        showToast('Session updated.', 'success');
+        if (_db && _dbUserId && s && s.dbId) {
+          _db.from('schedule_events').update(dbRow).eq('id', s.dbId)
+            .then(function (r) { if (r.error) showToast('Lỗi lưu lịch: ' + r.error.message, 'error'); });
+        }
+        showToast('Đã cập nhật buổi học.', 'success');
+        closeModal(); renderSchedule();
+      } else if (_db && _dbUserId) {
+        dbRow.owner_id = _dbUserId;
+        _db.from('schedule_events').insert(dbRow).select().then(function (r) {
+          if (r.error) { showToast('Lỗi thêm buổi học: ' + r.error.message, 'error'); return; }
+          data.id = nextSchedId++;
+          data.dbId = (r.data && r.data[0]) ? r.data[0].id : null;
+          scheduleItems.push(data);
+          showToast('Đã thêm buổi học.', 'success');
+          closeModal(); renderSchedule();
+        });
       } else {
         data.id = nextSchedId++;
         scheduleItems.push(data);
         showToast('Session added.', 'success');
+        closeModal(); renderSchedule();
       }
-      closeModal();
-      renderSchedule();
     }
 
     function deleteSchedule(id) {
       if (!confirm('Delete this session?')) return;
-      scheduleItems = scheduleItems.filter(function (s) { return s.id !== id; });
-      showToast('Session deleted.', 'error');
+      var s = scheduleItems.find(function (x) { return x.id === id; });
+      scheduleItems = scheduleItems.filter(function (x) { return x.id !== id; });
+      showToast('Đã xóa buổi học.', 'success');
       closeModal();
       renderSchedule();
+      if (_db && s && s.dbId) {
+        _db.from('schedule_events').delete().eq('id', s.dbId)
+          .then(function (r) { if (r.error) showToast('Lỗi xóa lịch: ' + r.error.message, 'error'); });
+      }
     }
 
     // ============================================================
@@ -4823,9 +4871,9 @@
     function renderReports() {
       // KPI cards
       var totalStudents = students.length;
-      var avgMath = Math.round(students.reduce(function (s, x) { return s + x.mathScore; }, 0) / students.length);
-      var avgEng = Math.round(students.reduce(function (s, x) { return s + x.engScore; }, 0) / students.length);
-      var avgAtt = Math.round(students.reduce(function (s, x) { return s + x.attendance; }, 0) / students.length);
+      var avgMath = totalStudents ? Math.round(students.reduce(function (s, x) { return s + x.mathScore; }, 0) / totalStudents) : 0;
+      var avgEng = totalStudents ? Math.round(students.reduce(function (s, x) { return s + x.engScore; }, 0) / totalStudents) : 0;
+      var avgAtt = totalStudents ? Math.round(students.reduce(function (s, x) { return s + x.attendance; }, 0) / totalStudents) : 0;
       var atRiskCount = students.filter(function (s) { return s.mathScore < 70 || s.engScore < 70 || s.attendance < 75; }).length;
       var paid = payments.filter(function (p) { return p.status === 'Paid'; }).length;
       var kpiEl = document.getElementById('reportKPIs');
