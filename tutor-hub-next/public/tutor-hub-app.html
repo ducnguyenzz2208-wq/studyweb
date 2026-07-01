@@ -3836,13 +3836,17 @@
 
       // Teacher / Admin: load classes, students, homework
       if (currentUser.role === 'Teacher' || currentUser.role === 'Admin') {
-        _db.from('classes').select('*').eq('owner_id', _dbUserId)
-          .then(function (r) {
+        // Admin: đọc TẤT CẢ lớp (RLS 008). Teacher: chỉ lớp mình sở hữu.
+        var clsQ = _db.from('classes').select('*');
+        if (currentUser.role === 'Teacher') clsQ = clsQ.eq('owner_id', _dbUserId);
+        clsQ.then(function (r) {
             if (!r.error && r.data && r.data.length) {
               classes = r.data.map(function (c) {
-                return { id: c.id, name: c.name, subject: c.subject || '', schedule: c.schedule || '', room: c.room || '', maxStudents: c.max_students || 30 };
+                return { id: c.id, name: c.name, subject: c.subject || '', teacher: c.teacher || '', schedule: c.schedule || '', day: c.schedule || '', time: '', room: c.room || '', capacity: c.max_students || 30, maxStudents: c.max_students || 30, color: (c.subject || '').toLowerCase() };
               });
               populateClassDropdowns();
+              if (currentSection === 'classes') renderClasses();
+              if (currentSection === 'assignments') renderAssignments();
             }
           });
 
@@ -6317,7 +6321,7 @@
         s.attendance >= 70 ? '<span class="badge badge-warning">Cần chú ý</span>' :
           '<span class="badge badge-danger">Báo động</span>';
       var canEdit = currentUser && (currentUser.role === 'Teacher' || currentUser.role === 'Admin') && editMode;
-      var actions = canEdit ? '<td><button class="btn btn-sm btn-ghost" onclick="openStudentModal(' + s.id + ')">✏️</button> <button class="btn btn-sm btn-danger" onclick="deleteStudent(' + s.id + ')">🗑</button></td>' : (editMode ? '<td></td>' : '');
+      var actions = canEdit ? '<td><button class="btn btn-sm btn-ghost" onclick="openStudentModal(' + qid(s.id) + ')">✏️</button> <button class="btn btn-sm btn-danger" onclick="deleteStudent(' + qid(s.id) + ')">🗑</button></td>' : (editMode ? '<td></td>' : '');
       return '<tr>' +
         '<td><div class="student-row">' +
         '<div class="avatar" style="background:' + COLORS[colorIdx % 12] + '">' + getInitials(s.name) + '</div>' +
@@ -6406,7 +6410,7 @@
         '</div>' +
         '<div class="modal-footer">' +
         '<button class="btn btn-ghost" onclick="closeModal()">Cancel</button>' +
-        '<button class="btn btn-primary" onclick="saveStudent(' + (id || 'null') + ')">Save</button>' +
+        '<button class="btn btn-primary" onclick="saveStudent(' + (id ? qid(id) : 'null') + ')">Save</button>' +
         '</div>';
       openModal(html);
     }
@@ -6500,9 +6504,10 @@
         var avgAtt = enrolled ? Math.round(students.filter(function (s) { return s.class === c.name; }).reduce(function (a, s) { return a + s.attendance; }, 0) / enrolled) : 0;
         var avgSc = enrolled ? Math.round(students.filter(function (s) { return s.class === c.name; }).reduce(function (a, s) { return a + avgScore(s); }, 0) / enrolled) : 0;
         var editBtns = editMode ? '<div style="position:absolute;top:12px;right:12px;display:flex;gap:4px;">' +
-          '<button class="btn btn-sm btn-ghost" onclick="event.stopPropagation();openClassModal(' + c.id + ')">✏️</button>' +
-          '<button class="btn btn-sm btn-danger" onclick="event.stopPropagation();deleteClass(' + c.id + ')">🗑</button></div>' : '';
-        return '<div class="class-card ' + c.color + '" style="position:relative;">' + editBtns +
+          '<button class="btn btn-sm btn-ghost" onclick="event.stopPropagation();openClassModal(' + qid(c.id) + ')">✏️</button>' +
+          '<button class="btn btn-sm btn-danger" onclick="event.stopPropagation();deleteClass(' + qid(c.id) + ')">🗑</button></div>' : '';
+        var canOpen = /-/.test(String(c.id)); // chỉ lớp thật (UUID) mới mở feed được
+        return '<div class="class-card ' + c.color + '" style="position:relative;' + (canOpen ? 'cursor:pointer;' : '') + '"' + (canOpen ? ' onclick="openClassFeed(' + qid(c.id) + ')"' : '') + '>' + editBtns +
           '<div class="class-name">' + escHtml(c.name) + '</div>' +
           '<div class="class-meta">' + escHtml(c.teacher) + ' &bull; ' + escHtml(c.subject) + '</div>' +
           '<div class="class-stats">' +
@@ -6514,7 +6519,7 @@
 
       document.getElementById('scheduleBody').innerHTML = classes.map(function (c) {
         var enrolled = students.filter(function (s) { return s.class === c.name; }).length;
-        var actions = editMode ? '<td><button class="btn btn-sm btn-ghost" onclick="openClassModal(' + c.id + ')">✏️</button> <button class="btn btn-sm btn-danger" onclick="deleteClass(' + c.id + ')">🗑</button></td>' : '';
+        var actions = editMode ? '<td><button class="btn btn-sm btn-ghost" onclick="openClassModal(' + qid(c.id) + ')">✏️</button> <button class="btn btn-sm btn-danger" onclick="deleteClass(' + qid(c.id) + ')">🗑</button></td>' : '';
         return '<tr>' +
           '<td><strong>' + escHtml(c.name) + '</strong></td>' +
           '<td>' + escHtml(c.teacher) + '</td>' +
@@ -6525,6 +6530,13 @@
           actions +
           '</tr>';
       }).join('');
+    }
+
+    function openClassFeed(classId) {
+      // Mở bảng tin của lớp (feed). Quyền xem đã được giới hạn theo vai trò:
+      // admin thấy mọi lớp, GV lớp mình, HS lớp đã tham gia.
+      currentClassId = classId;
+      showSection('assignments');
     }
 
     function openClassModal(id) {
@@ -6548,7 +6560,7 @@
         '</div>' +
         '<div class="modal-footer">' +
         '<button class="btn btn-ghost" onclick="closeModal()">Cancel</button>' +
-        '<button class="btn btn-primary" onclick="saveClass(' + (id || 'null') + ')">Save</button>' +
+        '<button class="btn btn-primary" onclick="saveClass(' + (id ? qid(id) : 'null') + ')">Save</button>' +
         '</div>';
       openModal(html);
     }
