@@ -3266,6 +3266,10 @@
           <option value="">Tất cả lớp</option>
         </select>
         <input type="date" class="filter-select" id="attendDateInput" onchange="renderAttendance()" style="width:auto;">
+        <button class="btn btn-sm" id="attendAllPresentBtn" style="display:none;background:#d1fae5;color:#065f46;border:0;"
+          onclick="markAllAttend('present')">✅ Cả lớp có mặt</button>
+        <button class="btn btn-sm" id="attendAllAbsentBtn" style="display:none;background:#fee2e2;color:#7f1d1d;border:0;"
+          onclick="markAllAttend('absent')">❌ Cả lớp vắng</button>
         <span style="font-size:13px;color:var(--text-muted);" id="attendSessionHint">Chọn lớp + ngày để điểm danh</span>
       </div>
       <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr)">
@@ -3273,21 +3277,21 @@
           <div class="kpi-top"><span class="kpi-label">Có mặt hôm nay</span>
             <div class="kpi-icon bg-green"><span class="col-green">✅</span></div>
           </div>
-          <div class="kpi-value col-green" id="attendPresentKpi">9</div>
-          <div class="kpi-change">trên 12 học sinh</div>
+          <div class="kpi-value col-green" id="attendPresentKpi">0</div>
+          <div class="kpi-change" id="attendPresentSub">chưa điểm danh</div>
         </div>
         <div class="kpi-card">
           <div class="kpi-top"><span class="kpi-label">Vắng hôm nay</span>
             <div class="kpi-icon bg-amber"><span class="col-amber">⚠️</span></div>
           </div>
-          <div class="kpi-value col-amber" id="attendAbsentKpi">2</div>
+          <div class="kpi-value col-amber" id="attendAbsentKpi">0</div>
           <div class="kpi-change">đã thông báo</div>
         </div>
         <div class="kpi-card">
           <div class="kpi-top"><span class="kpi-label">Đi muộn hôm nay</span>
             <div class="kpi-icon bg-purple"><span class="col-purple">🕐</span></div>
           </div>
-          <div class="kpi-value col-purple" id="attendLateKpi">1</div>
+          <div class="kpi-value col-purple" id="attendLateKpi">0</div>
           <div class="kpi-change">đã ghi nhận</div>
         </div>
       </div>
@@ -3892,6 +3896,7 @@
       assignments = [];
       submissions = [];
       assignmentComments = [];
+      attendanceRecords = [];
       populateClassDropdowns();
       populateSubjectDropdowns();
 
@@ -3900,6 +3905,9 @@
 
       // Payments — RLS: admin sees all, others see only their own
       loadPayments();
+
+      // Attendance — RLS: admin all, teacher own+own classes, student own
+      loadAttendance();
 
       // Flashcard decks + cards
       _db.from('flashcard_decks').select('*, flashcards(*)').eq('owner_id', _dbUserId)
@@ -6219,18 +6227,18 @@
     function escAttr(str) { return String(str == null ? '' : str).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
     function getAttendHistory(student) {
-      var seed = student.id * 13;
-      var arr = [];
-      for (var i = 0; i < 20; i++) {
-        var r = ((seed * (i + 7) * 31) % 100);
-        if (r < student.attendance - 5) arr.push('present');
-        else if (r < student.attendance + 5) arr.push('present');
-        else if (r < 95) arr.push('late');
-        else arr.push('absent');
-      }
+      // Lịch sử THẬT từ attendance_records (20 buổi gần nhất của học sinh)
+      var byDate = {};
+      attendanceRecords.forEach(function (r) {
+        if (r.studentRef === String(student.id) || (r.studentName && r.studentName === student.name)) {
+          byDate[r.date] = r.status;
+        }
+      });
+      var dates = Object.keys(byDate).sort(); // cũ -> mới
+      var arr = dates.slice(-20).map(function (d) { return byDate[d]; });
       var present = 0, absent = 0, late = 0;
       arr.forEach(function (a) { if (a === 'present') present++; else if (a === 'absent') absent++; else late++; });
-      return { arr: arr, present: present, absent: absent, late: late };
+      return { arr: arr, present: present, absent: absent, late: late, total: dates.length };
     }
 
     function fileBadgeClass(type) {
@@ -6937,68 +6945,150 @@
     }
 
     // ============================================================
-    // ATTENDANCE
+    // ATTENDANCE (bản ghi thật từ attendance_records)
     // ============================================================
+    var attendanceRecords = [];
+
+    function loadAttendance() {
+      if (!_db) return;
+      _db.from('attendance_records').select('*').order('session_date', { ascending: false }).limit(2000)
+        .then(function (r) {
+          if (r.error) { console.warn('load attendance', r.error.message); return; }
+          attendanceRecords = (r.data || []).map(function (a) {
+            return { studentRef: String(a.student_ref), studentName: a.student_name || '', className: a.class_name || '', date: a.session_date, status: a.status };
+          });
+          if (currentSection === 'attendance') renderAttendance();
+        });
+    }
+
+    function _findAttend(s, date) {
+      return attendanceRecords.find(function (r) {
+        return r.date === date && (r.studentRef === String(s.id) || (r.studentName && r.studentName === s.name));
+      });
+    }
+
+    function _upsertLocalAttend(s, cls, date, status) {
+      var ex = _findAttend(s, date);
+      if (ex) { ex.status = status; }
+      else attendanceRecords.push({ studentRef: String(s.id), studentName: s.name, className: cls, date: date, status: status });
+    }
+
+    function _attendSelDate() {
+      var dateEl = document.getElementById('attendDateInput');
+      if (dateEl && !dateEl.value) dateEl.value = new Date().toISOString().split('T')[0];
+      return dateEl ? dateEl.value : new Date().toISOString().split('T')[0];
+    }
+
     function renderAttendance() {
       var cls = (document.getElementById('attendClassFilter') || {}).value || '';
+      var selDate = _attendSelDate();
       var canMark = currentUser && (currentUser.role === 'Admin' || currentUser.role === 'Teacher');
       var markColHeader = document.getElementById('attendMarkColHeader');
       if (markColHeader) markColHeader.style.display = canMark ? '' : 'none';
 
-      // Set today's date as default
-      var dateEl = document.getElementById('attendDateInput');
-      if (dateEl && !dateEl.value) dateEl.value = new Date().toISOString().split('T')[0];
-
       var list = cls ? students.filter(function (s) { return s.class === cls; }) : students;
+
+      // Nút điểm danh cả lớp + gợi ý
+      var allP = document.getElementById('attendAllPresentBtn');
+      var allA = document.getElementById('attendAllAbsentBtn');
+      var show = canMark && list.length ? '' : 'none';
+      if (allP) allP.style.display = show;
+      if (allA) allA.style.display = show;
+      var hint = document.getElementById('attendSessionHint');
+      if (hint) hint.textContent = canMark ? ('Buổi ' + selDate + (cls ? ' · lớp ' + cls : ' · tất cả lớp')) : 'Lịch sử điểm danh';
+
+      // KPI theo ngày đang chọn
+      var dayRecs = attendanceRecords.filter(function (r) {
+        return r.date === selDate && (!cls || r.className === cls);
+      });
+      var kp = { present: 0, absent: 0, late: 0 };
+      dayRecs.forEach(function (r) { if (kp[r.status] !== undefined) kp[r.status]++; });
+      var elP = document.getElementById('attendPresentKpi'); if (elP) elP.textContent = kp.present;
+      var elA = document.getElementById('attendAbsentKpi'); if (elA) elA.textContent = kp.absent;
+      var elL = document.getElementById('attendLateKpi'); if (elL) elL.textContent = kp.late;
+      var elSub = document.getElementById('attendPresentSub');
+      if (elSub) elSub.textContent = dayRecs.length ? ('trên ' + list.length + ' học sinh') : 'chưa điểm danh buổi này';
+
+      function _btn(sid, st, cur, label, bg, fg) {
+        var active = cur === st;
+        return '<button onclick="markAttend(' + qid(sid) + ',\'' + st + '\')" style="background:' + bg + ';color:' + fg + ';border:' + (active ? '2px solid ' + fg : '0') + ';opacity:' + (cur && !active ? '0.45' : '1') + ';border-radius:6px;padding:3px 9px;font-size:12px;cursor:pointer;margin-right:3px;">' + label + '</button>';
+      }
 
       document.getElementById('attendanceTableBody').innerHTML = list.map(function (s, i) {
         var h = getAttendHistory(s);
         var dots = h.arr.map(function (a) { return '<div class="dot dot-' + a + '"></div>'; }).join('');
+        // % chuyên cần thật (muộn vẫn tính là đi học); chưa có bản ghi -> dùng số trên hồ sơ
+        var pct = h.arr.length ? Math.round(((h.present + h.late) / h.arr.length) * 100) : (s.attendance || 0);
+        var todayRec = _findAttend(s, selDate);
+        var cur = todayRec ? todayRec.status : null;
+        var rowBg = { present: 'rgba(16,185,129,0.07)', late: 'rgba(245,158,11,0.08)', absent: 'rgba(239,68,68,0.07)' }[cur] || '';
         var markCell = canMark ?
-          '<td id="amark-' + s.id + '" style="white-space:nowrap;">' +
-          '<button onclick="markAttend(\'' + s.id + '\',\'present\')" style="background:#d1fae5;color:#065f46;border:0;border-radius:6px;padding:3px 9px;font-size:12px;cursor:pointer;margin-right:3px;">✅ Có</button>' +
-          '<button onclick="markAttend(\'' + s.id + '\',\'late\')"    style="background:#fef9c3;color:#713f12;border:0;border-radius:6px;padding:3px 9px;font-size:12px;cursor:pointer;margin-right:3px;">🕐 Muộn</button>' +
-          '<button onclick="markAttend(\'' + s.id + '\',\'absent\')"  style="background:#fee2e2;color:#7f1d1d;border:0;border-radius:6px;padding:3px 9px;font-size:12px;cursor:pointer;">❌ Vắng</button>' +
+          '<td style="white-space:nowrap;">' +
+          _btn(s.id, 'present', cur, '✅ Có', '#d1fae5', '#065f46') +
+          _btn(s.id, 'late', cur, '🕐 Muộn', '#fef9c3', '#713f12') +
+          _btn(s.id, 'absent', cur, '❌ Vắng', '#fee2e2', '#7f1d1d') +
           '</td>' : '';
-        return '<tr id="arow-' + s.id + '">' +
+        return '<tr' + (rowBg ? ' style="background:' + rowBg + ';"' : '') + '>' +
           '<td><div class="student-row">' +
           '<div class="avatar" style="background:' + COLORS[i % 12] + ';width:28px;height:28px;font-size:11px">' + getInitials(s.name) + '</div>' +
           escHtml(s.name) +
           '</div></td>' +
           '<td><span class="badge badge-info">' + escHtml(s.class) + '</span></td>' +
-          '<td><strong>' + s.attendance + '%</strong></td>' +
+          '<td><strong>' + pct + '%</strong></td>' +
           '<td style="color:var(--success)">' + h.present + '</td>' +
           '<td style="color:var(--danger)">' + h.absent + '</td>' +
           '<td style="color:var(--warning)">' + h.late + '</td>' +
           '<td><div class="attend-dots">' + dots + '</div></td>' +
           markCell +
           '</tr>';
-      }).join('') || '<tr><td colspan="8" class="empty">Không có học sinh.</td></tr>';
+      }).join('') || '<tr><td colspan="8" class="empty">Không có học sinh' + (cls ? ' trong lớp này' : '') + '.</td></tr>';
     }
 
     function markAttend(studentId, status) {
       var s = students.find(function (x) { return String(x.id) === String(studentId); });
       if (!s) return;
-      var colors = { present: '#f0fdf4', late: '#fefce8', absent: '#fef2f2' };
-      var row = document.getElementById('arow-' + studentId);
-      if (row) row.style.background = colors[status] || '';
-      var cell = document.getElementById('amark-' + studentId);
+      var selDate = _attendSelDate();
+      var cls = (document.getElementById('attendClassFilter') || {}).value || s.class;
       var labels = { present: '✅ Có mặt', late: '🕐 Đi muộn', absent: '❌ Vắng' };
-      if (cell) cell.innerHTML = '<span style="font-size:13px;font-weight:600;">' + (labels[status] || status) + '</span>';
-      showToast(escHtml(s.name) + ': ' + (labels[status] || status), 'success');
-
+      // Cập nhật local ngay (optimistic) rồi lưu DB
+      _upsertLocalAttend(s, cls, selDate, status);
+      renderAttendance();
+      showToast(escHtml(s.name) + ' (' + selDate + '): ' + (labels[status] || status), 'success');
       if (_db && _dbUserId) {
-        var sessionDate = (document.getElementById('attendDateInput') || {}).value || new Date().toISOString().split('T')[0];
-        var cls = (document.getElementById('attendClassFilter') || {}).value || s.class;
         _db.from('attendance_records').upsert({
           teacher_id: _dbUserId,
           student_ref: String(s.id),
           student_name: s.name,
           class_name: cls,
-          session_date: sessionDate,
+          session_date: selDate,
           status: status,
         }, { onConflict: 'teacher_id,student_ref,session_date' })
-          .then(function (r) { if (r.error) console.warn('attend save:', r.error.message); });
+          .then(function (r) { if (r.error) showToast('Lỗi lưu điểm danh: ' + r.error.message, 'error'); });
+      }
+    }
+
+    function markAllAttend(status) {
+      if (!currentUser || (currentUser.role !== 'Admin' && currentUser.role !== 'Teacher')) return;
+      var cls = (document.getElementById('attendClassFilter') || {}).value || '';
+      var selDate = _attendSelDate();
+      var list = cls ? students.filter(function (s) { return s.class === cls; }) : students;
+      if (!list.length) { showToast('Không có học sinh để điểm danh.', 'error'); return; }
+      var labels = { present: 'có mặt', late: 'đi muộn', absent: 'vắng' };
+      if (!confirm('Đánh dấu ' + list.length + ' học sinh ' + (labels[status] || status) + ' cho buổi ' + selDate + '?')) return;
+      list.forEach(function (s) { _upsertLocalAttend(s, cls || s.class, selDate, status); });
+      renderAttendance();
+      if (_db && _dbUserId) {
+        var rows = list.map(function (s) {
+          return {
+            teacher_id: _dbUserId, student_ref: String(s.id), student_name: s.name,
+            class_name: cls || s.class, session_date: selDate, status: status,
+          };
+        });
+        _db.from('attendance_records').upsert(rows, { onConflict: 'teacher_id,student_ref,session_date' })
+          .then(function (r) {
+            if (r.error) { showToast('Lỗi lưu điểm danh cả lớp: ' + r.error.message, 'error'); return; }
+            showToast('Đã điểm danh ' + list.length + ' học sinh.', 'success');
+          });
       }
     }
 
