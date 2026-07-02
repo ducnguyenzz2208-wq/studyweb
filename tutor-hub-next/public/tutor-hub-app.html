@@ -3018,32 +3018,32 @@
             <span class="kpi-label">Total Students</span>
             <div class="kpi-icon bg-blue"><span class="col-blue">👨‍🎓</span></div>
           </div>
-          <div class="kpi-value col-blue" id="kpiStudents">12</div>
-          <div class="kpi-change up">↑ 2 this month</div>
+          <div class="kpi-value col-blue" id="kpiStudents">0</div>
+          <div class="kpi-change" id="kpiStudentsSub">—</div>
         </div>
         <div class="kpi-card">
           <div class="kpi-top">
             <span class="kpi-label">Avg. Attendance</span>
             <div class="kpi-icon bg-green"><span class="col-green">📅</span></div>
           </div>
-          <div class="kpi-value col-green">87%</div>
-          <div class="kpi-change up">↑ 3% vs last month</div>
+          <div class="kpi-value col-green" id="kpiAttend">—</div>
+          <div class="kpi-change" id="kpiAttendSub">chưa có dữ liệu</div>
         </div>
         <div class="kpi-card">
           <div class="kpi-top">
             <span class="kpi-label">Avg. Score</span>
             <div class="kpi-icon bg-purple"><span class="col-purple">🎯</span></div>
           </div>
-          <div class="kpi-value col-purple">78.4</div>
-          <div class="kpi-change down">↓ 1.2 vs last month</div>
+          <div class="kpi-value col-purple" id="kpiScore">—</div>
+          <div class="kpi-change" id="kpiScoreSub">—</div>
         </div>
         <div class="kpi-card">
           <div class="kpi-top">
-            <span class="kpi-label">Revenue (June)</span>
+            <span class="kpi-label" id="kpiRevenueLabel">Doanh thu tháng này</span>
             <div class="kpi-icon bg-amber"><span class="col-amber">💰</span></div>
           </div>
-          <div class="kpi-value col-amber">$2,840</div>
-          <div class="kpi-change up">↑ $320 vs May</div>
+          <div class="kpi-value col-amber" id="kpiRevenue">$0</div>
+          <div class="kpi-change" id="kpiRevenueSub">—</div>
         </div>
       </div>
 
@@ -3062,20 +3062,31 @@
           <div class="card-header">
             <div>
               <div class="card-title">Subject Scores</div>
-              <div class="card-subtitle">Average by subject</div>
+              <div class="card-subtitle">Average by class</div>
             </div>
           </div>
           <canvas id="scoresChart" height="150"></canvas>
         </div>
       </div>
 
+      <div class="card" id="revenueChartCard" style="margin-bottom:16px;display:none;">
+        <div class="card-header">
+          <div>
+            <div class="card-title">💰 Doanh thu theo tháng</div>
+            <div class="card-subtitle">Tổng tiền đã thu — 6 tháng gần nhất</div>
+          </div>
+          <span class="badge badge-success" id="revenueChartTotal"></span>
+        </div>
+        <canvas id="revenueChart" height="70"></canvas>
+      </div>
+
       <div class="two-col">
         <div class="card">
           <div class="card-header">
-            <div class="card-title">Recent Homework</div>
-            <span class="badge badge-purple">Latest 4</span>
+            <div class="card-title">🏫 Tình trạng lớp</div>
+            <span class="badge badge-purple" id="dashClassCount"></span>
           </div>
-          <div id="dashHw"></div>
+          <div id="dashClasses"></div>
         </div>
         <div class="card">
           <div class="card-header">
@@ -3948,6 +3959,7 @@
               populateClassDropdowns();
               if (currentSection === 'classes') renderClasses();
               if (currentSection === 'assignments') renderAssignments();
+              if (currentSection === 'dashboard') { try { renderDashboard(); } catch (e) { } }
             }
           });
 
@@ -3956,7 +3968,7 @@
             if (!r.error && r.data) {
               students = r.data.map(_mapStudentRow);
               if (currentSection === 'students') renderStudents();
-              if (currentSection === 'dashboard') { renderDashLists(); }
+              if (currentSection === 'dashboard') { try { renderDashboard(); } catch (e) { } }
               var kpi = document.getElementById('kpiStudents'); if (kpi) kpi.textContent = students.length;
             }
           });
@@ -4432,13 +4444,11 @@
       if (!user) return;
       currentUser = user;
       closeProfilePanel();
-      chartsInitialized = false; // reset so charts re-init for new user
       showApp();
     }
 
     function logout() {
       currentUser = null;
-      chartsInitialized = false;
       closeProfilePanel();
       Object.keys(reportCharts).forEach(function (k) { if (reportCharts[k]) { reportCharts[k].destroy(); delete reportCharts[k]; } });
 
@@ -4473,12 +4483,9 @@
       var first = (pref && canAccessSection(pref)) ? pref : defaultSection;
       showSection(first);
       renderWelcome();
-      // init charts (only if not yet initialized)
       if (currentUser.role === 'Teacher' || currentUser.role === 'Admin') {
-        try { initCharts(); } catch (e) { }
-        renderDashLists();
+        try { renderDashboard(); } catch (e) { }
         renderStudents();
-        document.getElementById('kpiStudents').textContent = students.length;
       }
       populateSubjectDropdowns();
       populateClassDropdowns();
@@ -6332,6 +6339,7 @@
       if (id === 'users') { loadUsersFromDb(); }
       if (id === 'subjects') { renderSubjects(); }
       if (id === 'settings') { renderSettings(); }
+      if (id === 'dashboard') { try { renderDashboard(); } catch (e) { } }
       if (id === 'dashboard') { renderWelcome(); renderDashLists(); renderStudents(); }
     }
 
@@ -6426,62 +6434,129 @@
     // ============================================================
     // CHARTS
     // ============================================================
-    var attendChart, scoreChart, scoreDistChart;
-    var chartsInitialized = false;
+    var attendChart, scoreChart, scoreDistChart, revenueChart;
 
     function getChartTextColor() { return isDark ? '#8899aa' : '#6b7280'; }
     function getChartGridColor() { return isDark ? '#2a3a50' : '#e2e8f0'; }
+    function _fmtMoney(v) { return '$' + (Math.round(v * 100) / 100).toLocaleString('en-US'); }
 
-    function initCharts() {
-      if (chartsInitialized) return;
-      chartsInitialized = true;
-      if (attendChart) { attendChart.destroy(); attendChart = null; }
-      if (scoreChart) { scoreChart.destroy(); scoreChart = null; }
-      if (scoreDistChart) { scoreDistChart.destroy(); scoreDistChart = null; }
-      var ctx1El = document.getElementById('attendanceChart');
-      if (!ctx1El) return;
-      var ctx1 = ctx1El.getContext('2d');
-      attendChart = new Chart(ctx1, {
-        type: 'line',
-        data: {
-          labels: attendanceLabels,
-          datasets: [{
-            label: 'Attendance %', data: attendanceWeekly,
-            borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.1)',
-            fill: true, tension: 0.4, pointBackgroundColor: '#3b82f6', pointRadius: 5,
-          }]
-        },
-        options: {
-          responsive: true,
-          plugins: { legend: { display: false } },
-          scales: {
-            y: { min: 50, max: 100, ticks: { color: getChartTextColor(), callback: function (v) { return v + '%'; } }, grid: { color: getChartGridColor() } },
-            x: { ticks: { color: getChartTextColor() }, grid: { color: getChartGridColor() } }
-          }
-        }
+    // Giữ tên cũ cho các chỗ đang gọi — giờ luôn vẽ lại bằng dữ liệu thật
+    function initCharts() { renderDashCharts(); }
+
+    function renderDashCharts() {
+      if (typeof Chart === 'undefined') return;
+
+      // 1) Attendance Trend — % có mặt theo 6 buổi gần nhất (từ attendance_records)
+      var byDate = {};
+      attendanceRecords.forEach(function (r) {
+        if (!byDate[r.date]) byDate[r.date] = { t: 0, ok: 0 };
+        byDate[r.date].t++;
+        if (r.status !== 'absent') byDate[r.date].ok++;
       });
+      var dates = Object.keys(byDate).sort().slice(-6);
+      var attLabels = dates.map(function (d) { return d.slice(5); });
+      var attData = dates.map(function (d) { return Math.round(byDate[d].ok / byDate[d].t * 100); });
+
+      var ctx1El = document.getElementById('attendanceChart');
+      if (ctx1El) {
+        if (attendChart) attendChart.destroy();
+        attendChart = new Chart(ctx1El.getContext('2d'), {
+          type: 'line',
+          data: {
+            labels: attLabels,
+            datasets: [{
+              label: 'Attendance %', data: attData,
+              borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.1)',
+              fill: true, tension: 0.4, pointBackgroundColor: '#3b82f6', pointRadius: 5,
+            }]
+          },
+          options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: {
+              y: { min: 0, max: 100, ticks: { color: getChartTextColor(), callback: function (v) { return v + '%'; } }, grid: { color: getChartGridColor() } },
+              x: { ticks: { color: getChartTextColor() }, grid: { color: getChartGridColor() } }
+            }
+          }
+        });
+      }
+
+      // 2) Subject Scores — điểm TB Toán/Anh theo lớp (từ hồ sơ học viên)
+      var byClass = {};
+      students.forEach(function (s) {
+        if (!s.class) return;
+        if (!byClass[s.class]) byClass[s.class] = { m: 0, e: 0, n: 0 };
+        byClass[s.class].m += (s.mathScore || 0);
+        byClass[s.class].e += (s.engScore || 0);
+        byClass[s.class].n++;
+      });
+      var clsNames = Object.keys(byClass).sort();
+      var mathData = clsNames.map(function (c) { return Math.round(byClass[c].m / byClass[c].n); });
+      var engData = clsNames.map(function (c) { return Math.round(byClass[c].e / byClass[c].n); });
 
       var ctx2El = document.getElementById('scoresChart');
-      if (!ctx2El) return;
-      var ctx2 = ctx2El.getContext('2d');
-      scoreChart = new Chart(ctx2, {
-        type: 'bar',
-        data: {
-          labels: ['Math A', 'Math B', 'English A', 'English B'],
-          datasets: [
-            { label: 'Math', data: [81, 74, 68, 86], backgroundColor: 'rgba(59,130,246,0.7)', borderRadius: 6 },
-            { label: 'English', data: [76, 70, 88, 90], backgroundColor: 'rgba(139,92,246,0.7)', borderRadius: 6 }
-          ]
-        },
-        options: {
-          responsive: true,
-          plugins: { legend: { labels: { color: getChartTextColor(), boxWidth: 12 } } },
-          scales: {
-            y: { min: 50, max: 100, ticks: { color: getChartTextColor() }, grid: { color: getChartGridColor() } },
-            x: { ticks: { color: getChartTextColor() }, grid: { display: false } }
+      if (ctx2El) {
+        if (scoreChart) scoreChart.destroy();
+        scoreChart = new Chart(ctx2El.getContext('2d'), {
+          type: 'bar',
+          data: {
+            labels: clsNames,
+            datasets: [
+              { label: 'Math', data: mathData, backgroundColor: 'rgba(59,130,246,0.7)', borderRadius: 6 },
+              { label: 'English', data: engData, backgroundColor: 'rgba(139,92,246,0.7)', borderRadius: 6 }
+            ]
+          },
+          options: {
+            responsive: true,
+            plugins: { legend: { labels: { color: getChartTextColor(), boxWidth: 12 } } },
+            scales: {
+              y: { min: 0, max: 100, ticks: { color: getChartTextColor() }, grid: { color: getChartGridColor() } },
+              x: { ticks: { color: getChartTextColor() }, grid: { display: false } }
+            }
           }
+        });
+      }
+
+      // 3) Doanh thu theo tháng (chỉ admin) — tổng Paid theo tháng của paid_date
+      var revCard = document.getElementById('revenueChartCard');
+      var isAdmin = currentUser && currentUser.role === 'Admin';
+      if (revCard) revCard.style.display = isAdmin ? '' : 'none';
+      if (isAdmin) {
+        var months = [], monthKeys = [];
+        var now = new Date();
+        for (var i = 5; i >= 0; i--) {
+          var d = new Date(now.getFullYear(), now.getMonth() - i, 15);
+          monthKeys.push(d.toISOString().slice(0, 7));
+          months.push('T' + (d.getMonth() + 1) + '/' + String(d.getFullYear()).slice(2));
         }
-      });
+        var revData = monthKeys.map(function (k) {
+          return payments.reduce(function (a, p) {
+            return a + ((p.status === 'Paid' && String(p.paid).slice(0, 7) === k) ? p.amount : 0);
+          }, 0);
+        });
+        var tot = revData.reduce(function (a, v) { return a + v; }, 0);
+        var totEl = document.getElementById('revenueChartTotal');
+        if (totEl) totEl.textContent = 'Tổng: ' + _fmtMoney(tot);
+        var ctx3El = document.getElementById('revenueChart');
+        if (ctx3El) {
+          if (revenueChart) revenueChart.destroy();
+          revenueChart = new Chart(ctx3El.getContext('2d'), {
+            type: 'bar',
+            data: {
+              labels: months,
+              datasets: [{ label: 'Đã thu ($)', data: revData, backgroundColor: 'rgba(16,185,129,0.7)', borderRadius: 8 }]
+            },
+            options: {
+              responsive: true,
+              plugins: { legend: { display: false } },
+              scales: {
+                y: { beginAtZero: true, ticks: { color: getChartTextColor(), callback: function (v) { return '$' + v; } }, grid: { color: getChartGridColor() } },
+                x: { ticks: { color: getChartTextColor() }, grid: { display: false } }
+              }
+            }
+          });
+        }
+      }
     }
 
     function initScoreDistChart() {
@@ -6515,7 +6590,7 @@
     }
 
     function refreshCharts() {
-      [attendChart, scoreChart, scoreDistChart].forEach(function (c) {
+      [attendChart, scoreChart, scoreDistChart, revenueChart].forEach(function (c) {
         if (!c) return;
         c.options.scales.y.ticks.color = getChartTextColor();
         c.options.scales.y.grid.color = getChartGridColor();
@@ -6963,6 +7038,7 @@
             return { studentRef: String(a.student_ref), studentName: a.student_name || '', className: a.class_name || '', date: a.session_date, status: a.status };
           });
           if (currentSection === 'attendance') renderAttendance();
+          if (currentSection === 'dashboard') { try { renderDashboard(); } catch (e) { } }
         });
     }
 
@@ -7293,7 +7369,7 @@
           });
         }
         if (currentSection === 'payments') renderPayments();
-        if (currentSection === 'dashboard') { try { renderDashLists(); } catch (e) {} }
+        if (currentSection === 'dashboard') { try { renderDashboard(); } catch (e) { } }
       });
     }
 
@@ -7337,26 +7413,111 @@
     }
 
     // ============================================================
-    // DASHBOARD MINI LISTS
+    // DASHBOARD (KPI + chart + danh sách — dữ liệu thật)
     // ============================================================
-    function renderDashLists() {
-      var recentHw = homework.slice(0, 4);
-      document.getElementById('dashHw').innerHTML = recentHw.map(function (h) {
-        return '<div class="hw-item">' +
-          '<div class="hw-check ' + (h.status === 'Graded' ? 'done' : 'pending') + '">' + (h.status === 'Graded' ? '✓' : '!') + '</div>' +
-          '<div><div class="hw-title">' + escHtml(h.title) + '</div><div class="hw-meta">' + escHtml(h.subject) + ' · ' + escHtml(h.class) + ' · Due ' + escHtml(h.due) + '</div></div>' +
-          '</div>';
-      }).join('');
+    function renderDashboard() {
+      if (!currentUser || (currentUser.role !== 'Teacher' && currentUser.role !== 'Admin')) return;
 
+      // KPI Học viên + active 30 ngày (có đi học trong 30 ngày qua)
+      var elS = document.getElementById('kpiStudents'); if (elS) elS.textContent = students.length;
+      var cutoff = new Date(Date.now() - 30 * 864e5).toISOString().split('T')[0];
+      var activeSet = {};
+      attendanceRecords.forEach(function (r) {
+        if (r.date >= cutoff && r.status !== 'absent') activeSet[r.studentRef || r.studentName] = 1;
+      });
+      var elSSub = document.getElementById('kpiStudentsSub');
+      if (elSSub) elSSub.textContent = Object.keys(activeSet).length + ' active trong 30 ngày';
+
+      // KPI Chuyên cần: % thật từ attendance_records; chưa có thì lấy hồ sơ
+      var pct = null;
+      if (attendanceRecords.length) {
+        var ok = 0;
+        attendanceRecords.forEach(function (r) { if (r.status !== 'absent') ok++; });
+        pct = Math.round(ok / attendanceRecords.length * 100);
+      } else if (students.length) {
+        pct = Math.round(students.reduce(function (a, s) { return a + (s.attendance || 0); }, 0) / students.length);
+      }
+      var elA = document.getElementById('kpiAttend'); if (elA) elA.textContent = (pct === null ? '—' : pct + '%');
+      var elASub = document.getElementById('kpiAttendSub');
+      if (elASub) elASub.textContent = attendanceRecords.length ? ('từ ' + attendanceRecords.length + ' lượt điểm danh') : 'chưa có dữ liệu';
+
+      // KPI Điểm TB
+      var elSc = document.getElementById('kpiScore');
+      var elScSub = document.getElementById('kpiScoreSub');
+      if (students.length) {
+        var avg = students.reduce(function (a, s) { return a + avgScore(s); }, 0) / students.length;
+        if (elSc) elSc.textContent = Math.round(avg * 10) / 10;
+        if (elScSub) elScSub.textContent = 'trung bình ' + students.length + ' học viên';
+      } else {
+        if (elSc) elSc.textContent = '—';
+        if (elScSub) elScSub.textContent = 'chưa có học viên';
+      }
+
+      // KPI Doanh thu tháng này (tổng Paid theo paid_date) + so tháng trước
+      var now = new Date();
+      var curKey = now.toISOString().slice(0, 7);
+      var prevKey = new Date(now.getFullYear(), now.getMonth() - 1, 15).toISOString().slice(0, 7);
+      var revCur = 0, revPrev = 0;
+      payments.forEach(function (p) {
+        if (p.status !== 'Paid' || !p.paid) return;
+        var k = String(p.paid).slice(0, 7);
+        if (k === curKey) revCur += p.amount;
+        else if (k === prevKey) revPrev += p.amount;
+      });
+      var elRL = document.getElementById('kpiRevenueLabel'); if (elRL) elRL.textContent = 'Doanh thu tháng ' + (now.getMonth() + 1);
+      var elR = document.getElementById('kpiRevenue'); if (elR) elR.textContent = _fmtMoney(revCur);
+      var elRSub = document.getElementById('kpiRevenueSub');
+      if (elRSub) {
+        var diff = revCur - revPrev;
+        elRSub.textContent = (diff >= 0 ? '↑ ' : '↓ ') + _fmtMoney(Math.abs(diff)) + ' so với tháng trước';
+        elRSub.className = 'kpi-change ' + (diff >= 0 ? 'up' : 'down');
+      }
+
+      try { renderDashCharts(); } catch (e) { }
+      renderDashLists();
+    }
+
+    function renderDashLists() {
+      // Tình trạng lớp: sĩ số / sức chứa — sắp đầy / còn chỗ / trống
+      var el = document.getElementById('dashClasses');
+      if (el) {
+        var cnt = document.getElementById('dashClassCount');
+        if (cnt) cnt.textContent = classes.length + ' lớp';
+        el.innerHTML = classes.length ? classes.map(function (c) {
+          var enrolled = students.filter(function (s) { return s.class === c.name; }).length;
+          var cap = c.capacity || c.maxStudents || 0;
+          var pctFull = cap ? Math.min(100, Math.round(enrolled / cap * 100)) : 0;
+          var badge = !enrolled
+            ? '<span class="badge" style="background:var(--bg);color:var(--text-muted);">Trống</span>'
+            : pctFull >= 100 ? '<span class="badge badge-danger">Đầy</span>'
+              : pctFull >= 80 ? '<span class="badge badge-warning">Sắp đầy</span>'
+                : '<span class="badge badge-success">Còn chỗ</span>';
+          var barColor = pctFull >= 100 ? 'var(--danger)' : pctFull >= 80 ? 'var(--warning)' : 'var(--accent)';
+          return '<div style="padding:10px 0;border-bottom:1px solid var(--border);">' +
+            '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;gap:8px;">' +
+            '<div style="font-size:13px;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + escHtml(c.name) +
+            (c.subject ? ' <span style="color:var(--text-muted);font-weight:400;">· ' + escHtml(c.subject) + '</span>' : '') + '</div>' +
+            '<div style="display:flex;gap:8px;align-items:center;flex-shrink:0;">' +
+            '<span style="font-size:12px;color:var(--text-muted);">' + enrolled + '/' + (cap || '—') + '</span>' + badge + '</div></div>' +
+            '<div class="score-bar" style="height:6px;"><div class="score-fill" style="width:' + pctFull + '%;background:' + barColor + ';"></div></div>' +
+            '</div>';
+        }).join('') : '<div class="empty">Chưa có lớp nào.</div>';
+      }
+
+      // Cảnh báo học phí
       var overdue = payments.filter(function (p) { return p.status === 'Overdue'; });
-      document.getElementById('overdueCount').textContent = overdue.length + ' Overdue';
-      document.getElementById('dashPayments').innerHTML = payments.slice(0, 5).map(function (p) {
-        var badge = { 'Paid': 'badge-success', 'Pending': 'badge-warning', 'Overdue': 'badge-danger' }[p.status];
-        return '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);">' +
-          '<div><div style="font-size:13px;font-weight:600">' + escHtml(p.student) + '</div><div style="font-size:12px;color:var(--text-muted)">' + escHtml(p.id) + '</div></div>' +
-          '<div style="display:flex;align-items:center;gap:10px;"><strong>$' + p.amount + '</strong><span class="badge ' + badge + '">' + escHtml(p.status) + '</span></div>' +
-          '</div>';
-      }).join('');
+      var oc = document.getElementById('overdueCount');
+      if (oc) oc.textContent = overdue.length + ' quá hạn';
+      var dp = document.getElementById('dashPayments');
+      if (dp) {
+        dp.innerHTML = payments.length ? payments.slice(0, 5).map(function (p) {
+          var badge = { 'Paid': 'badge-success', 'Pending': 'badge-warning', 'Overdue': 'badge-danger' }[p.status];
+          return '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);">' +
+            '<div><div style="font-size:13px;font-weight:600">' + escHtml(p.student) + '</div><div style="font-size:12px;color:var(--text-muted)">Hạn: ' + escHtml(p.due || '—') + '</div></div>' +
+            '<div style="display:flex;align-items:center;gap:10px;"><strong>$' + p.amount + '</strong><span class="badge ' + badge + '">' + escHtml(p.status) + '</span></div>' +
+            '</div>';
+        }).join('') : '<div class="empty">Chưa có khoản thu.</div>';
+      }
     }
 
     // ============================================================
