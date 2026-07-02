@@ -892,12 +892,24 @@
 
     /* RESPONSIVE */
     .hamburger {
-      display: none;
+      display: flex;
+      align-items: center;
       background: none;
       border: none;
       cursor: pointer;
       font-size: 22px;
       color: var(--text);
+    }
+
+    /* Desktop: ẩn/hiện sidebar bằng nút ☰ */
+    @media (min-width: 769px) {
+      body.sidebar-hidden #sidebar {
+        transform: translateX(-100%);
+      }
+
+      body.sidebar-hidden #main {
+        margin-left: 0;
+      }
     }
 
     @media (max-width: 1100px) {
@@ -950,11 +962,52 @@
       .edit-badge {
         display: none !important;
       }
+
+      /* Feed lớp: sidebar môn/lớp xếp trên, feed xuống dưới */
+      .class-feed-wrap {
+        flex-direction: column;
+      }
+
+      #classSidebar {
+        width: 100% !important;
+      }
+
+      /* Bảng rộng: cuộn ngang trong card thay vì tràn màn hình */
+      .card {
+        overflow-x: auto;
+      }
+
+      /* Modal chiếm gần trọn màn hình nhỏ */
+      .modal {
+        width: 96%;
+        max-height: 92vh;
+      }
+
+      .page-header h2 {
+        font-size: 20px;
+      }
+
+      .content {
+        padding: 12px;
+      }
+
+      /* Nút bấm dễ chạm hơn trên màn cảm ứng */
+      .btn-sm {
+        padding: 7px 12px;
+      }
     }
 
     @media (max-width: 480px) {
       .kpi-grid {
         grid-template-columns: 1fr;
+      }
+
+      .topbar {
+        padding: 10px 12px;
+      }
+
+      .filter-bar {
+        gap: 6px;
       }
     }
 
@@ -3486,6 +3539,18 @@
         </div>
         <div class="setting-row">
           <div>
+            <div class="setting-label">Cỡ chữ</div>
+            <div class="setting-desc">Điều chỉnh cỡ chữ toàn ứng dụng</div>
+          </div>
+          <select class="filter-select" id="settingFontSize" onchange="setFontSize(this.value)">
+            <option value="small">Nhỏ (90%)</option>
+            <option value="normal">Vừa (100%)</option>
+            <option value="large">Lớn (110%)</option>
+            <option value="xlarge">Rất lớn (125%)</option>
+          </select>
+        </div>
+        <div class="setting-row">
+          <div>
             <div class="setting-label">Compact Sidebar</div>
             <div class="setting-desc">Show icons only in sidebar</div>
           </div>
@@ -3627,9 +3692,9 @@
           <p>Bảng tin bài tập theo lớp — đăng bài, nộp bài, chấm điểm.</p>
         </div>
       </div>
-      <div style="display:flex;gap:16px;align-items:flex-start;">
+      <div class="class-feed-wrap" style="display:flex;gap:16px;align-items:flex-start;">
         <aside id="classSidebar" style="width:240px;flex-shrink:0;"></aside>
-        <div id="classFeed" style="flex:1;min-width:0;"></div>
+        <div id="classFeed" style="flex:1;min-width:0;width:100%;"></div>
       </div>
     </div>
 
@@ -3707,6 +3772,18 @@
     // ── SUBJECTS ─────────────────────────────────────────────────
     // Default subjects shown before DB loads; replaced when subjects table is fetched.
     var SUBJECTS = ['Math', 'English', 'Physics', 'Chemistry', 'Literature', 'Chinese', 'IT'];
+
+    // Restore UI preferences (persist across reloads)
+    try {
+      if (localStorage.getItem('th_sidebar_hidden') === '1') document.body.classList.add('sidebar-hidden');
+      setFontSize(localStorage.getItem('th_fontsize') || 'normal');
+      if (localStorage.getItem('th_dark') === '1') {
+        isDark = true;
+        document.documentElement.setAttribute('data-theme', 'dark');
+        var _tb = document.getElementById('themeBtn'); if (_tb) _tb.textContent = '☀️';
+        var _dt = document.getElementById('darkModeToggle'); if (_dt) _dt.classList.add('on');
+      }
+    } catch (e) { }
 
     // Sync section when user hits browser back/forward
     window.addEventListener('hashchange', function () {
@@ -6119,7 +6196,7 @@
     // ============================================================
     var currentHwFilter = 'All';
     var currentMatFilter = 'All';
-    var isDark = false;
+    var isDark = (function () { try { return localStorage.getItem('th_dark') === '1'; } catch (e) { return false; } })();
     var isCompact = false;
     var editMode = false;
     var currentDeckView = null;
@@ -6246,12 +6323,29 @@
     }
 
     function toggleSidebar() {
-      document.getElementById('sidebar').classList.toggle('open');
-      document.getElementById('overlay').classList.toggle('visible');
+      if (window.innerWidth > 768) {
+        // Desktop: ẩn/hiện hẳn sidebar, nhớ lựa chọn
+        var hidden = document.body.classList.toggle('sidebar-hidden');
+        try { localStorage.setItem('th_sidebar_hidden', hidden ? '1' : '0'); } catch (e) { }
+      } else {
+        // Mobile: drawer trượt + overlay
+        document.getElementById('sidebar').classList.toggle('open');
+        document.getElementById('overlay').classList.toggle('visible');
+      }
     }
     function closeSidebar() {
       document.getElementById('sidebar').classList.remove('open');
       document.getElementById('overlay').classList.remove('visible');
+    }
+
+    // ── FONT SIZE (persisted) ────────────────────────────────────
+    var FONT_SIZES = { small: 0.9, normal: 1, large: 1.1, xlarge: 1.25 };
+    function setFontSize(key) {
+      if (!FONT_SIZES[key]) key = 'normal';
+      document.body.style.zoom = FONT_SIZES[key];
+      try { localStorage.setItem('th_fontsize', key); } catch (e) { }
+      var sel = document.getElementById('settingFontSize');
+      if (sel && sel.value !== key) sel.value = key;
     }
 
     // ============================================================
@@ -6263,6 +6357,7 @@
       document.getElementById('themeBtn').textContent = isDark ? '☀️' : '🌙';
       var t = document.getElementById('darkModeToggle');
       if (t) { if (isDark) t.classList.add('on'); else t.classList.remove('on'); }
+      try { localStorage.setItem('th_dark', isDark ? '1' : '0'); } catch (e) { }
       refreshCharts();
     }
 
@@ -6293,6 +6388,11 @@
       var r = document.getElementById('settingRole'); if (r) r.value = currentUser.role || '';
       // Ẩn "Demo Account Switcher" khi đã đăng nhập thật (có Supabase)
       var demo = document.getElementById('settingsDemoGroup'); if (demo) demo.style.display = _db ? 'none' : '';
+      // Đồng bộ ô chọn cỡ chữ + trạng thái dark mode với giá trị đã lưu
+      var fs = document.getElementById('settingFontSize');
+      if (fs) { try { fs.value = localStorage.getItem('th_fontsize') || 'normal'; } catch (e) { fs.value = 'normal'; } }
+      var dt = document.getElementById('darkModeToggle');
+      if (dt) dt.classList.toggle('on', isDark);
     }
 
     function updateProfile() {
