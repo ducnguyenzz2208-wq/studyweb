@@ -3364,27 +3364,31 @@
         <button class="btn btn-primary" id="payAddBtn" style="display:none;" onclick="openPaymentModal()">+ Tạo khoản thu</button>
       </div>
       <div id="payOwnView"></div>
+      <div class="filter-bar" id="payTabBar" style="display:none;">
+        <button class="tab active" id="payTabList" onclick="switchPayTab('list')">📋 Khoản thu</button>
+        <button class="tab" id="payTabDebt" onclick="switchPayTab('debt')">💰 Công nợ học viên</button>
+      </div>
       <div class="kpi-grid" id="payKpiGrid" style="grid-template-columns:repeat(3,1fr);margin-bottom:20px;">
         <div class="kpi-card">
-          <div class="kpi-top"><span class="kpi-label">Total Collected</span>
+          <div class="kpi-top"><span class="kpi-label">Đã thu</span>
             <div class="kpi-icon bg-green"><span class="col-green">💵</span></div>
           </div>
-          <div class="kpi-value col-green">$2,840</div>
-          <div class="kpi-change">7 paid invoices</div>
+          <div class="kpi-value col-green" id="payKpiPaid">$0</div>
+          <div class="kpi-change" id="payKpiPaidSub">0 khoản</div>
         </div>
         <div class="kpi-card">
-          <div class="kpi-top"><span class="kpi-label">Pending</span>
+          <div class="kpi-top"><span class="kpi-label">Chưa đóng</span>
             <div class="kpi-icon bg-amber"><span class="col-amber">⏳</span></div>
           </div>
-          <div class="kpi-value col-amber">$960</div>
-          <div class="kpi-change">3 invoices</div>
+          <div class="kpi-value col-amber" id="payKpiPending">$0</div>
+          <div class="kpi-change" id="payKpiPendingSub">0 khoản</div>
         </div>
         <div class="kpi-card">
-          <div class="kpi-top"><span class="kpi-label">Overdue</span>
+          <div class="kpi-top"><span class="kpi-label">Quá hạn</span>
             <div class="kpi-icon bg-blue"><span class="col-blue">🚨</span></div>
           </div>
-          <div class="kpi-value" style="color:var(--danger)">$560</div>
-          <div class="kpi-change">2 invoices</div>
+          <div class="kpi-value" style="color:var(--danger)" id="payKpiOverdue">$0</div>
+          <div class="kpi-change" id="payKpiOverdueSub">0 khoản</div>
         </div>
       </div>
       <div class="filter-bar" id="payFilterBar">
@@ -3410,6 +3414,7 @@
           <tbody id="paymentTableBody"></tbody>
         </table>
       </div>
+      <div id="payDebtView" style="display:none;"></div>
     </div>
 
     <!-- PARENT PORTAL -->
@@ -7121,27 +7126,68 @@
     // ============================================================
     // PAYMENTS
     // ============================================================
+    var payTab = 'list'; // 'list' | 'debt'
+
+    function switchPayTab(tab) {
+      payTab = tab;
+      var tl = document.getElementById('payTabList');
+      var td = document.getElementById('payTabDebt');
+      if (tl) tl.classList.toggle('active', tab === 'list');
+      if (td) td.classList.toggle('active', tab === 'debt');
+      renderPayments();
+    }
+
     function renderPayments() {
       var iAmAdmin = currentUser && currentUser.role === 'Admin';
       var addBtn = document.getElementById('payAddBtn');
       if (addBtn) addBtn.style.display = iAmAdmin ? '' : 'none';
+      var tabBar = document.getElementById('payTabBar');
       var kpi = document.getElementById('payKpiGrid');
       var fb = document.getElementById('payFilterBar');
       var card = document.getElementById('payTableCard');
       var own = document.getElementById('payOwnView');
+      var debt = document.getElementById('payDebtView');
 
       if (!iAmAdmin) {
         // Người dùng thường: KHÔNG thấy bảng quản lý, chỉ xem khoản của mình
+        if (tabBar) tabBar.style.display = 'none';
         if (kpi) kpi.style.display = 'none';
         if (fb) fb.style.display = 'none';
         if (card) card.style.display = 'none';
+        if (debt) debt.style.display = 'none';
         if (own) { own.style.display = ''; own.innerHTML = _ownPaymentsHtml(); }
         return;
       }
+      if (tabBar) tabBar.style.display = '';
       if (kpi) kpi.style.display = '';
+      if (own) own.style.display = 'none';
+
+      // KPI thật từ dữ liệu
+      var sum = { Paid: 0, Pending: 0, Overdue: 0 };
+      var cnt = { Paid: 0, Pending: 0, Overdue: 0 };
+      payments.forEach(function (p) {
+        if (sum[p.status] === undefined) return;
+        sum[p.status] += p.amount; cnt[p.status]++;
+      });
+      function _money(v) { return '$' + (Math.round(v * 100) / 100).toLocaleString('en-US'); }
+      var e;
+      e = document.getElementById('payKpiPaid'); if (e) e.textContent = _money(sum.Paid);
+      e = document.getElementById('payKpiPaidSub'); if (e) e.textContent = cnt.Paid + ' khoản';
+      e = document.getElementById('payKpiPending'); if (e) e.textContent = _money(sum.Pending);
+      e = document.getElementById('payKpiPendingSub'); if (e) e.textContent = cnt.Pending + ' khoản';
+      e = document.getElementById('payKpiOverdue'); if (e) e.textContent = _money(sum.Overdue);
+      e = document.getElementById('payKpiOverdueSub'); if (e) e.textContent = cnt.Overdue + ' khoản';
+
+      // Tab công nợ
+      if (payTab === 'debt') {
+        if (fb) fb.style.display = 'none';
+        if (card) card.style.display = 'none';
+        if (debt) { debt.style.display = ''; debt.innerHTML = _renderDebtView(); }
+        return;
+      }
       if (fb) fb.style.display = '';
       if (card) card.style.display = '';
-      if (own) own.style.display = 'none';
+      if (debt) debt.style.display = 'none';
 
       var filter = document.getElementById('paymentFilter').value;
       var list = payments.filter(function (p) { return !filter || p.status === filter; });
@@ -7152,7 +7198,7 @@
         var act = (p.status !== 'Paid' && /-/.test(String(p.id)))
           ? '<button class="btn btn-sm btn-ghost" onclick="markPaid(' + qid(p.id) + ')">Đã thu</button>' : '';
         return '<tr>' +
-          '<td>' + escHtml(p.student) + '</td>' +
+          '<td>' + escHtml(p.student) + (p.note ? '<div style="font-size:11px;color:var(--text-muted);">' + escHtml(p.note) + '</div>' : '') + '</td>' +
           '<td><strong>$' + p.amount + '</strong></td>' +
           '<td>' + escHtml(p.due) + '</td>' +
           '<td>' + (p.paid || '—') + '</td>' +
@@ -7160,6 +7206,58 @@
           '<td>' + act + '</td>' +
           '</tr>';
       }).join('');
+    }
+
+    // Trang công nợ (admin): gom theo học viên — đã đóng / chưa đóng / quá hạn
+    function _renderDebtView() {
+      if (!payments.length) {
+        return '<div class="card" style="padding:24px;text-align:center;color:var(--text-muted);">Chưa có khoản thu nào. Bấm "+ Tạo khoản thu" để bắt đầu.</div>';
+      }
+      var byUser = {};
+      payments.forEach(function (p) {
+        var key = p.userId || p.student;
+        if (!byUser[key]) byUser[key] = { name: p.student, paid: 0, pending: 0, overdue: 0, count: 0 };
+        var u = byUser[key];
+        u.count++;
+        if (p.status === 'Paid') u.paid += p.amount;
+        else if (p.status === 'Overdue') u.overdue += p.amount;
+        else u.pending += p.amount;
+      });
+      var rows = Object.keys(byUser).map(function (k) {
+        var u = byUser[k]; u.debt = u.pending + u.overdue; return u;
+      });
+      // Quá hạn trước, rồi nợ nhiều trước
+      rows.sort(function (a, b) { return (b.overdue - a.overdue) || (b.debt - a.debt); });
+      var totDebt = rows.reduce(function (a, u) { return a + u.debt; }, 0);
+      var totOver = rows.reduce(function (a, u) { return a + u.overdue; }, 0);
+      var owing = rows.filter(function (u) { return u.debt > 0; }).length;
+      function _m(v) { return '$' + (Math.round(v * 100) / 100).toLocaleString('en-US'); }
+
+      var summary = '<div class="card" style="padding:16px;margin-bottom:14px;border-left:4px solid ' + (totDebt > 0 ? 'var(--danger)' : 'var(--success)') + ';">' +
+        (totDebt > 0
+          ? '<strong>' + owing + ' học viên còn nợ — tổng ' + _m(totDebt) + '</strong>' +
+            (totOver > 0 ? '<span style="color:var(--danger);font-size:13px;margin-left:8px;">(quá hạn ' + _m(totOver) + ')</span>' : '')
+          : '<strong>✅ Không còn công nợ.</strong>') +
+        '</div>';
+
+      var table = '<div class="card"><div style="overflow-x:auto;"><table>' +
+        '<thead><tr><th>Học viên</th><th>Đã đóng</th><th>Chưa đóng</th><th>Quá hạn</th><th>Tổng nợ</th><th>Trạng thái</th></tr></thead><tbody>' +
+        rows.map(function (u) {
+          var st = u.overdue > 0
+            ? '<span class="badge badge-danger">🚨 Quá hạn</span>'
+            : (u.debt > 0 ? '<span class="badge badge-warning">⚠️ Còn nợ</span>' : '<span class="badge badge-success">✅ Đủ</span>');
+          return '<tr>' +
+            '<td><strong>' + escHtml(u.name) + '</strong><div style="font-size:11px;color:var(--text-muted);">' + u.count + ' khoản</div></td>' +
+            '<td style="color:var(--success)">' + _m(u.paid) + '</td>' +
+            '<td style="color:var(--warning)">' + _m(u.pending) + '</td>' +
+            '<td style="color:var(--danger)">' + _m(u.overdue) + '</td>' +
+            '<td><strong>' + _m(u.debt) + '</strong></td>' +
+            '<td>' + st + '</td>' +
+            '</tr>';
+        }).join('') +
+        '</tbody></table></div></div>';
+
+      return summary + table;
     }
 
     function _ownPaymentsHtml() {
@@ -7185,9 +7283,13 @@
       if (!_db) return;
       _db.from('payments').select('*').order('due_date', { ascending: true }).then(function (r) {
         if (r.error) { console.warn('load payments', r.error.message); return; }
+        var today = new Date().toISOString().split('T')[0];
         if (r.data && r.data.length) {
           payments = r.data.map(function (p) {
-            return { id: p.id, student: p.student_name || '', amount: Number(p.amount) || 0, due: p.due_date || '', paid: p.paid_date || '', status: p.status || 'Pending', userId: p.user_id, note: p.note || '' };
+            var st = p.status || 'Pending';
+            // Tự động chuyển "Chưa đóng" thành "Quá hạn" khi trễ hạn nộp
+            if (st !== 'Paid' && p.due_date && p.due_date < today) st = 'Overdue';
+            return { id: p.id, student: p.student_name || '', amount: Number(p.amount) || 0, due: p.due_date || '', paid: p.paid_date || '', status: st, userId: p.user_id, note: p.note || '' };
           });
         }
         if (currentSection === 'payments') renderPayments();
