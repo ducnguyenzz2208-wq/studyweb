@@ -3933,6 +3933,18 @@
       // Attendance — RLS: admin all, teacher own+own classes, student own
       loadAttendance();
 
+      // Yêu cầu vào lớp chờ duyệt (GV/Admin) — cho thông báo
+      if (currentUser.role === 'Teacher' || currentUser.role === 'Admin') {
+        _db.from('enrollment_requests').select('*, classes(name)').eq('status', 'pending')
+          .then(function (r) {
+            if (r.error || !r.data) return;
+            enrollmentRequests = r.data.map(function (q) {
+              return { id: q.id, studentName: q.student_name || '', studentEmail: q.student_email || '', className: (q.classes && q.classes.name) || '', createdAt: (q.created_at || '').split('T')[0] };
+            });
+            updateNotifBadge();
+          });
+      }
+
       // Flashcard decks + cards
       _db.from('flashcard_decks').select('*, flashcards(*)').eq('owner_id', _dbUserId)
         .then(function (r) {
@@ -4076,6 +4088,7 @@
             };
           });
           if (currentSection === 'assignments') renderAssignments();
+          try { updateNotifBadge(); } catch (e) { }
         }
       });
 
@@ -4342,14 +4355,75 @@
     // ============================================================
     // NOTIFICATIONS DATA
     // ============================================================
-    var notifications = [
-      { id: 1, read: false, icon: '📝', message: 'Homework "Algebra Practice Set 3" is due tomorrow.', time: '2 hours ago' },
-      { id: 2, read: false, icon: '💳', message: 'Payment from Mason Johnson is overdue by 2 days.', time: '5 hours ago' },
-      { id: 3, read: false, icon: '🎓', message: 'Emma Wilson scored 92% on the latest test.', time: 'Yesterday' },
-      { id: 4, read: true, icon: '📚', message: 'New material "Calculus Review" was uploaded.', time: '2 days ago' },
-      { id: 5, read: true, icon: '✅', message: 'Math A attendance marked for Monday session.', time: '3 days ago' },
-      { id: 6, read: true, icon: '💬', message: 'Teacher left a comment on Lucas Thompson\'s progress.', time: '4 days ago' },
-    ];
+    // Thông báo THẬT — sinh từ dữ liệu theo vai trò (buildNotifications()).
+    var notifications = [];
+    var enrollmentRequests = []; // yêu cầu vào lớp chờ duyệt (GV/Admin)
+    var _notifRead = (function () { try { return JSON.parse(localStorage.getItem('th_notif_read') || '{}'); } catch (e) { return {}; } })();
+    function _saveNotifRead() { try { localStorage.setItem('th_notif_read', JSON.stringify(_notifRead)); } catch (e) { } }
+
+    function _timeAgo(dateStr) {
+      if (!dateStr) return '';
+      var d = new Date(dateStr); if (isNaN(d.getTime())) return dateStr;
+      var day = Math.floor((Date.now() - d.getTime()) / 864e5);
+      if (day <= 0) return 'Hôm nay';
+      if (day === 1) return 'Hôm qua';
+      if (day < 30) return day + ' ngày trước';
+      return dateStr;
+    }
+
+    function buildNotifications() {
+      var list = [];
+      var role = currentUser ? currentUser.role : '';
+      var isTA = role === 'Teacher' || role === 'Admin';
+
+      if (isTA) {
+        submissions.filter(function (s) { return s.grade == null; }).forEach(function (s) {
+          var a = assignments.find(function (x) { return x.id === s.assignmentId; });
+          if (!a) return;
+          list.push({ id: 'sub_' + s.id, icon: '📥', ts: s.submittedAt, message: (s.studentName || 'Học sinh') + ' nộp bài "' + a.title + '" — chưa chấm.' });
+        });
+        (enrollmentRequests || []).forEach(function (q) {
+          list.push({ id: 'enr_' + q.id, icon: '📩', ts: q.createdAt, message: (q.studentName || q.studentEmail) + ' xin vào lớp ' + (q.className || '') + '.' });
+        });
+        if (role === 'Admin') {
+          var od = payments.filter(function (p) { return p.status === 'Overdue'; });
+          if (od.length) list.push({ id: 'pay_overdue', icon: '💳', ts: null, message: od.length + ' khoản học phí đang quá hạn.' });
+        }
+      }
+
+      if (role === 'Student') {
+        var rec = (typeof _myStudentRecord === 'function') ? _myStudentRecord() : null;
+        var myClass = (rec && rec.class) || (classes[0] ? classes[0].name : '');
+        assignments.filter(function (a) { return a.class === myClass && a.status === 'open'; }).forEach(function (a) {
+          var mine = submissions.find(function (s) { return s.assignmentId === a.id && s.studentId === _dbUserId; });
+          if (!mine) list.push({ id: 'asg_' + a.id, icon: '📝', ts: a.createdAt, message: 'Bài tập mới: "' + a.title + '" — chưa nộp.' });
+        });
+        submissions.filter(function (s) { return s.studentId === _dbUserId && s.grade != null; }).forEach(function (s) {
+          var a = assignments.find(function (x) { return x.id === s.assignmentId; });
+          list.push({ id: 'grade_' + s.id, icon: '🎯', ts: s.submittedAt, message: 'Bài "' + (a ? a.title : '') + '" đã được chấm: ' + s.grade + '/10.' });
+        });
+        payments.filter(function (p) { return p.userId === _dbUserId && p.status !== 'Paid'; }).forEach(function (p) {
+          list.push({ id: 'pay_' + p.id, icon: '💳', ts: null, message: 'Học phí $' + p.amount + (p.status === 'Overdue' ? ' đã quá hạn' : ' đến hạn ' + (p.due || '')) + '.' });
+        });
+      }
+
+      if (role === 'Parent') {
+        payments.filter(function (p) { return p.status !== 'Paid'; }).forEach(function (p) {
+          list.push({ id: 'pay_' + p.id, icon: '💳', ts: null, message: 'Học phí của con: $' + p.amount + (p.status === 'Overdue' ? ' quá hạn' : ' đến hạn') + '.' });
+        });
+      }
+
+      // Buổi học hôm nay (mọi vai trò có lịch)
+      var today = new Date().toISOString().split('T')[0];
+      scheduleItems.filter(function (i) { return i.date === today && i.status !== 'Canceled'; }).forEach(function (i) {
+        list.push({ id: 'sch_' + (i.dbId || i.id), icon: '📅', ts: i.date, message: 'Hôm nay có buổi ' + (i.class || '') + ' lúc ' + (i.time || '') + '.' });
+      });
+
+      list.sort(function (a, b) { return String(b.ts || '').localeCompare(String(a.ts || '')); });
+      notifications = list.map(function (n) {
+        return { id: n.id, icon: n.icon, message: n.message, time: _timeAgo(n.ts), read: !!_notifRead[n.id] };
+      });
+    }
 
     // ============================================================
     // SCHEDULE DATA
@@ -4766,6 +4840,7 @@
     // NOTIFICATIONS
     // ============================================================
     function updateNotifBadge() {
+      buildNotifications();
       var unread = notifications.filter(function (n) { return !n.read; }).length;
       var badge = document.getElementById('notifBadge');
       if (badge) {
@@ -4790,7 +4865,8 @@
         _notifAutoReadTimer = setTimeout(function () {
           var hadUnread = notifications.some(function (n) { return !n.read; });
           if (hadUnread) {
-            notifications.forEach(function (n) { n.read = true; });
+            notifications.forEach(function (n) { _notifRead[n.id] = 1; });
+            _saveNotifRead();
             updateNotifBadge();
             renderNotifDropdown();  // re-render with read styling
           }
@@ -4805,6 +4881,7 @@
     }
 
     function renderNotifDropdown() {
+      buildNotifications();
       var unread = notifications.filter(function (n) { return !n.read; }).length;
       var html = '<div class="nd-header"><span class="nd-title">' + t('notif.title');
       if (unread) html += ' <span style="background:var(--accent);color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;">' + unread + '</span>';
@@ -4815,7 +4892,7 @@
         html += '<div class="nd-empty">' + t('notif.empty') + '</div>';
       } else {
         notifications.forEach(function (n) {
-          html += '<div class="nd-item' + (n.read ? '' : ' unread') + '" onclick="markNotifRead(' + n.id + ')" style="' + (n.read ? '' : 'font-weight:500;') + '">';
+          html += '<div class="nd-item' + (n.read ? '' : ' unread') + '" onclick="markNotifRead(' + qid(n.id) + ')" style="' + (n.read ? '' : 'font-weight:500;') + '">';
           html += '<div class="nd-dot' + (n.read ? ' read' : '') + '"></div>';
           html += '<div class="nd-body"><div class="nd-msg">' + n.icon + ' ' + escHtml(n.message) + '</div><div class="nd-time">' + n.time + '</div></div>';
           html += '</div>';
@@ -4825,18 +4902,16 @@
     }
 
     function markNotifRead(id) {
-      var n = notifications.find(function (x) { return x.id === id; });
-      if (n && !n.read) {
-        n.read = true;
-        updateNotifBadge();
-        renderNotifDropdown();
-      }
-      // If there's navigation attached to a notification type, handle here in future
+      _notifRead[id] = 1;
+      _saveNotifRead();
+      updateNotifBadge();
+      renderNotifDropdown();
     }
 
     function markAllRead() {
       clearTimeout(_notifAutoReadTimer);
-      notifications.forEach(function (n) { n.read = true; });
+      notifications.forEach(function (n) { _notifRead[n.id] = 1; });
+      _saveNotifRead();
       updateNotifBadge();
       renderNotifDropdown();
     }
@@ -4928,6 +5003,7 @@
             };
           });
           if (currentSection === 'schedule') renderSchedule();
+          try { updateNotifBadge(); } catch (e) { }
         });
     }
 
@@ -5316,6 +5392,7 @@
           });
         }
         renderAssignments();
+        try { updateNotifBadge(); } catch (e) { }
       });
     }
 
@@ -7081,6 +7158,7 @@
           });
           if (currentSection === 'attendance') renderAttendance();
           if (currentSection === 'dashboard') { try { renderDashboard(); } catch (e) { } }
+          try { updateNotifBadge(); } catch (e) { }
         });
     }
 
@@ -7412,6 +7490,7 @@
         }
         if (currentSection === 'payments') renderPayments();
         if (currentSection === 'dashboard') { try { renderDashboard(); } catch (e) { } }
+        try { updateNotifBadge(); } catch (e) { }
       });
     }
 
