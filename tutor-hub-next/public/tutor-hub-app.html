@@ -3705,7 +3705,7 @@
         </div>
         <div class="card">
           <div class="card-header">
-            <div class="card-title">Homework Completion</div>
+            <div class="card-title">Số bài nộp theo bài tập</div>
           </div>
           <canvas id="reportHwChart" height="120"></canvas>
         </div>
@@ -4662,7 +4662,8 @@
       var hr = new Date().getHours();
       var greet = hr < 12 ? t('greeting.morning') : hr < 17 ? t('greeting.afternoon') : t('greeting.evening');
       var name = currentUser ? currentUser.name.split(' ')[0] : '';
-      var pendingHw = homework.filter(function (h) { return h.status === 'Assigned' || h.status === 'Overdue'; }).length;
+      // "Pending HW" = bài tập đang mở (thật), không dùng mảng homework demo đã bỏ
+      var pendingHw = assignments.filter(function (a) { return a.status === 'open'; }).length;
       wb.innerHTML = '<div class="welcome-block">' +
         '<div class="welcome-text"><h2>' + greet + ', ' + name + '! 👋</h2>' +
         '<p>' + new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) + '</p></div>' +
@@ -4733,10 +4734,34 @@
 
     var _profileEditing = false;
 
+    function buildRecentActivity() {
+      var acts = [];
+      var role = currentUser ? currentUser.role : '';
+      var isTA = role === 'Teacher' || role === 'Admin';
+      if (isTA) {
+        students.slice(-3).reverse().forEach(function (s) { acts.push({ icon: '👨‍🎓', ts: '', text: 'Học viên: ' + s.name }); });
+        submissions.slice(0, 4).forEach(function (s) {
+          var a = assignments.find(function (x) { return x.id === s.assignmentId; });
+          acts.push({ icon: '📥', ts: s.submittedAt, text: (s.studentName || 'HS') + ' nộp "' + (a ? a.title : '') + '"' });
+        });
+        payments.filter(function (p) { return p.status === 'Paid'; }).slice(0, 2).forEach(function (p) {
+          acts.push({ icon: '💳', ts: p.paid, text: 'Đã thu $' + p.amount + ' — ' + p.student });
+        });
+      } else {
+        submissions.filter(function (s) { return s.studentId === _dbUserId; }).slice(0, 4).forEach(function (s) {
+          var a = assignments.find(function (x) { return x.id === s.assignmentId; });
+          acts.push({ icon: s.grade != null ? '🎯' : '📥', ts: s.submittedAt, text: s.grade != null ? ('Điểm ' + s.grade + '/10 — ' + (a ? a.title : '')) : ('Đã nộp "' + (a ? a.title : '') + '"') });
+        });
+      }
+      acts.sort(function (a, b) { return String(b.ts || '').localeCompare(String(a.ts || '')); });
+      return acts.slice(0, 5).map(function (x) { return { icon: x.icon, text: x.text, time: _timeAgo(x.ts) || '' }; });
+    }
+
     function renderProfilePanel() {
       if (!currentUser) return;
       var u = currentUser;
-      var logs = activityLogs[u.role.toLowerCase()] || [];
+      // Hoạt động THẬT khi đã kết nối DB; demo chỉ khi chạy offline
+      var logs = _db ? buildRecentActivity() : (activityLogs[u.role.toLowerCase()] || []);
 
       var html = '<button class="pp-close" onclick="closeProfilePanel()">×</button>';
 
@@ -5117,17 +5142,25 @@
       var totalStudents = students.length;
       var avgMath = totalStudents ? Math.round(students.reduce(function (s, x) { return s + x.mathScore; }, 0) / totalStudents) : 0;
       var avgEng = totalStudents ? Math.round(students.reduce(function (s, x) { return s + x.engScore; }, 0) / totalStudents) : 0;
-      var avgAtt = totalStudents ? Math.round(students.reduce(function (s, x) { return s + x.attendance; }, 0) / totalStudents) : 0;
-      var atRiskCount = students.filter(function (s) { return s.mathScore < 70 || s.engScore < 70 || s.attendance < 75; }).length;
+      // Chuyên cần THẬT từ attendance_records; fallback số trên hồ sơ nếu chưa điểm danh
+      var realAvgAtt = attendanceRecords.length
+        ? Math.round(attendanceRecords.filter(function (r) { return r.status !== 'absent'; }).length / attendanceRecords.length * 100)
+        : (totalStudents ? Math.round(students.reduce(function (s, x) { return s + x.attendance; }, 0) / totalStudents) : 0);
+      var cutoff = new Date(Date.now() - 30 * 864e5).toISOString().split('T')[0];
+      var activeSet = {};
+      attendanceRecords.forEach(function (r) { if (r.date >= cutoff && r.status !== 'absent') activeSet[r.studentRef || r.studentName] = 1; });
+      var activeCount = Object.keys(activeSet).length;
+      var atRiskCount = students.filter(function (s) { return s.mathScore < 70 || s.engScore < 70 || (s.attendance || 0) < 75; }).length;
       var paid = payments.filter(function (p) { return p.status === 'Paid'; }).length;
+      var overdueN = payments.filter(function (p) { return p.status === 'Overdue'; }).length;
       var kpiEl = document.getElementById('reportKPIs');
       kpiEl.innerHTML = [
-        { num: totalStudents, label: 'Total Students', change: '↑ 2 this month', up: true, color: 'var(--accent)' },
-        { num: avgMath + '%', label: 'Avg Math Score', change: '↓ 1.2 vs last month', up: false, color: 'var(--accent2)' },
-        { num: avgEng + '%', label: 'Avg English Score', change: '↑ 0.8 vs last month', up: true, color: 'var(--accent3)' },
-        { num: avgAtt + '%', label: 'Avg Attendance', change: '↑ 3% vs last month', up: true, color: 'var(--accent4)' },
-        { num: atRiskCount, label: 'At-Risk Students', change: 'Same as last month', up: false, color: 'var(--danger)' },
-        { num: paid + '/' + payments.length, label: 'Payments Received', change: '' + paid + ' paid this month', up: true, color: 'var(--success)' },
+        { num: totalStudents, label: 'Tổng học viên', change: activeCount + ' active (30 ngày)', up: true, color: 'var(--accent)' },
+        { num: avgMath + '%', label: 'Điểm TB Toán', change: 'trên ' + totalStudents + ' HV', up: avgMath >= 70, color: 'var(--accent2)' },
+        { num: avgEng + '%', label: 'Điểm TB Anh', change: 'trên ' + totalStudents + ' HV', up: avgEng >= 70, color: 'var(--accent3)' },
+        { num: realAvgAtt + '%', label: 'Chuyên cần', change: attendanceRecords.length + ' lượt điểm danh', up: realAvgAtt >= 80, color: 'var(--accent4)' },
+        { num: atRiskCount, label: 'HV cần chú ý', change: atRiskCount ? 'điểm/chuyên cần thấp' : 'không có 🎉', up: atRiskCount === 0, color: 'var(--danger)' },
+        { num: paid + '/' + payments.length, label: 'Khoản đã thu', change: overdueN + ' quá hạn', up: overdueN === 0, color: 'var(--success)' },
       ].map(function (k) {
         return '<div class="report-kpi"><div class="rk-num" style="color:' + k.color + '">' + k.num + '</div><div class="rk-label">' + k.label + '</div><div class="rk-change ' + (k.up ? 'rk-up' : 'rk-down') + '">' + k.change + '</div></div>';
       }).join('');
@@ -5184,12 +5217,14 @@
       }
       if (hwCtx) {
         if (reportCharts.hw) reportCharts.hw.destroy();
-        var hwData = homework.map(function (h) { return h.completion; });
-        var hwLabels = homework.map(function (h) { return h.title.substring(0, 15) + '…'; });
+        // Số bài nộp theo bài tập (thật) — thay chart homework demo đã bỏ
+        var asgList = assignments.slice(0, 8);
+        var hwData = asgList.map(function (a) { return submissions.filter(function (s) { return s.assignmentId === a.id; }).length; });
+        var hwLabels = asgList.map(function (a) { return (a.title || '').substring(0, 18); });
         reportCharts.hw = new Chart(hwCtx, {
           type: 'bar',
-          data: { labels: hwLabels, datasets: [{ label: 'Completion %', backgroundColor: 'rgba(16,185,129,0.7)', data: hwData }] },
-          options: { indexAxis: 'y', responsive: true, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#6b7280' }, max: 100 }, y: { ticks: { color: '#6b7280', font: { size: 10 } } } } }
+          data: { labels: hwLabels, datasets: [{ label: 'Số bài nộp', backgroundColor: 'rgba(16,185,129,0.7)', data: hwData }] },
+          options: { indexAxis: 'y', responsive: true, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#6b7280' }, beginAtZero: true }, y: { ticks: { color: '#6b7280', font: { size: 10 } } } } }
         });
       }
     }
