@@ -6685,6 +6685,9 @@
     function openStudentModal(id) {
       var s = id ? students.find(function (x) { return x.id === id; }) : null;
       var title = s ? 'Edit Student' : 'Add Student';
+      // Chỉ admin được chỉnh điểm; GV thấy điểm ở dạng chỉ đọc (đồng bộ với trigger DB)
+      var canScore = currentUser && currentUser.role === 'Admin';
+      var scoreLock = canScore ? '' : ' readonly title="Chỉ admin được chỉnh điểm" style="background:var(--bg);cursor:not-allowed;"';
       var html = '<div class="modal-header"><h3>' + title + '</h3><button class="modal-close" onclick="closeModal()">✕</button></div>' +
         '<div class="modal-body">' +
         '<div class="form-group"><label>Email tài khoản (tra cứu để gán tên)</label>' +
@@ -6701,8 +6704,8 @@
         '</select></div>' +
         '</div>' +
         '<div class="form-row">' +
-        '<div class="form-group"><label>Math Score</label><input class="form-input" type="number" min="0" max="100" id="mStudentMath" value="' + (s ? s.mathScore : 75) + '"></div>' +
-        '<div class="form-group"><label>English Score</label><input class="form-input" type="number" min="0" max="100" id="mStudentEng" value="' + (s ? s.engScore : 75) + '"></div>' +
+        '<div class="form-group"><label>Math Score' + (canScore ? '' : ' 🔒') + '</label><input class="form-input" type="number" min="0" max="100" id="mStudentMath" value="' + (s ? s.mathScore : 75) + '"' + scoreLock + '></div>' +
+        '<div class="form-group"><label>English Score' + (canScore ? '' : ' 🔒') + '</label><input class="form-input" type="number" min="0" max="100" id="mStudentEng" value="' + (s ? s.engScore : 75) + '"' + scoreLock + '></div>' +
         '</div>' +
         '<div class="form-row">' +
         '<div class="form-group"><label>Attendance %</label><input class="form-input" type="number" min="0" max="100" id="mStudentAttend" value="' + (s ? s.attendance : 85) + '"></div>' +
