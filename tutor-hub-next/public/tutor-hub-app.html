@@ -5218,11 +5218,13 @@
 
     function renderSubmissionRow(a, s) {
       var isTeacher = currentUser && (currentUser.role === 'Teacher' || currentUser.role === 'Admin');
-      var fileLink = '';
+      var isOwner = s.studentId && s.studentId === _dbUserId;
+      // Ảnh hiển thị luôn (dưới nội dung), file khác thì link
+      var media = '';
       if (s.fileUrl) {
-        fileLink = _isImageUrl(s.fileUrl)
-          ? '<div style="margin-top:6px;"><a href="' + escAttr(s.fileUrl) + '" target="_blank" rel="noopener"><img src="' + escAttr(s.fileUrl) + '" style="max-width:240px;max-height:220px;border-radius:8px;cursor:zoom-in;" loading="lazy"></a></div>'
-          : ' <a href="' + escAttr(s.fileUrl) + '" target="_blank" rel="noopener" style="font-size:12px;">📎 tệp</a>';
+        media = _isImageUrl(s.fileUrl)
+          ? '<div style="margin-top:6px;"><a href="' + escAttr(s.fileUrl) + '" target="_blank" rel="noopener"><img src="' + escAttr(s.fileUrl) + '" style="max-width:260px;max-height:240px;border-radius:8px;cursor:zoom-in;display:block;" loading="lazy"></a></div>'
+          : '<div style="margin-top:4px;"><a href="' + escAttr(s.fileUrl) + '" target="_blank" rel="noopener" style="font-size:12px;">📎 tệp đính kèm</a></div>';
       }
       var gradeBox = '';
       if (s.grade !== null && s.grade !== undefined) {
@@ -5230,17 +5232,42 @@
           '<strong style="color:var(--success);">Điểm: ' + s.grade + '/10</strong>' +
           (s.feedback ? '<div style="color:var(--text-muted);margin-top:2px;">📝 ' + escHtml(s.feedback) + '</div>' : '') + '</div>';
       }
-      var gradeBtn = isTeacher ? ' <button class="btn btn-sm btn-ghost" style="padding:1px 6px;font-size:11px;" onclick="openGradeModal(' + qid(s.id) + ')">' + (s.grade != null ? 'Sửa điểm' : 'Chấm') + '</button>' : '';
+      // Hàng thao tác kiểu Facebook: Sửa · Xóa · (Chấm)
+      var acts = [];
+      if (isOwner && a.status === 'open') acts.push('<span onclick="focusComposer(' + qid(a.id) + ')" style="cursor:pointer;font-weight:600;">Sửa</span>');
+      if (isOwner || isTeacher) acts.push('<span onclick="deleteSubmission(' + qid(s.id) + ')" style="cursor:pointer;font-weight:600;color:var(--danger);">Xóa</span>');
+      if (isTeacher) acts.push('<span onclick="openGradeModal(' + qid(s.id) + ')" style="cursor:pointer;font-weight:600;color:var(--accent);">' + (s.grade != null ? 'Sửa điểm' : 'Chấm điểm') + '</span>');
+      var actRow = '<div style="font-size:12px;color:var(--text-muted);margin-top:3px;display:flex;gap:12px;align-items:center;">' +
+        '<span>' + escHtml(s.submittedAt || '') + '</span>' + acts.join('') + '</div>';
+
       return '<div style="display:flex;gap:10px;padding:8px 0;">' +
         '<div style="width:32px;height:32px;border-radius:50%;background:var(--purple,#8b5cf6);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;">' + escHtml((s.studentName || '?').slice(0, 1).toUpperCase()) + '</div>' +
         '<div style="flex:1;min-width:0;">' +
-        '<div style="background:var(--bg);border-radius:10px;padding:8px 12px;">' +
-        '<div style="font-weight:600;font-size:13px;">' + escHtml(s.studentName || 'Học sinh') + '</div>' +
-        '<div style="font-size:14px;word-break:break-word;">' + escHtml(s.content || '') + fileLink + '</div>' +
+        '<div style="background:var(--bg);border-radius:12px;padding:8px 12px;">' +
+        '<div style="font-weight:600;font-size:13px;">' + escHtml(s.studentName || 'Học sinh') + (isOwner ? ' <span style="font-weight:400;color:var(--text-muted);">(bạn)</span>' : '') + '</div>' +
+        (s.content ? '<div style="font-size:14px;word-break:break-word;white-space:pre-wrap;">' + escHtml(s.content) + '</div>' : '') +
+        media +
         '</div>' +
-        '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">' + escHtml(s.submittedAt || '') + gradeBtn + '</div>' +
+        actRow +
         gradeBox +
         '</div></div>';
+    }
+
+    function focusComposer(assignmentId) {
+      var inp = document.getElementById('subInput_' + assignmentId);
+      if (inp) { inp.focus(); inp.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+    }
+
+    function deleteSubmission(subId) {
+      if (!confirm('Xóa bài nộp này?')) return;
+      submissions = submissions.filter(function (x) { return x.id !== subId; });
+      renderAssignments();
+      if (_db) {
+        _db.from('assignment_submissions').delete().eq('id', String(subId)).then(function (r) {
+          if (r.error) { showToast('Lỗi xóa: ' + r.error.message, 'error'); reloadSubmissions(); }
+          else showToast('Đã xóa bài nộp.', 'success');
+        });
+      }
     }
 
     function _subFilePicked(assignmentId) {
