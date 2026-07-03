@@ -3105,7 +3105,10 @@
           <h2>Học sinh</h2>
           <p>Quản lý và xem danh sách học sinh theo lớp.</p>
         </div>
-        <button class="btn btn-primary edit-only" onclick="openStudentModal()">+ Thêm học sinh</button>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-ghost edit-only" onclick="openImportStudentsModal()">📥 Nhập CSV</button>
+          <button class="btn btn-primary edit-only" onclick="openStudentModal()">+ Thêm học sinh</button>
+        </div>
       </div>
       <div class="filter-bar">
         <div class="search-box">
@@ -6873,6 +6876,57 @@
     // ============================================================
     // STUDENTS
     // ============================================================
+    // ── Nhập học viên hàng loạt (CSV / dán danh sách) ───────────
+    function openImportStudentsModal() {
+      var classOpts = classes.map(function (c) { return '<option value="' + escAttr(c.name) + '">' + escHtml(c.name) + '</option>'; }).join('');
+      var html = '<div class="modal-header"><h3>📥 Nhập học viên hàng loạt</h3><button class="modal-close" onclick="closeModal()">✕</button></div>' +
+        '<div class="modal-body">' +
+        '<div class="hint">Mỗi dòng 1 học viên, các cột cách nhau bằng dấu phẩy:<br><strong>Tên, Lớp (tuỳ chọn), Email (tuỳ chọn)</strong><br>VD: <code>Nguyễn An, Math A, an@gmail.com</code></div>' +
+        '<div class="form-group"><label>Lớp mặc định (khi dòng không ghi lớp)</label><select class="form-select" id="impDefClass">' + (classOpts || '<option value="">(chưa có lớp)</option>') + '</select></div>' +
+        '<div class="form-group"><label>Danh sách</label><textarea class="form-textarea" id="impText" rows="8" placeholder="Nguyễn An, Math A, an@gmail.com&#10;Trần Bình, Math B&#10;Lê Cường" oninput="_previewImport()"></textarea></div>' +
+        '<div id="impPreview" style="font-size:13px;color:var(--text-muted);"></div>' +
+        '</div><div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal()">Hủy</button>' +
+        '<button class="btn btn-primary" onclick="doImportStudents()">Nhập</button></div>';
+      openModal(html);
+    }
+
+    function _parseImportLines() {
+      var raw = (document.getElementById('impText') || {}).value || '';
+      var def = (document.getElementById('impDefClass') || {}).value || '';
+      var rows = [];
+      raw.split(/\r?\n/).forEach(function (line) {
+        line = line.trim();
+        if (!line) return;
+        var parts = line.split(/[,\t]/).map(function (p) { return p.trim(); });
+        if (!parts[0]) return;
+        rows.push({ name: parts[0], class: parts[1] || def, email: parts[2] || '' });
+      });
+      return rows;
+    }
+
+    function _previewImport() {
+      var rows = _parseImportLines();
+      var el = document.getElementById('impPreview');
+      if (el) el.textContent = rows.length ? ('Sẽ nhập ' + rows.length + ' học viên.') : 'Chưa có dòng hợp lệ.';
+    }
+
+    function doImportStudents() {
+      if (!_db || !_dbUserId) { showToast('Chưa kết nối tài khoản.', 'error'); return; }
+      var rows = _parseImportLines();
+      if (!rows.length) { showToast('Chưa có dòng hợp lệ (cần ít nhất tên).', 'error'); return; }
+      var payload = rows.map(function (r) {
+        return { owner_id: _dbUserId, name: r.name, email: r.email || null, class_name: r.class || '', math_score: 0, eng_score: 0, attendance: 0 };
+      });
+      _db.from('students').insert(payload).select().then(function (res) {
+        if (res.error) { showToast('Lỗi nhập: ' + res.error.message, 'error'); return; }
+        (res.data || []).forEach(function (s) { students.push(_mapStudentRow(s)); });
+        closeModal();
+        showToast('Đã nhập ' + (res.data ? res.data.length : rows.length) + ' học viên.', 'success');
+        renderStudents();
+        var kpi = document.getElementById('kpiStudents'); if (kpi) kpi.textContent = students.length;
+      });
+    }
+
     function _studentRow(s, colorIdx) {
       var avg2 = avgScore(s);
       var g = getGrade(avg2);
