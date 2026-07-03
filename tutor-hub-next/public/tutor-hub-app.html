@@ -3449,6 +3449,7 @@
         <div class="card" id="parentScheduleCard"></div>
         <div class="card" id="parentPayCard"></div>
       </div>
+      <div class="card" style="margin-top:16px;" id="parentCommentCard"></div>
     </div>
 
     <!-- STUDENT PORTAL -->
@@ -3471,6 +3472,7 @@
         <div class="card" id="studentScheduleCard"></div>
         <div class="card" id="studentAttendCard"></div>
       </div>
+      <div class="card" style="margin-top:16px;" id="studentCommentCard"></div>
       <div style="margin-top:16px;" id="studentPayCard"></div>
     </div>
 
@@ -4002,15 +4004,19 @@
             }
           });
 
-        _db.from('teacher_comments').select('*').eq('teacher_id', _dbUserId)
-          .then(function (r) {
-            if (!r.error && r.data && r.data.length) {
-              teacherComments = r.data.map(function (c) {
-                return { id: c.id, studentId: c.student_id, studentName: c.student_name || '', comment: c.comment, type: c.type || 'general', date: c.date || '' };
-              });
-            }
-          });
       }
+
+      // Nhận xét học viên — mọi vai trò (RLS: GV của mình, HS/PH về mình/con, admin all)
+      _db.from('teacher_comments').select('*').order('date', { ascending: false })
+        .then(function (r) {
+          if (!r.error && r.data) {
+            teacherComments = r.data.map(function (c) {
+              return { id: c.id, studentId: c.student_id, studentName: c.student_name || '', teacher: c.teacher_name || 'Giáo viên', text: c.comment || '', category: c.type || 'progress', date: c.date || '' };
+            });
+            if (currentSection === 'student-portal') { try { renderStudentPortal(); } catch (e) { } }
+            if (currentSection === 'parent-portal') { try { renderParentPortal(); } catch (e) { } }
+          }
+        });
 
       // Student / Parent: load the classes they belong to (via class_members),
       // so the feed sidebar can show their classes.
@@ -5230,39 +5236,84 @@
     }
 
     // ============================================================
-    // TEACHER COMMENTS HELPERS
+    // NHẬN XÉT HỌC VIÊN (teacher_comments — thật)
     // ============================================================
+    var _COMMENT_CAT = { progress: 'Tiến bộ', achievement: 'Thành tích', behavior: 'Thái độ' };
+
     function getCommentsForStudent(studentId) {
-      return teacherComments.filter(function (c) { return c.studentId === studentId; });
+      return teacherComments.filter(function (c) { return String(c.studentId) === String(studentId); });
     }
 
     function renderCommentsBlock(studentId) {
       var comments = getCommentsForStudent(studentId);
-      if (!comments.length) return '<p style="color:var(--text-muted);font-size:13px;">No comments yet.</p>';
+      if (!comments.length) return '<div class="empty" style="padding:12px;font-size:13px;">Chưa có nhận xét nào.</div>';
       return comments.map(function (c) {
-        var catCls = 'cat-' + c.category;
-        return '<div class="comment-item">' +
-          '<div class="comment-meta">' + c.teacher + ' · ' + c.date +
-          '<span class="comment-cat ' + catCls + '">' + c.category + '</span></div>' +
-          '<div class="comment-text">' + c.text + '</div></div>';
+        return '<div style="padding:10px 0;border-bottom:1px solid var(--border);">' +
+          '<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted);margin-bottom:4px;gap:8px;">' +
+          '<span>👩‍🏫 ' + escHtml(c.teacher) + ' · ' + escHtml(c.date) + '</span>' +
+          '<span class="badge badge-info" style="font-size:10px;">' + (_COMMENT_CAT[c.category] || c.category) + '</span></div>' +
+          '<div style="font-size:14px;">' + escHtml(c.text) + '</div></div>';
       }).join('');
     }
 
-    function openAddCommentModal(studentId) {
-      var s = students.find(function (x) { return x.id === studentId; });
-      var html = '<h3 style="margin-bottom:16px;">Add Comment for ' + (s ? s.name : 'Student') + '</h3>';
-      html += '<div class="form-group"><label>Category</label><select id="mComCat" class="filter-select" style="width:100%"><option value="progress">Progress</option><option value="achievement">Achievement</option><option value="behavior">Behavior</option></select></div>';
-      html += '<div class="form-group"><label>Comment</label><textarea id="mComText" style="width:100%;padding:10px;border-radius:8px;border:1.5px solid var(--border);background:var(--bg);color:var(--text);font-size:13px;resize:vertical;min-height:80px;"></textarea></div>';
-      html += '<div style="display:flex;gap:8px;margin-top:16px;"><button class="btn btn-primary" onclick="saveComment(' + studentId + ')">Save</button><button class="btn btn-ghost" onclick="closeModal()">Cancel</button></div>';
+    function openStudentComments(studentId) {
+      var s = students.find(function (x) { return String(x.id) === String(studentId); });
+      var canAdd = currentUser && (currentUser.role === 'Teacher' || currentUser.role === 'Admin');
+      var html = '<div class="modal-header"><h3>💬 Nhận xét: ' + escHtml(s ? s.name : 'Học viên') + '</h3><button class="modal-close" onclick="closeModal()">✕</button></div>' +
+        '<div class="modal-body">' +
+        '<div id="stuCommentList">' + _commentsListHtml(studentId) + '</div>' +
+        (canAdd ?
+          '<div style="border-top:1px solid var(--border);margin-top:12px;padding-top:12px;">' +
+          '<div class="form-row">' +
+          '<div class="form-group"><label>Loại</label><select class="form-select" id="mComCat"><option value="progress">Tiến bộ</option><option value="achievement">Thành tích</option><option value="behavior">Thái độ</option></select></div>' +
+          '<div class="form-group" style="display:flex;align-items:flex-end;"><button class="btn btn-primary" style="width:100%;" onclick="saveComment(' + qid(studentId) + ')">+ Thêm nhận xét</button></div>' +
+          '</div>' +
+          '<div class="form-group"><label>Nội dung</label><textarea class="form-textarea" id="mComText" placeholder="Nhập nhận xét về học viên..."></textarea></div>' +
+          '</div>' : '') +
+        '</div>';
       openModal(html);
     }
 
+    function _commentsListHtml(studentId) {
+      var comments = getCommentsForStudent(studentId);
+      if (!comments.length) return '<div class="empty" style="padding:16px;">Chưa có nhận xét.</div>';
+      var canDel = currentUser && (currentUser.role === 'Teacher' || currentUser.role === 'Admin');
+      return comments.map(function (c) {
+        var del = canDel ? ' <span onclick="deleteStuComment(' + qid(c.id) + ',' + qid(studentId) + ')" style="cursor:pointer;color:var(--danger);font-size:11px;font-weight:600;">Xóa</span>' : '';
+        return '<div style="padding:10px 0;border-bottom:1px solid var(--border);">' +
+          '<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted);margin-bottom:4px;gap:8px;">' +
+          '<span>👩‍🏫 ' + escHtml(c.teacher) + ' · ' + escHtml(c.date) + '</span>' +
+          '<span><span class="badge badge-info" style="font-size:10px;">' + (_COMMENT_CAT[c.category] || c.category) + '</span>' + del + '</span></div>' +
+          '<div style="font-size:14px;">' + escHtml(c.text) + '</div></div>';
+      }).join('');
+    }
+
     function saveComment(studentId) {
-      var text = document.getElementById('mComText').value.trim();
-      if (!text) return showToast('Please enter a comment.', 'error');
-      teacherComments.push({ id: nextCommentId++, studentId: studentId, teacher: currentUser ? currentUser.name : 'Teacher', date: new Date().toISOString().split('T')[0], category: document.getElementById('mComCat').value, text: text });
-      showToast('Comment added.', 'success');
-      closeModal();
+      var text = ((document.getElementById('mComText') || {}).value || '').trim();
+      if (!text) { showToast('Nhập nội dung nhận xét.', 'error'); return; }
+      if (!_db || !_dbUserId) { showToast('Chưa kết nối tài khoản.', 'error'); return; }
+      var s = students.find(function (x) { return String(x.id) === String(studentId); });
+      var cat = (document.getElementById('mComCat') || {}).value || 'progress';
+      var today = new Date().toISOString().split('T')[0];
+      _db.from('teacher_comments').insert({
+        teacher_id: _dbUserId, teacher_name: currentUser.name,
+        student_id: String(studentId), student_name: s ? s.name : '',
+        comment: text, type: cat, date: today,
+      }).select().then(function (r) {
+        if (r.error) { showToast('Lỗi lưu nhận xét: ' + r.error.message, 'error'); return; }
+        var row = r.data && r.data[0];
+        teacherComments.unshift({ id: row ? row.id : Date.now(), studentId: studentId, studentName: s ? s.name : '', teacher: currentUser.name, text: text, category: cat, date: today });
+        var el = document.getElementById('mComText'); if (el) el.value = '';
+        var list = document.getElementById('stuCommentList'); if (list) list.innerHTML = _commentsListHtml(studentId);
+        showToast('Đã thêm nhận xét.', 'success');
+      });
+    }
+
+    function deleteStuComment(commentId, studentId) {
+      if (!confirm('Xóa nhận xét này?')) return;
+      teacherComments = teacherComments.filter(function (c) { return c.id !== commentId; });
+      var list = document.getElementById('stuCommentList'); if (list) list.innerHTML = _commentsListHtml(studentId);
+      if (_db) _db.from('teacher_comments').delete().eq('id', String(commentId)).then(function (r) { if (r.error) showToast('Lỗi xóa: ' + r.error.message, 'error'); });
     }
 
     // ============================================================
@@ -6811,12 +6862,19 @@
       var status = s.attendance >= 85 ? '<span class="badge badge-success">Tích cực</span>' :
         s.attendance >= 70 ? '<span class="badge badge-warning">Cần chú ý</span>' :
           '<span class="badge badge-danger">Báo động</span>';
-      var canEdit = currentUser && (currentUser.role === 'Teacher' || currentUser.role === 'Admin') && editMode;
-      var actions = canEdit ? '<td><button class="btn btn-sm btn-ghost" onclick="openStudentModal(' + qid(s.id) + ')">✏️</button> <button class="btn btn-sm btn-danger" onclick="deleteStudent(' + qid(s.id) + ')">🗑</button></td>' : (editMode ? '<td></td>' : '');
+      var isTA = currentUser && (currentUser.role === 'Teacher' || currentUser.role === 'Admin');
+      var canEdit = isTA && editMode;
+      var actBtns = '';
+      if (canEdit) actBtns += '<button class="btn btn-sm btn-ghost" onclick="openStudentModal(' + qid(s.id) + ')">✏️</button> <button class="btn btn-sm btn-danger" onclick="deleteStudent(' + qid(s.id) + ')">🗑</button> ';
+      if (isTA) actBtns += '<button class="btn btn-sm btn-ghost" onclick="openStudentComments(' + qid(s.id) + ')" title="Nhận xét học viên">💬</button>';
+      var actions = isTA ? '<td style="white-space:nowrap;">' + actBtns + '</td>' : (editMode ? '<td></td>' : '');
+      var nameHtml = isTA
+        ? '<span onclick="openStudentComments(' + qid(s.id) + ')" style="cursor:pointer;" title="Xem/thêm nhận xét">' + escHtml(s.name) + '</span>'
+        : escHtml(s.name);
       return '<tr>' +
         '<td><div class="student-row">' +
         '<div class="avatar" style="background:' + COLORS[colorIdx % 12] + '">' + getInitials(s.name) + '</div>' +
-        '<div><div style="font-weight:600;font-size:14px">' + escHtml(s.name) + '</div><div style="color:var(--text-muted);font-size:12px">ID: STU-' + String(s.id).padStart(3, '0') + '</div></div>' +
+        '<div><div style="font-weight:600;font-size:14px">' + nameHtml + '</div><div style="color:var(--text-muted);font-size:12px">ID: STU-' + String(s.id).padStart(3, '0') + '</div></div>' +
         '</div></td>' +
         '<td><span class="badge badge-info">' + escHtml(s.class) + '</span></td>' +
         '<td>' + s.attendance + '%</td>' +
@@ -7918,6 +7976,9 @@
               return '<tr><td><strong>$' + p.amount + '</strong>' + (p.note ? '<div style="font-size:11px;color:var(--text-muted);">' + escHtml(p.note) + '</div>' : '') + '</td><td>' + escHtml(p.due || '—') + '</td><td><span class="badge ' + badge + '">' + label + '</span></td></tr>';
             }).join('') + '</tbody></table></div>'
           : '<div class="empty">Chưa có khoản thu.</div>');
+
+      var comEl = document.getElementById('parentCommentCard');
+      if (comEl) comEl.innerHTML = '<div class="card-header"><div class="card-title">💬 Nhận xét từ giáo viên</div></div>' + (s.id ? renderCommentsBlock(s.id) : '<div class="empty">Chưa có nhận xét.</div>');
     }
 
     // ============================================================
@@ -8002,6 +8063,8 @@
       if (attEl) attEl.innerHTML = '<div class="card-header"><div class="card-title">✅ Điểm danh của tôi</div></div>' + _attendHistoryHtml(s);
       var payEl = document.getElementById('studentPayCard');
       if (payEl) payEl.innerHTML = isStudent ? _ownPaymentsHtml() : '';
+      var comEl = document.getElementById('studentCommentCard');
+      if (comEl) comEl.innerHTML = '<div class="card-header"><div class="card-title">💬 Nhận xét từ giáo viên</div></div>' + (s.id ? renderCommentsBlock(s.id) : '<div class="empty">Chưa có nhận xét.</div>');
     }
 
     // ============================================================
