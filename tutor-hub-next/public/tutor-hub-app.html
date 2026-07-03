@@ -3445,7 +3445,10 @@
         <div class="card" id="parentScoreCard"></div>
         <div class="card" id="parentHwCard"></div>
       </div>
-      <div class="card" style="margin-top:16px;" id="parentPayCard"></div>
+      <div class="two-col" style="margin-top:16px;">
+        <div class="card" id="parentScheduleCard"></div>
+        <div class="card" id="parentPayCard"></div>
+      </div>
     </div>
 
     <!-- STUDENT PORTAL -->
@@ -3464,6 +3467,11 @@
         <div class="card" id="studentHwCard"></div>
         <div class="card" id="studentFocusCard"></div>
       </div>
+      <div class="two-col" style="margin-top:16px;">
+        <div class="card" id="studentScheduleCard"></div>
+        <div class="card" id="studentAttendCard"></div>
+      </div>
+      <div style="margin-top:16px;" id="studentPayCard"></div>
     </div>
 
     <!-- SETTINGS -->
@@ -4010,15 +4018,14 @@
             });
           });
 
-        // Student: load own student record (điểm/điểm danh của chính mình)
-        if (currentUser.role === 'Student') {
-          _db.from('students').select('*').then(function (r) {
-            if (!r.error && r.data) {
-              students = r.data.map(_mapStudentRow);
-              if (currentSection === 'student-portal') initStudentPortal();
-            }
-          });
-        }
+        // HV: hồ sơ của chính mình. PH: hồ sơ con được liên kết. (RLS lo phạm vi)
+        _db.from('students').select('*').then(function (r) {
+          if (!r.error && r.data) {
+            students = r.data.map(_mapStudentRow);
+            if (currentSection === 'student-portal') initStudentPortal();
+            if (currentSection === 'parent-portal') initParentPortal();
+          }
+        });
       }
 
       // Subjects (all roles) — load from DB and repopulate dropdowns
@@ -4904,7 +4911,12 @@
 
     function loadSchedule() {
       if (!_db || !_dbUserId) return;
-      _db.from('schedule_events').select('*').eq('owner_id', _dbUserId).order('date', { ascending: true })
+      // GV/Admin: buổi do mình tạo. HV/PH: RLS trả về buổi của lớp mình/lớp con.
+      var q = _db.from('schedule_events').select('*');
+      if (currentUser && (currentUser.role === 'Teacher' || currentUser.role === 'Admin')) {
+        q = q.eq('owner_id', _dbUserId);
+      }
+      q.order('date', { ascending: true })
         .then(function (r) {
           if (r.error) { console.warn('load schedule', r.error.message); return; }
           scheduleItems = (r.data || []).map(function (e) {
@@ -7595,18 +7607,68 @@
       });
     }
 
+    // ── Portal helpers (read-only, dùng chung HV/PH) ─────────────
+    function _attendHistoryHtml(s) {
+      var byDate = {};
+      attendanceRecords.forEach(function (r) {
+        if (r.studentRef === String(s.id) || (r.studentName && r.studentName === s.name)) byDate[r.date] = r.status;
+      });
+      var dates = Object.keys(byDate).sort().reverse().slice(0, 10);
+      if (!dates.length) return '<div class="empty">Chưa có dữ liệu điểm danh.</div>';
+      var badge = { present: 'badge-success', late: 'badge-warning', absent: 'badge-danger' };
+      var label = { present: '✅ Có mặt', late: '🕐 Đi muộn', absent: '❌ Vắng' };
+      return dates.map(function (d) {
+        var st = byDate[d];
+        return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);">' +
+          '<span style="font-size:13px;">📅 ' + escHtml(d) + '</span>' +
+          '<span class="badge ' + (badge[st] || '') + '">' + (label[st] || st) + '</span>' +
+          '</div>';
+      }).join('');
+    }
+
+    function _upcomingScheduleHtml() {
+      var today = new Date().toISOString().split('T')[0];
+      var upcoming = scheduleItems.filter(function (i) {
+        return i.status !== 'Canceled' && (i.date || '') >= today;
+      }).sort(function (a, b) { return ((a.date || '') + (a.time || '')).localeCompare((b.date || '') + (b.time || '')); }).slice(0, 5);
+      if (!upcoming.length) return '<div class="empty">Không có buổi học sắp tới.</div>';
+      return upcoming.map(function (i) {
+        return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);gap:8px;">' +
+          '<div style="min-width:0;"><div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + escHtml(i.class || '') + '</div>' +
+          '<div style="font-size:12px;color:var(--text-muted);">📅 ' + escHtml(i.date || '') + ' · 🕐 ' + escHtml(i.time || '') + (i.room ? ' · Phòng ' + escHtml(i.room) : '') + '</div></div>' +
+          '<span class="badge badge-info" style="flex-shrink:0;">' + escHtml(i.status || 'Upcoming') + '</span>' +
+          '</div>';
+      }).join('');
+    }
+
+    function _realAttendPct(s) {
+      var h = getAttendHistory(s);
+      return h.arr.length ? Math.round(((h.present + h.late) / h.arr.length) * 100) : (s.attendance || 0);
+    }
+
     function renderParentPortal() {
-      var id = parseInt(document.getElementById('parentChildSelect').value);
-      var s = students.find(function (x) { return x.id === id; });
-      if (!s) return;
+      var sel = document.getElementById('parentChildSelect');
+      var id = sel ? sel.value : '';
+      var s = students.find(function (x) { return String(x.id) === String(id); }) || students[0];
+      var kpiEl = document.getElementById('parentKPI');
+      if (!s) {
+        if (kpiEl) kpiEl.innerHTML = '<div class="portal-card" style="grid-column:1/-1;"><h4>Chưa liên kết hồ sơ học sinh</h4>' +
+          '<div style="color:var(--text-muted);font-size:13px;margin-top:6px;">Gửi yêu cầu đăng ký lớp cho con ở trên — sau khi được duyệt, dữ liệu của con sẽ hiện tại đây.</div></div>';
+        ['parentScoreCard', 'parentHwCard', 'parentScheduleCard', 'parentPayCard'].forEach(function (i) {
+          var el = document.getElementById(i); if (el) el.innerHTML = '';
+        });
+        return;
+      }
       var avg2 = avgScore(s);
       var g = getGrade(avg2);
+      var h = getAttendHistory(s);
+      var attPct = _realAttendPct(s);
       var bal = payments.filter(function (p) { return p.student === s.name && p.status !== 'Paid'; }).reduce(function (a, p) { return a + p.amount; }, 0);
 
-      document.getElementById('parentKPI').innerHTML =
+      kpiEl.innerHTML =
         '<div class="portal-card"><h4>Overall Grade</h4><div class="big-num ' + gradeClass(g) + '">' + g + '</div><div style="color:var(--text-muted);font-size:13px;margin-top:4px">Average: ' + avg2 + '/100</div></div>' +
-        '<div class="portal-card"><h4>Attendance Rate</h4><div class="big-num col-green">' + s.attendance + '%</div><div style="color:var(--text-muted);font-size:13px;margin-top:4px">Out of 20 sessions</div></div>' +
-        '<div class="portal-card"><h4>Balance Due</h4><div class="big-num" style="color:' + (bal > 0 ? 'var(--danger)' : 'var(--success)') + '">$' + bal + '</div><div style="color:var(--text-muted);font-size:13px;margin-top:4px">' + (bal > 0 ? 'Payment required' : 'All paid up!') + '</div></div>';
+        '<div class="portal-card"><h4>Attendance Rate</h4><div class="big-num col-green">' + attPct + '%</div><div style="color:var(--text-muted);font-size:13px;margin-top:4px">' + (h.arr.length ? ('từ ' + h.arr.length + ' buổi gần nhất') : 'chưa có dữ liệu') + '</div></div>' +
+        '<div class="portal-card"><h4>Học phí còn nợ</h4><div class="big-num" style="color:' + (bal > 0 ? 'var(--danger)' : 'var(--success)') + '">' + _fmtMoney(bal) + '</div><div style="color:var(--text-muted);font-size:13px;margin-top:4px">' + (bal > 0 ? 'Cần thanh toán' : 'Đã đóng đủ!') + '</div></div>';
 
       document.getElementById('parentScoreCard').innerHTML =
         '<div class="card-header"><div class="card-title">Subject Scores</div></div>' +
@@ -7615,24 +7677,23 @@
         '<div><div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:13px;"><span>English</span><strong>' + s.engScore + '</strong></div><div class="score-bar" style="height:10px;"><div class="score-fill" style="width:' + s.engScore + '%;background:#8b5cf6;"></div></div></div>' +
         '</div>';
 
-      var sHw = homework.slice(0, 4);
       document.getElementById('parentHwCard').innerHTML =
-        '<div class="card-header"><div class="card-title">Recent Homework</div></div>' +
-        sHw.map(function (h) {
-          var badge = { 'Graded': 'badge-success', 'Assigned': 'badge-info', 'Overdue': 'badge-danger' }[h.status];
-          return '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);">' +
-            '<div><div style="font-size:13px;font-weight:600">' + escHtml(h.title) + '</div><div style="font-size:12px;color:var(--text-muted)">' + escHtml(h.subject) + ' · Due ' + escHtml(h.due) + '</div></div>' +
-            '<span class="badge ' + badge + '">' + escHtml(h.status) + '</span></div>';
-        }).join('');
+        '<div class="card-header"><div class="card-title">✅ Điểm danh gần đây</div></div>' + _attendHistoryHtml(s);
+
+      document.getElementById('parentScheduleCard').innerHTML =
+        '<div class="card-header"><div class="card-title">📅 Lịch học sắp tới</div></div>' + _upcomingScheduleHtml();
 
       var sPay = payments.filter(function (p) { return p.student === s.name; });
       document.getElementById('parentPayCard').innerHTML =
-        '<div class="card-header"><div class="card-title">Payment History</div></div>' +
-        '<table><thead><tr><th>Invoice</th><th>Amount</th><th>Due</th><th>Status</th></tr></thead>' +
-        '<tbody>' + sPay.map(function (p) {
-          var badge = { 'Paid': 'badge-success', 'Pending': 'badge-warning', 'Overdue': 'badge-danger' }[p.status];
-          return '<tr><td>' + escHtml(p.id) + '</td><td>$' + p.amount + '</td><td>' + escHtml(p.due) + '</td><td><span class="badge ' + badge + '">' + escHtml(p.status) + '</span></td></tr>';
-        }).join('') + '</tbody></table>';
+        '<div class="card-header"><div class="card-title">💰 Học phí</div></div>' +
+        (sPay.length
+          ? '<div style="overflow-x:auto;"><table><thead><tr><th>Số tiền</th><th>Hạn</th><th>Trạng thái</th></tr></thead><tbody>' +
+            sPay.map(function (p) {
+              var badge = { 'Paid': 'badge-success', 'Pending': 'badge-warning', 'Overdue': 'badge-danger' }[p.status];
+              var label = { 'Paid': 'Đã đóng', 'Pending': 'Chưa đóng', 'Overdue': 'Quá hạn' }[p.status] || p.status;
+              return '<tr><td><strong>$' + p.amount + '</strong>' + (p.note ? '<div style="font-size:11px;color:var(--text-muted);">' + escHtml(p.note) + '</div>' : '') + '</td><td>' + escHtml(p.due || '—') + '</td><td><span class="badge ' + badge + '">' + label + '</span></td></tr>';
+            }).join('') + '</tbody></table></div>'
+          : '<div class="empty">Chưa có khoản thu.</div>');
     }
 
     // ============================================================
@@ -7674,7 +7735,7 @@
 
       document.getElementById('studentKPI').innerHTML =
         '<div class="portal-card"><h4>Your Grade</h4><div class="big-num ' + gradeClass(g) + '">' + g + '</div><div style="color:var(--text-muted);font-size:13px;margin-top:4px">Score: ' + avg2 + '/100</div></div>' +
-        '<div class="portal-card"><h4>Attendance</h4><div class="big-num col-green">' + s.attendance + '%</div><div style="color:var(--text-muted);font-size:13px;margin-top:4px">Keep it up!</div></div>' +
+        '<div class="portal-card"><h4>Attendance</h4><div class="big-num col-green">' + _realAttendPct(s) + '%</div><div style="color:var(--text-muted);font-size:13px;margin-top:4px">Keep it up!</div></div>' +
         '<div class="portal-card"><h4>Class</h4><div style="font-size:22px;font-weight:800;margin-top:8px">' + escHtml(myClass || '—') + '</div><div style="color:var(--text-muted);font-size:13px;margin-top:4px">Current enrollment</div></div>';
 
       // Bài tập thật của lớp học sinh + trạng thái nộp bài của chính mình
@@ -7709,6 +7770,14 @@
         '<div style="margin-bottom:10px;"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;"><span>Math</span><span>' + s.mathScore + '/100</span></div><div class="score-bar" style="height:8px;"><div class="score-fill" style="width:' + s.mathScore + '%;background:#3b82f6"></div></div></div>' +
         '<div><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;"><span>English</span><span>' + s.engScore + '/100</span></div><div class="score-bar" style="height:8px;"><div class="score-fill" style="width:' + s.engScore + '%;background:#8b5cf6"></div></div></div>' +
         '</div>';
+
+      // Read-only: lịch học + điểm danh + học phí của tôi
+      var schEl = document.getElementById('studentScheduleCard');
+      if (schEl) schEl.innerHTML = '<div class="card-header"><div class="card-title">📅 Lịch học sắp tới</div></div>' + _upcomingScheduleHtml();
+      var attEl = document.getElementById('studentAttendCard');
+      if (attEl) attEl.innerHTML = '<div class="card-header"><div class="card-title">✅ Điểm danh của tôi</div></div>' + _attendHistoryHtml(s);
+      var payEl = document.getElementById('studentPayCard');
+      if (payEl) payEl.innerHTML = isStudent ? _ownPaymentsHtml() : '';
     }
 
     // ============================================================
