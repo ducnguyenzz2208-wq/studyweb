@@ -5548,7 +5548,24 @@
       if (!_db) return;
       _db.from('assignment_submissions').update({ grade: grade, feedback: fb }).eq('id', String(subId)).then(function (r) {
         if (r.error) { showToast('Lỗi lưu điểm: ' + r.error.message, 'error'); return; }
-        closeModal(); showToast('Đã lưu điểm.', 'success'); reloadSubmissions();
+        closeModal(); showToast('Đã lưu điểm.', 'success');
+        reloadSubmissions();
+        reloadStudents(); // điểm TB học viên được trigger cập nhật -> tải lại
+      });
+    }
+
+    function reloadStudents() {
+      if (!_db || !_dbUserId || !currentUser) return;
+      var q = _db.from('students').select('*');
+      if (currentUser.role === 'Teacher') q = q.eq('owner_id', _dbUserId);
+      q.then(function (r) {
+        if (r.error || !r.data) return;
+        students = r.data.map(_mapStudentRow);
+        var kpi = document.getElementById('kpiStudents'); if (kpi) kpi.textContent = students.length;
+        if (currentSection === 'students') renderStudents();
+        if (currentSection === 'scores') { try { renderScores(); } catch (e) { } }
+        if (currentSection === 'reports') { try { renderReports(); } catch (e) { } }
+        if (currentSection === 'dashboard') { try { renderDashboard(); } catch (e) { } }
       });
     }
 
