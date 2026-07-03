@@ -25,7 +25,7 @@ export async function updateSession(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
 
   const path = request.nextUrl.pathname
-  const isAuthRoute = path.startsWith('/login') || path.startsWith('/signup') || path.startsWith('/auth')
+  const isAuthRoute = path.startsWith('/login') || path.startsWith('/signup') || path.startsWith('/auth') || path.startsWith('/reset-password')
 
   // Redirect unauthenticated users to login
   if (!user && !isAuthRoute) {

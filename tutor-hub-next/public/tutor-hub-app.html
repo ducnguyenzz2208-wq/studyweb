@@ -2515,6 +2515,7 @@
       transition: box-shadow 0.2s;
     }
 
+
     .sched-card:hover {
       box-shadow: var(--shadow);
     }
@@ -2573,6 +2574,137 @@
     .sched-canceled {
       background: rgba(239, 68, 68, 0.12);
       color: #dc2626;
+    }
+
+    /* WEEKLY CALENDAR STYLES */
+    .cal-week-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 12px;
+      margin-top: 16px;
+    }
+    @media (max-width: 1024px) {
+      .cal-week-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+      }
+    }
+    @media (max-width: 640px) {
+      .cal-week-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+      }
+    }
+    .cal-day-col {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      min-height: 250px;
+      transition: all 0.2s;
+    }
+    .cal-day-header {
+      font-weight: 700;
+      font-size: 13px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid var(--border);
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .cal-day-name {
+      color: var(--text);
+    }
+    .cal-day-date {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+    .cal-day-col.today {
+      border-color: var(--accent);
+      background: rgba(59, 130, 246, 0.04);
+    }
+    .cal-day-col.today .cal-day-header {
+      border-bottom-color: var(--accent);
+    }
+    .cal-event-card {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 10px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 12px;
+      text-align: left;
+    }
+    .cal-event-card:hover {
+      border-color: var(--accent);
+      box-shadow: var(--shadow);
+      transform: translateY(-1px);
+    }
+    .cal-event-time {
+      font-weight: 700;
+      color: var(--accent);
+      margin-bottom: 3px;
+    }
+    .cal-event-title {
+      font-weight: 600;
+      margin-bottom: 2px;
+      color: var(--text);
+    }
+    .cal-event-details {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+    .cal-event-status {
+      display: inline-block;
+      font-size: 9px;
+      padding: 1px 4px;
+      border-radius: 4px;
+      margin-top: 4px;
+      font-weight: 600;
+    }
+    .cal-add-btn {
+      background: none;
+      border: none;
+      color: var(--accent);
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 700;
+      padding: 0 4px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 20px;
+      height: 20px;
+    }
+    .cal-add-btn:hover {
+      background: var(--border);
+    }
+    .cal-nav-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+      gap: 12px;
+      background: var(--card-bg);
+      padding: 12px 16px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+    }
+    .cal-nav-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .cal-nav-btns {
+      display: flex;
+      gap: 8px;
     }
 
     .sched-actions {
@@ -3552,6 +3684,19 @@
 
       <div class="settings-group">
         <h3>Account</h3>
+        <div class="setting-row" style="display:flex; flex-direction:column; align-items:stretch; gap:10px;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div>
+              <div class="setting-label">Đổi mật khẩu</div>
+              <div class="setting-desc">Cập nhật mật khẩu đăng nhập của bạn</div>
+            </div>
+          </div>
+          <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:4px;">
+            <input type="password" id="settingNewPw" placeholder="Mật khẩu mới" class="settings-input" style="flex:1; min-width:140px; max-width:200px;">
+            <input type="password" id="settingConfirmPw" placeholder="Xác nhận mật khẩu mới" class="settings-input" style="flex:1; min-width:140px; max-width:200px;">
+            <button class="btn btn-primary" onclick="changePassword()">Cập nhật</button>
+          </div>
+        </div>
         <div class="setting-row">
           <div>
             <div class="setting-label">Logout</div>
@@ -3937,6 +4082,10 @@
 
       // Attendance — RLS: admin all, teacher own+own classes, student own
       loadAttendance();
+
+      // Notifications — load from DB & subscribe to real-time updates
+      loadNotifications();
+      subscribeNotifications();
 
       // Yêu cầu vào lớp chờ duyệt (GV/Admin) — cho thông báo
       if (currentUser.role === 'Teacher' || currentUser.role === 'Admin') {
@@ -4381,6 +4530,7 @@
     }
 
     function buildNotifications() {
+      if (_db) return; // Do not overwrite DB-backed notifications
       var list = [];
       var role = currentUser ? currentUser.role : '';
       var isTA = role === 'Teacher' || role === 'Admin';
@@ -4432,6 +4582,41 @@
       notifications = list.map(function (n) {
         return { id: n.id, icon: n.icon, message: n.message, time: _timeAgo(n.ts), read: !!_notifRead[n.id] };
       });
+    }
+
+    function loadNotifications() {
+      if (!_db || !_dbUserId) return;
+      _db.from('notifications').select('*').order('created_at', { ascending: false }).limit(50)
+        .then(function (r) {
+          if (r.error) { console.warn('load notifications error', r.error.message); return; }
+          notifications = (r.data || []).map(function (n) {
+            return {
+              id: n.id,
+              icon: n.icon || '🔔',
+              message: n.message,
+              time: _timeAgo(n.created_at),
+              read: n.is_read
+            };
+          });
+          updateNotifBadge();
+          if (document.getElementById('notifDropdown') && document.getElementById('notifDropdown').classList.contains('open')) {
+            renderNotifDropdown();
+          }
+        });
+    }
+
+    var _notifChannel = null;
+    function subscribeNotifications() {
+      if (!_db || !_dbUserId) return;
+      if (_notifChannel) _notifChannel.unsubscribe();
+      _notifChannel = _db.channel('public:notifications')
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications', filter: 'user_id=eq.' + _dbUserId }, function (payload) {
+          loadNotifications();
+          if (payload.new && payload.new.message) {
+            showToast(payload.new.message, 'info');
+          }
+        })
+        .subscribe();
     }
 
     // ============================================================
@@ -4535,6 +4720,25 @@
       currentUser = user;
       closeProfilePanel();
       showApp();
+    }
+
+    function changePassword() {
+      var newPw = (document.getElementById('settingNewPw') || {}).value || '';
+      var confirmPw = (document.getElementById('settingConfirmPw') || {}).value || '';
+      if (!newPw) { showToast('Vui lòng nhập mật khẩu mới.', 'error'); return; }
+      if (newPw.length < 6) { showToast('Mật khẩu phải từ 6 ký tự trở lên.', 'error'); return; }
+      if (newPw !== confirmPw) { showToast('Mật khẩu xác nhận không khớp.', 'error'); return; }
+      if (!_db) { showToast('Chức năng này yêu cầu kết nối Database.', 'error'); return; }
+
+      _db.auth.updateUser({ password: newPw }).then(function (r) {
+        if (r.error) {
+          showToast('Đổi mật khẩu thất bại: ' + r.error.message, 'error');
+        } else {
+          showToast('Đổi mật khẩu thành công!', 'success');
+          if (document.getElementById('settingNewPw')) document.getElementById('settingNewPw').value = '';
+          if (document.getElementById('settingConfirmPw')) document.getElementById('settingConfirmPw').value = '';
+        }
+      });
     }
 
     function logout() {
@@ -4937,6 +5141,9 @@
       if (dd.classList.contains('open')) {
         closeNotifications();
       } else {
+        if (_db) {
+          loadNotifications();
+        }
         renderNotifDropdown();
         dd.classList.add('open');
         bd.style.display = 'block';
@@ -4945,10 +5152,14 @@
         _notifAutoReadTimer = setTimeout(function () {
           var hadUnread = notifications.some(function (n) { return !n.read; });
           if (hadUnread) {
-            notifications.forEach(function (n) { _notifRead[n.id] = 1; });
-            _saveNotifRead();
-            updateNotifBadge();
-            renderNotifDropdown();  // re-render with read styling
+            if (_db) {
+              markAllRead();
+            } else {
+              notifications.forEach(function (n) { _notifRead[n.id] = 1; });
+              _saveNotifRead();
+              updateNotifBadge();
+              renderNotifDropdown();  // re-render with read styling
+            }
           }
         }, 2000);
       }
@@ -4982,24 +5193,73 @@
     }
 
     function markNotifRead(id) {
-      _notifRead[id] = 1;
-      _saveNotifRead();
-      updateNotifBadge();
-      renderNotifDropdown();
+      if (_db) {
+        _db.from('notifications').update({ is_read: true }).eq('id', String(id)).then(function (r) {
+          if (r.error) { console.warn('markNotifRead error', r.error.message); return; }
+          loadNotifications();
+        });
+      } else {
+        _notifRead[id] = 1;
+        _saveNotifRead();
+        updateNotifBadge();
+        renderNotifDropdown();
+      }
     }
 
     function markAllRead() {
       clearTimeout(_notifAutoReadTimer);
-      notifications.forEach(function (n) { _notifRead[n.id] = 1; });
-      _saveNotifRead();
-      updateNotifBadge();
-      renderNotifDropdown();
+      if (_db && _dbUserId) {
+        _db.from('notifications').update({ is_read: true }).eq('user_id', _dbUserId).eq('is_read', false).then(function (r) {
+          if (r.error) { console.warn('markAllRead error', r.error.message); return; }
+          loadNotifications();
+        });
+      } else {
+        notifications.forEach(function (n) { _notifRead[n.id] = 1; });
+        _saveNotifRead();
+        updateNotifBadge();
+        renderNotifDropdown();
+      }
     }
 
     // ============================================================
     // SCHEDULE SECTION
     // ============================================================
+    var currentCalendarDate = new Date();
+
+    function getMonday(d) {
+      var date = new Date(d);
+      var day = date.getDay();
+      var diff = date.getDate() - day + (day === 0 ? -6 : 1);
+      return new Date(date.setDate(diff));
+    }
+
+    function changeCalendarWeek(offset) {
+      currentCalendarDate.setDate(currentCalendarDate.getDate() + offset * 7);
+      renderSchedule();
+    }
+
+    function setCalendarToday() {
+      currentCalendarDate = new Date();
+      renderSchedule();
+    }
+
+    function openScheduleModalWithDate(dateStr) {
+      openScheduleModal(null, dateStr);
+    }
+
     function renderSchedule() {
+      var monday = getMonday(currentCalendarDate);
+      var weekDates = [];
+      for (var i = 0; i < 7; i++) {
+        var d = new Date(monday);
+        d.setDate(monday.getDate() + i);
+        weekDates.push(d);
+      }
+
+      var mondayStr = monday.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
+      var sundayStr = weekDates[6].toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      var rangeText = "Tuần: " + mondayStr + " - " + sundayStr;
+
       var items = scheduleItems;
       if (currentUser && currentUser.role === 'Student') {
         var sc = students.find(function (s) { return s.id === currentUser.studentId; });
@@ -5011,27 +5271,61 @@
       if (currentSchedFilter !== 'All') {
         items = items.filter(function (i) { return i.status === currentSchedFilter; });
       }
-      items = items.slice().sort(function (a, b) { return (a.date + a.time).localeCompare(b.date + b.time); });
+
       var html = '';
-      if (!items.length) {
-        html = '<div class="card" style="padding:32px;text-align:center;color:var(--text-muted);">No sessions found.</div>';
-      } else {
-        items.forEach(function (s) {
-          var statusCls = 'sched-' + s.status.toLowerCase();
-          html += '<div class="sched-card">';
-          html += '<div class="sched-time-col"><div class="sched-time">' + s.time + '</div><div class="sched-date">' + s.date + '</div></div>';
-          html += '<div class="sched-info"><div class="sched-class">' + s.class + '</div>';
-          html += '<div class="sched-details">' + s.teacher + ' · Room ' + s.room + ' · ' + s.duration + ' min' + (s.notes ? ' · ' + s.notes : '') + '</div></div>';
-          html += '<span class="sched-status ' + statusCls + '">' + s.status + '</span>';
-          if (editMode && (currentUser.role === 'Teacher' || currentUser.role === 'Admin')) {
-            html += '<div class="sched-actions">';
-            html += '<button class="btn btn-ghost btn-sm" onclick="openScheduleModal(' + s.id + ')">Edit</button>';
-            html += '<button class="btn btn-danger btn-sm" onclick="deleteSchedule(' + s.id + ')">Del</button>';
+
+      // 1. Navigation Bar
+      html += '<div class="cal-nav-bar">';
+      html += '  <div class="cal-nav-title">' + rangeText + '</div>';
+      html += '  <div class="cal-nav-btns">';
+      html += '    <button class="btn btn-ghost btn-sm" onclick="changeCalendarWeek(-1)">◀ Tuần trước</button>';
+      html += '    <button class="btn btn-ghost btn-sm" onclick="setCalendarToday()">Hôm nay</button>';
+      html += '    <button class="btn btn-ghost btn-sm" onclick="changeCalendarWeek(1)">Tuần sau ▶</button>';
+      html += '  </div>';
+      html += '</div>';
+
+      // 2. Week Grid
+      html += '<div class="cal-week-grid">';
+      var dayNames = ['Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy', 'Chủ Nhật'];
+      var todayStr = new Date().toISOString().split('T')[0];
+
+      weekDates.forEach(function (date, index) {
+        var dateStr = date.toISOString().split('T')[0];
+        var isToday = dateStr === todayStr;
+        var dayEvents = items.filter(function (ev) { return ev.date === dateStr; });
+        dayEvents.sort(function (a, b) { return a.time.localeCompare(b.time); });
+
+        var dateLabel = date.getDate() + '/' + (date.getMonth() + 1);
+
+        html += '<div class="cal-day-col' + (isToday ? ' today' : '') + '">';
+        html += '  <div class="cal-day-header">';
+        html += '    <span class="cal-day-name">' + dayNames[index] + '</span>';
+        html += '    <div style="display:flex;align-items:center;gap:6px;">';
+        html += '      <span class="cal-day-date">' + dateLabel + '</span>';
+        if (editMode && (currentUser.role === 'Teacher' || currentUser.role === 'Admin')) {
+          html += '    <button class="cal-add-btn" onclick="openScheduleModalWithDate(' + qid(dateStr) + ')" title="Thêm buổi học">+</button>';
+        }
+        html += '    </div>';
+        html += '  </div>';
+
+        if (dayEvents.length === 0) {
+          html += '  <div style="flex:1;display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:11px;font-style:italic;min-height:80px;">Trống</div>';
+        } else {
+          dayEvents.forEach(function (ev) {
+            var statusCls = 'sched-' + ev.status.toLowerCase();
+            html += '<div class="cal-event-card" onclick="openScheduleModal(' + ev.id + ')">';
+            html += '  <div class="cal-event-time">' + ev.time + '</div>';
+            html += '  <div class="cal-event-title">' + escHtml(ev.class) + '</div>';
+            html += '  <div class="cal-event-details">' + escHtml(ev.teacher) + ' · P.' + escHtml(ev.room) + '</div>';
+            html += '  <span class="sched-status ' + statusCls + '">' + ev.status + '</span>';
             html += '</div>';
-          }
-          html += '</div>';
-        });
-      }
+          });
+        }
+        html += '</div>';
+      });
+
+      html += '</div>';
+
       document.getElementById('schedList').innerHTML = html;
     }
 
@@ -5042,24 +5336,25 @@
       renderSchedule();
     }
 
-    function openScheduleModal(id) {
+    function openScheduleModal(id, dateStr) {
       var s = id ? scheduleItems.find(function (x) { return x.id === id; }) : null;
-      var html = '<h3 style="margin-bottom:20px;">' + (s ? 'Edit Session' : 'Add Session') + '</h3>';
-      html += '<div class="form-group"><label>Class</label><select id="mSchedClass" class="filter-select" style="width:100%">';
+      var defaultDate = dateStr || new Date().toISOString().split('T')[0];
+      var html = '<h3 style="margin-bottom:20px;">' + (s ? 'Cập nhật lịch học' : 'Thêm buổi học') + '</h3>';
+      html += '<div class="form-group"><label>Lớp học</label><select id="mSchedClass" class="filter-select" style="width:100%">';
       classes.forEach(function (c) { html += '<option' + (s && s.class === c.name ? ' selected' : '') + '>' + c.name + '</option>'; });
       html += '</select></div>';
-      html += '<div class="form-group"><label>Teacher</label><input id="mSchedTeacher" class="settings-input" style="width:100%" value="' + (s ? s.teacher : 'Ms. Thompson') + '"></div>';
-      html += '<div class="form-group"><label>Date</label><input type="date" id="mSchedDate" class="settings-input" style="width:100%" value="' + (s ? s.date : '2026-06-12') + '"></div>';
-      html += '<div class="form-group"><label>Time</label><input id="mSchedTime" class="settings-input" style="width:100%" value="' + (s ? s.time : '4:00 PM') + '"></div>';
-      html += '<div class="form-group"><label>Room</label><input id="mSchedRoom" class="settings-input" style="width:100%" value="' + (s ? s.room : '101') + '"></div>';
-      html += '<div class="form-group"><label>Status</label><select id="mSchedStatus" class="filter-select" style="width:100%">';
+      html += '<div class="form-group"><label>Giáo viên</label><input id="mSchedTeacher" class="settings-input" style="width:100%" value="' + (s ? s.teacher : 'Ms. Thompson') + '"></div>';
+      html += '<div class="form-group"><label>Ngày học</label><input type="date" id="mSchedDate" class="settings-input" style="width:100%" value="' + (s ? s.date : defaultDate) + '"></div>';
+      html += '<div class="form-group"><label>Giờ học (ví dụ: 14:00)</label><input id="mSchedTime" class="settings-input" style="width:100%" value="' + (s ? s.time : '14:00') + '"></div>';
+      html += '<div class="form-group"><label>Phòng học</label><input id="mSchedRoom" class="settings-input" style="width:100%" value="' + (s ? s.room : '101') + '"></div>';
+      html += '<div class="form-group"><label>Trạng thái</label><select id="mSchedStatus" class="filter-select" style="width:100%">';
       ['Upcoming', 'Completed', 'Canceled'].forEach(function (st) { html += '<option' + (s && s.status === st ? ' selected' : '') + '>' + st + '</option>'; });
       html += '</select></div>';
-      html += '<div class="form-group"><label>Notes</label><input id="mSchedNotes" class="settings-input" style="width:100%" value="' + (s ? s.notes : '') + '"></div>';
+      html += '<div class="form-group"><label>Ghi chú</label><input id="mSchedNotes" class="settings-input" style="width:100%" value="' + (s ? s.notes : '') + '"></div>';
       html += '<div style="display:flex;gap:8px;margin-top:20px;">';
-      html += '<button class="btn btn-primary" onclick="saveSchedule(' + (s ? s.id : 'null') + ')">Save</button>';
-      html += '<button class="btn btn-ghost" onclick="closeModal()">Cancel</button>';
-      if (s) html += '<button class="btn btn-danger" onclick="deleteSchedule(' + s.id + ')">Delete</button>';
+      html += '<button class="btn btn-primary" onclick="saveSchedule(' + (s ? s.id : 'null') + ')">Lưu</button>';
+      html += '<button class="btn btn-ghost" onclick="closeModal()">Hủy</button>';
+      if (s) html += '<button class="btn btn-danger" onclick="deleteSchedule(' + s.id + ')">Xóa</button>';
       html += '</div>';
       openModal(html);
     }
@@ -7605,8 +7900,17 @@
       var body = document.getElementById('paymentTableBody');
       if (!list.length) { body.innerHTML = '<tr><td colspan="6" class="empty">Chưa có khoản thu.</td></tr>'; return; }
       body.innerHTML = list.map(function (p) {
-        var act = (p.status !== 'Paid' && /-/.test(String(p.id)))
-          ? '<button class="btn btn-sm btn-ghost" onclick="markPaid(' + qid(p.id) + ')">Đã thu</button>' : '';
+        var act = '';
+        if (p.status !== 'Paid' && /-/.test(String(p.id))) {
+          act += '<button class="btn btn-sm btn-ghost" onclick="markPaid(' + qid(p.id) + ')" style="margin-right:6px;">Đã thu</button>';
+        }
+        // Xuất hóa đơn
+        act += '<button class="btn btn-sm btn-ghost" onclick="exportInvoice(' + qid(p.id) + ')" title="Xuất hóa đơn PDF" style="margin-right:6px;">📄 Xuất</button>';
+        // Nhắc đóng
+        if (p.status !== 'Paid' && iAmAdmin) {
+          act += '<button class="btn btn-sm btn-ghost" onclick="sendPaymentReminder(' + qid(p.id) + ')" title="Gửi nhắc đóng học phí">🔔 Nhắc đóng</button>';
+        }
+
         return '<tr>' +
           '<td>' + escHtml(p.student) + (p.note ? '<div style="font-size:11px;color:var(--text-muted);">' + escHtml(p.note) + '</div>' : '') + '</td>' +
           '<td><strong>$' + p.amount + '</strong></td>' +
@@ -7684,9 +7988,119 @@
       return summary + '<div class="card">' + mine.map(function (p) {
         return '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);">' +
           '<div><div style="font-weight:600;">$' + p.amount + '</div><div style="font-size:12px;color:var(--text-muted);">Hạn: ' + escHtml(p.due || '—') + (p.note ? ' · ' + escHtml(p.note) : '') + '</div></div>' +
-          '<span class="badge ' + (badge[p.status] || '') + '">' + (label[p.status] || p.status) + '</span>' +
+          '<div style="display:flex;align-items:center;gap:12px;">' +
+          '  <span class="badge ' + (badge[p.status] || '') + '">' + (label[p.status] || p.status) + '</span>' +
+          '  <button class="btn btn-sm btn-ghost" onclick="exportInvoice(' + qid(p.id) + ')">📄 In</button>' +
+          '</div>' +
           '</div>';
       }).join('') + '</div>';
+    }
+
+    function exportInvoice(paymentId) {
+      var p = payments.find(function (x) { return x.id === paymentId; });
+      if (!p) { showToast('Không tìm thấy khoản thu.', 'error'); return; }
+
+      var printWindow = window.open('', '_blank', 'width=800,height=600');
+      if (!printWindow) {
+        showToast('Vui lòng cho phép trình duyệt mở popup để in hóa đơn.', 'error');
+        return;
+      }
+
+      var invoiceHtml = '<!DOCTYPE html>' +
+        '<html>' +
+        '<head>' +
+        '  <meta charset="UTF-8">' +
+        '  <title>Hóa đơn học phí - Tutor Hub</title>' +
+        '  <style>' +
+        '    body { font-family: "Segoe UI", system-ui, sans-serif; color: #1e293b; padding: 40px; margin: 0; line-height: 1.5; }' +
+        '    .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 20px; margin-bottom: 30px; }' +
+        '    .logo { font-size: 24px; font-weight: 800; color: #3b82f6; }' +
+        '    .title { font-size: 28px; font-weight: 700; text-transform: uppercase; color: #1e293b; text-align: right; }' +
+        '    .details-table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }' +
+        '    .details-table th, .details-table td { padding: 12px; border: 1px solid #e2e8f0; text-align: left; }' +
+        '    .details-table th { background: #f8fafc; font-weight: 600; }' +
+        '    .summary { text-align: right; margin-top: 40px; font-size: 18px; }' +
+        '    .summary .amount { font-size: 24px; font-weight: 700; color: #3b82f6; }' +
+        '    .footer { text-align: center; margin-top: 80px; font-size: 12px; color: #64748b; border-top: 1px solid #e2e8f0; padding-top: 20px; }' +
+        '    .badge { display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 700; }' +
+        '    .badge-paid { background: #d1fae5; color: #065f46; }' +
+        '    .badge-pending { background: #fef3c7; color: #92400e; }' +
+        '    .badge-overdue { background: #fee2e2; color: #991b1b; }' +
+        '    @media print { .no-print { display: none; } }' +
+        '  </style>' +
+        '</head>' +
+        '<body>' +
+        '  <div class="header">' +
+        '    <div class="logo">📚 Tutor Hub</div>' +
+        '    <div class="title">Hóa đơn học phí</div>' +
+        '    <button class="no-print" onclick="window.print()" style="padding: 8px 16px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">In hóa đơn / Lưu PDF</button>' +
+        '  </div>' +
+        '  <table class="details-table">' +
+        '    <tr>' +
+        '      <th>Mã hóa đơn</th>' +
+        '      <td>' + p.id + '</td>' +
+        '    </tr>' +
+        '    <tr>' +
+        '      <th>Học sinh</th>' +
+        '      <td>' + escHtml(p.student) + '</td>' +
+        '    </tr>' +
+        '    <tr>' +
+        '      <th>Nội dung</th>' +
+        '      <td>' + escHtml(p.note || 'Học phí lớp học') + '</td>' +
+        '    </tr>' +
+        '    <tr>' +
+        '      <th>Hạn đóng</th>' +
+        '      <td>' + escHtml(p.due || '—') + '</td>' +
+        '    </tr>' +
+        '    <tr>' +
+        '      <th>Ngày thanh toán</th>' +
+        '      <td>' + (p.paid || '—') + '</td>' +
+        '    </tr>' +
+        '    <tr>' +
+        '      <th>Trạng thái</th>' +
+        '      <td>' +
+        '        <span class="badge ' + (p.status === 'Paid' ? 'badge-paid' : (p.status === 'Overdue' ? 'badge-overdue' : 'badge-pending')) + '">' +
+        '          ' + (p.status === 'Paid' ? 'Đã thanh toán' : (p.status === 'Overdue' ? 'Quá hạn' : 'Chưa thanh toán')) +
+        '        </span>' +
+        '      </td>' +
+        '    </tr>' +
+        '  </table>' +
+        '  <div class="summary">' +
+        '    Tổng tiền cần đóng: <span class="amount">$' + p.amount + '</span>' +
+        '  </div>' +
+        '  <div class="footer">' +
+        '    <p>Cảm ơn bạn đã đồng hành cùng Tutor Hub!</p>' +
+        '    <p>Hóa đơn được xuất tự động từ hệ thống quản lý học tập Tutor Hub.</p>' +
+        '  </div>' +
+        '  <script>' +
+        '    window.onload = function() { setTimeout(function() { window.print(); }, 500); };' +
+        '  <\/script>' +
+        '</body>' +
+        '</html>';
+
+      printWindow.document.write(invoiceHtml);
+      printWindow.document.close();
+    }
+
+    function sendPaymentReminder(paymentId) {
+      var p = payments.find(function (x) { return x.id === paymentId; });
+      if (!p) { showToast('Không tìm thấy khoản thu.', 'error'); return; }
+      if (!p.userId) { showToast('Khoản thu này không có tài khoản liên kết.', 'error'); return; }
+      if (!_db) return;
+
+      var msg = 'Nhắc đóng học phí: Khoản phí $' + p.amount + ' cho "' + (p.note || 'Học phí') + '" của bạn đến hạn đóng vào ngày ' + (p.due || '—') + '. Vui lòng hoàn thành thanh toán.';
+      _db.from('notifications').insert({
+        user_id: p.userId,
+        icon: '💳',
+        message: msg,
+        is_read: false
+      }).then(function (r) {
+        if (r.error) {
+          showToast('Gửi nhắc nhở thất bại: ' + r.error.message, 'error');
+        } else {
+          showToast('Đã gửi thông báo nhắc nhở đến học viên/phụ huynh.', 'success');
+        }
+      });
     }
 
     function loadPayments() {
