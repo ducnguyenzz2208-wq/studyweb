@@ -7,7 +7,7 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // Skip Next.js internals, static files, and the public HTML app
-    '/((?!_next/static|_next/image|favicon.ico|tutor-hub-app\\.html|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)',
+    // Skip Next.js internals, static files, the public HTML app, and its JS modules (public/js/*)
+    '/((?!_next/static|_next/image|favicon.ico|tutor-hub-app\\.html|js/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|js|css)$).*)',
   ],
 }

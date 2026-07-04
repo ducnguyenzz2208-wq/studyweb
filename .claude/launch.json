@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "tutor-hub-dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "tutor-hub-next", "run", "dev"],
+      "port": 3000
+    }
+  ]
+}
