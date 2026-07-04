@@ -102,6 +102,17 @@ Sắp theo mức ưu tiên. P0 = rào cản lớn nhất khiến người mới 
       ngang mượt (`min-width` + `-webkit-overflow-scrolling`), vùng chạm lớn hơn, input 16px
       chống zoom nhảy iOS, quick-actions 2 cột. (Drawer sidebar + overlay đã có sẵn từ trước.)
 
+## Giao diện — Compact pass + Lịch tháng ✅ ĐÃ LÀM (tham chiếu Nexora)
+- [x] **Compact UI**: `--sidebar-w` 240→216, `--radius` 16→14, `.content` 28→22, card/kpi 20→16,
+      page-header nhẹ hơn (h2 24/800 → 21/700), nav-item gọn (8/12, 13.5px). Ít "template" hơn.
+- [x] **Lịch THÁNG cho Schedule** (`08-schedule.js`): grid 6 tuần, đánh dấu ngày có buổi bằng
+      pill (màu theo trạng thái), bấm ngày → panel buổi học bên phải (giờ/lớp/GV·phòng/chấm).
+      Toggle **Tháng/Tuần**, nav ‹ hôm nay ›. Mobile: 1 cột, pill → chấm.
+  - **Phân quyền** (yêu cầu): dùng `_schedItemsForUser()` — HV/PH chỉ lớp mình/con; GV/Admin buổi
+    mình phụ trách (`loadSchedule` lọc `owner_id`). KHÔNG đổi backend/logic.
+  - Sửa **lệch 1 ngày**: dùng `ymd()` (giờ địa phương) thay `toISOString()` (UTC) cho cả tuần lẫn tháng.
+  - Việt hoá tiêu đề/tabs Lịch học.
+
 ## Giao diện — Profile panel + Settings ✅ ĐÃ LÀM (refine "real product")
 - [x] **Profile panel**: header `--brand-grad` (bỏ navy cũ), avatar/badge gọn, activity-icon +
       lang-btn active dùng `--nav-active-bg`; nút "Sửa thông tin" emoji→SVG.
