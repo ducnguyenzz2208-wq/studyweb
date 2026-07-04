@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { viError } from '@/lib/auth-messages'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -22,7 +23,7 @@ export default function LoginPage() {
     setLoading(true)
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) {
-      setError(error.message)
+      setError(viError(error.message))
       setLoading(false)
     } else {
       router.push('/dashboard')
@@ -35,14 +36,16 @@ export default function LoginPage() {
     setError('')
     setSuccessMsg('')
     setLoading(true)
+    // Đi qua /auth/callback để đổi ?code= lấy session (PKCE) trước,
+    // sau đó mới chuyển sang /reset-password (lúc này đã có session).
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
+      redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
     })
     if (error) {
-      setError(error.message)
+      setError(viError(error.message))
       setLoading(false)
     } else {
-      setSuccessMsg('Đã gửi liên kết đặt lại mật khẩu tới email của bạn. Vui lòng kiểm tra hộp thư.')
+      setSuccessMsg('Đã gửi liên kết đặt lại mật khẩu tới email của bạn. Vui lòng kiểm tra hộp thư (cả mục Spam).')
       setLoading(false)
     }
   }
@@ -87,6 +90,11 @@ export default function LoginPage() {
           <p style={{ color: '#64748b', fontSize: 14, marginTop: 4 }}>
             {isForgot ? 'Đặt lại mật khẩu của bạn' : 'Đăng nhập vào tài khoản'}
           </p>
+          {!isForgot && (
+            <Link href="/" style={{ display: 'inline-block', marginTop: 8, color: '#94a3b8', fontSize: 13, textDecoration: 'none' }}>
+              ← Về trang giới thiệu
+            </Link>
+          )}
         </div>
 
         {!isForgot && (
@@ -120,7 +128,7 @@ export default function LoginPage() {
                 <path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"/>
                 <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"/>
               </svg>
-              Continue with Google
+              Tiếp tục với Google
             </button>
 
             <div style={{
@@ -128,7 +136,7 @@ export default function LoginPage() {
               color: '#94a3b8', fontSize: 13,
             }}>
               <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
-              or sign in with email
+              hoặc đăng nhập bằng email
               <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
             </div>
           </>
@@ -154,7 +162,7 @@ export default function LoginPage() {
           <form onSubmit={handleResetPassword}>
             <div style={{ marginBottom: 22 }}>
               <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>
-                Email address
+                Địa chỉ email
               </label>
               <input
                 type="email"
@@ -200,7 +208,7 @@ export default function LoginPage() {
           <form onSubmit={handleLogin}>
             <div style={{ marginBottom: 16 }}>
               <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>
-                Email address
+                Địa chỉ email
               </label>
               <input
                 type="email"
@@ -222,7 +230,7 @@ export default function LoginPage() {
             <div style={{ marginBottom: 22 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                 <label style={{ fontSize: 13, fontWeight: 600, color: '#374151', margin: 0 }}>
-                  Password
+                  Mật khẩu
                 </label>
                 <button
                   type="button"
@@ -263,15 +271,15 @@ export default function LoginPage() {
                 transition: 'opacity 0.2s',
               }}
             >
-              {loading ? 'Signing in…' : 'Sign In'}
+              {loading ? 'Đang đăng nhập…' : 'Đăng nhập'}
             </button>
           </form>
         )}
 
         <p style={{ textAlign: 'center', marginTop: 20, fontSize: 14, color: '#64748b' }}>
-          No account?{' '}
+          Chưa có tài khoản?{' '}
           <Link href="/signup" style={{ color: '#3b82f6', fontWeight: 600, textDecoration: 'none' }}>
-            Create one
+            Đăng ký ngay
           </Link>
         </p>
       </div>

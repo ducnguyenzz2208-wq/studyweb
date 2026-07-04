@@ -4,14 +4,19 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { viError } from '@/lib/auth-messages'
 
-const ROLES = ['Student', 'Teacher', 'Parent'] as const
+const ROLES = [
+  { value: 'Student', label: 'Học sinh' },
+  { value: 'Teacher', label: 'Giáo viên' },
+  { value: 'Parent', label: 'Phụ huynh' },
+] as const
 
 export default function SignupPage() {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [role, setRole] = useState<typeof ROLES[number]>('Student')
+  const [role, setRole] = useState<typeof ROLES[number]['value']>('Student')
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -38,7 +43,7 @@ export default function SignupPage() {
     })
 
     if (error) {
-      setError(error.message)
+      setError(viError(error.message))
       setLoading(false)
     } else {
       setSuccess(true)
@@ -66,14 +71,28 @@ export default function SignupPage() {
           boxShadow: '0 25px 60px rgba(0,0,0,0.4)',
         }}>
           <div style={{ fontSize: 48, marginBottom: 16 }}>📬</div>
-          <h2 style={{ color: '#1e2a3a', marginBottom: 8 }}>Check your email</h2>
-          <p style={{ color: '#64748b', fontSize: 14 }}>
-            We sent a confirmation link to <strong>{email}</strong>. Click it to activate your account.
+          <h2 style={{ color: '#1e2a3a', marginBottom: 8 }}>Kiểm tra email của bạn</h2>
+          <p style={{ color: '#64748b', fontSize: 14, marginBottom: 20 }}>
+            Chúng tôi đã gửi liên kết xác nhận tới <strong>{email}</strong> (xem cả mục Spam).
           </p>
+
+          <div style={{
+            textAlign: 'left', background: '#f8fafc', border: '1px solid #e2e8f0',
+            borderRadius: 12, padding: '16px 18px', fontSize: 13, color: '#475569',
+          }}>
+            <div style={{ fontWeight: 700, color: '#1e2a3a', marginBottom: 10 }}>Các bước tiếp theo</div>
+            <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
+              <span>1️⃣</span><span>Bấm liên kết trong email để <strong>xác nhận tài khoản</strong>.</span>
+            </div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <span>2️⃣</span><span><strong>Chờ quản trị viên cấp quyền</strong> (Học sinh / Giáo viên / Phụ huynh). Trước khi được duyệt, bạn đăng nhập được nhưng chỉ thấy trang chờ.</span>
+            </div>
+          </div>
+
           <Link href="/login" style={{
             display: 'inline-block', marginTop: 24,
             color: '#3b82f6', fontWeight: 600, textDecoration: 'none',
-          }}>← Back to sign in</Link>
+          }}>← Quay lại đăng nhập</Link>
         </div>
       </div>
     )
@@ -99,8 +118,8 @@ export default function SignupPage() {
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             margin: '0 auto 12px', fontSize: 24,
           }}>📚</div>
-          <h1 style={{ fontSize: 26, fontWeight: 700, color: '#1e2a3a', margin: 0 }}>Create account</h1>
-          <p style={{ color: '#64748b', fontSize: 14, marginTop: 4 }}>Join Tutor Hub today</p>
+          <h1 style={{ fontSize: 26, fontWeight: 700, color: '#1e2a3a', margin: 0 }}>Tạo tài khoản</h1>
+          <p style={{ color: '#64748b', fontSize: 14, marginTop: 4 }}>Tham gia Tutor Hub ngay hôm nay</p>
         </div>
 
         <button onClick={handleGoogleSignup} style={{
@@ -120,7 +139,7 @@ export default function SignupPage() {
             <path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"/>
             <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"/>
           </svg>
-          Sign up with Google
+          Đăng ký với Google
         </button>
 
         <div style={{
@@ -128,7 +147,7 @@ export default function SignupPage() {
           color: '#94a3b8', fontSize: 13,
         }}>
           <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
-          or with email
+          hoặc bằng email
           <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
         </div>
 
@@ -141,9 +160,9 @@ export default function SignupPage() {
           )}
 
           {[
-            { label: 'Full name', value: name, setter: setName, type: 'text', placeholder: 'Jane Smith' },
-            { label: 'Email address', value: email, setter: setEmail, type: 'email', placeholder: 'you@example.com' },
-            { label: 'Password', value: password, setter: setPassword, type: 'password', placeholder: '••••••••' },
+            { label: 'Họ và tên', value: name, setter: setName, type: 'text', placeholder: 'Nguyễn Văn A' },
+            { label: 'Địa chỉ email', value: email, setter: setEmail, type: 'email', placeholder: 'ban@example.com' },
+            { label: 'Mật khẩu', value: password, setter: setPassword, type: 'password', placeholder: '••••••••' },
           ].map(({ label, value, setter, type, placeholder }) => (
             <div key={label} style={{ marginBottom: 16 }}>
               <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>
@@ -168,23 +187,23 @@ export default function SignupPage() {
 
           <div style={{ marginBottom: 22 }}>
             <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>
-              I am requesting access as… <span style={{ fontWeight: 400, color: '#94a3b8' }}>(admin will approve)</span>
+              Tôi muốn tham gia với vai trò… <span style={{ fontWeight: 400, color: '#94a3b8' }}>(quản trị viên sẽ duyệt)</span>
             </label>
             <div style={{ display: 'flex', gap: 8 }}>
               {ROLES.map(r => (
                 <button
-                  key={r}
+                  key={r.value}
                   type="button"
-                  onClick={() => setRole(r)}
+                  onClick={() => setRole(r.value)}
                   style={{
                     flex: 1, padding: '9px 4px',
-                    border: `1.5px solid ${role === r ? '#3b82f6' : '#e2e8f0'}`,
-                    borderRadius: 8, background: role === r ? '#eff6ff' : '#fff',
-                    color: role === r ? '#1d4ed8' : '#374151',
+                    border: `1.5px solid ${role === r.value ? '#3b82f6' : '#e2e8f0'}`,
+                    borderRadius: 8, background: role === r.value ? '#eff6ff' : '#fff',
+                    color: role === r.value ? '#1d4ed8' : '#374151',
                     fontSize: 13, fontWeight: 600, cursor: 'pointer',
                     transition: 'all 0.15s',
                   }}
-                >{r}</button>
+                >{r.label}</button>
               ))}
             </div>
           </div>
@@ -199,13 +218,13 @@ export default function SignupPage() {
               fontSize: 15, fontWeight: 700,
               cursor: loading ? 'not-allowed' : 'pointer',
             }}
-          >{loading ? 'Creating account…' : 'Create Account'}</button>
+          >{loading ? 'Đang tạo tài khoản…' : 'Tạo tài khoản'}</button>
         </form>
 
         <p style={{ textAlign: 'center', marginTop: 20, fontSize: 14, color: '#64748b' }}>
-          Already have an account?{' '}
+          Đã có tài khoản?{' '}
           <Link href="/login" style={{ color: '#3b82f6', fontWeight: 600, textDecoration: 'none' }}>
-            Sign in
+            Đăng nhập
           </Link>
         </p>
       </div>

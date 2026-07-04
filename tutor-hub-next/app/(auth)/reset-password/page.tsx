@@ -13,14 +13,41 @@ export default function ResetPasswordPage() {
   const router = useRouter()
   const supabase = createClient()
 
+  const [ready, setReady] = useState(false)
+
   useEffect(() => {
-    // Check if recovery session is active (from URL hash)
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      // In Supabase, if the user clicked the reset password link, they are automatically logged in temporarily
-      if (!session) {
-        setError('Liên kết đặt lại mật khẩu không hợp lệ hoặc đã hết hạn. Vui lòng gửi lại yêu cầu.')
+    let resolved = false
+
+    // Recovery session có thể tới theo 2 cách:
+    //  1. Qua /auth/callback (server đã đổi code → set cookie) → getSession() có ngay.
+    //  2. Client tự exchange ?code= / hash → phát sự kiện PASSWORD_RECOVERY (bất đồng bộ).
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session || event === 'PASSWORD_RECOVERY') {
+        resolved = true
+        setReady(true)
+        setError('')
       }
     })
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        resolved = true
+        setReady(true)
+      }
+    })
+
+    // Chỉ báo lỗi nếu sau một nhịp vẫn chưa có session nào — tránh false "link hết hạn"
+    // do race với việc exchange code.
+    const timer = setTimeout(() => {
+      if (!resolved) {
+        setError('Liên kết đặt lại mật khẩu không hợp lệ hoặc đã hết hạn. Vui lòng gửi lại yêu cầu.')
+      }
+    }, 2500)
+
+    return () => {
+      subscription.unsubscribe()
+      clearTimeout(timer)
+    }
   }, [supabase])
 
   async function handleReset(e: React.FormEvent) {
@@ -139,15 +166,15 @@ export default function ResetPasswordPage() {
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || !ready}
             style={{
               width: '100%', padding: '12px 0',
-              background: loading ? '#93c5fd' : 'linear-gradient(135deg, #3b82f6, #2563eb)',
+              background: (loading || !ready) ? '#93c5fd' : 'linear-gradient(135deg, #3b82f6, #2563eb)',
               color: '#fff', border: 'none', borderRadius: 10,
-              fontSize: 15, fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer',
+              fontSize: 15, fontWeight: 700, cursor: (loading || !ready) ? 'not-allowed' : 'pointer',
             }}
           >
-            {loading ? 'Đang lưu…' : 'Cập nhật mật khẩu'}
+            {loading ? 'Đang lưu…' : !ready ? 'Đang xác thực liên kết…' : 'Cập nhật mật khẩu'}
           </button>
         </form>
       </div>
