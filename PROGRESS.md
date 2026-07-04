@@ -107,6 +107,11 @@ Sắp theo mức ưu tiên. P0 = rào cản lớn nhất khiến người mới 
 - [x] **Sidebar trắng** + item active pill indigo + thanh accent trái; nền **lavender**;
       primary **indigo #4f46e5**; radius 16; shadow mềm. Token hoá `--nav-active-*`, `--brand-grad`
       để đồng bộ light/dark. Đã test 2 chế độ, 0 lỗi console.
+- [x] **Font thống nhất toàn app** — `next/font` tự host Be Vietnam Pro trong `layout.tsx`
+      (subset vi, swap) → login/signup/reset/landing/dashboard đều dùng chung; gỡ hết `Segoe UI`.
+- [x] **Tối ưu máy yếu** — thêm `@media prefers-reduced-motion` (globals.css + app iframe),
+      bỏ `backdrop-filter blur` ở modal overlay. Chủ ý KHÔNG dùng glassmorphism/blur như
+      ảnh tham chiếu 2-4 (hại GPU máy yếu); giữ hướng phẳng/sạch.
 - [ ] **Thay emoji icon → bộ SVG (Lucide)** ở sidebar/nav/nút. Đây là "AI tell" còn lại lớn nhất;
       skill ui-ux-pro-max cấm emoji làm icon. Việc vừa, nên làm để giống tham chiếu 100%.
 
