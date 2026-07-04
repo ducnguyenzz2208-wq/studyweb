@@ -102,6 +102,13 @@ Sắp theo mức ưu tiên. P0 = rào cản lớn nhất khiến người mới 
       ngang mượt (`min-width` + `-webkit-overflow-scrolling`), vùng chạm lớn hơn, input 16px
       chống zoom nhảy iOS, quick-actions 2 cột. (Drawer sidebar + overlay đã có sẵn từ trước.)
 
+## Giao diện — Profile panel + Settings ✅ ĐÃ LÀM (refine "real product")
+- [x] **Profile panel**: header `--brand-grad` (bỏ navy cũ), avatar/badge gọn, activity-icon +
+      lang-btn active dùng `--nav-active-bg`; nút "Sửa thông tin" emoji→SVG.
+- [x] **Settings**: section header overline in hoa (đồng bộ sidebar/profile), mật độ chặt hơn,
+      input trắng + focus ring indigo + read-only distinction (Vai trò/Email muted), màu nhấn
+      indigo-led, Việt hoá toàn bộ nhãn còn lệch EN. UI-only, không đụng logic.
+
 ## Giao diện — login + landing sáng/glass ✅ ĐÃ LÀM
 - [x] **Login** build lại theo phong cách sáng (Ebolt): nền gradient sky/lavender + thẻ
       liquid-glass, logo SVG mũ tốt nghiệp, nút hiện/ẩn MK, thẻ nổi trang trí, tông giáo dục.
