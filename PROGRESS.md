@@ -134,8 +134,11 @@ Sắp theo mức ưu tiên. P0 = rào cản lớn nhất khiến người mới 
 - [x] **Tối ưu máy yếu** — thêm `@media prefers-reduced-motion` (globals.css + app iframe),
       bỏ `backdrop-filter blur` ở modal overlay. Chủ ý KHÔNG dùng glassmorphism/blur như
       ảnh tham chiếu 2-4 (hại GPU máy yếu); giữ hướng phẳng/sạch.
-- [ ] **Thay emoji icon → bộ SVG (Lucide)** ở sidebar/nav/nút. Đây là "AI tell" còn lại lớn nhất;
-      skill ui-ux-pro-max cấm emoji làm icon. Việc vừa, nên làm để giống tham chiếu 100%.
+- [x] **Thay emoji icon → bộ SVG (Lucide)** ✅ — bộ dùng chung `SVG_ICONS`/`svgIcon()` trong
+      `05-navigation.js`. Đã áp: sidebar nav (17 mục), quick-actions (chip bo tròn indigo),
+      topbar (hamburger/help/theme/notif) + `aria-label`, theme moon↔sun, modal Help, checklist.
+      Còn sót emoji "nội dung" (không phải icon cấu trúc): 👋 welcome, icon activity-log lấy từ DB,
+      nút demo offline — để sau, ưu tiên thấp.
 
 ## Làm tiếp để web tốt hơn (đề xuất, theo giá trị/công sức)
 
@@ -158,7 +161,8 @@ Sắp theo mức ưu tiên. P0 = rào cản lớn nhất khiến người mới 
 ### Di động & khả năng tiếp cận
 - [x] **Responsive cho bảng lớn** — đã cho cuộn ngang mượt trên mobile (đợt gần nhất).
 - [ ] **Dạng thẻ thay bảng trên mobile** cho Students/Payments (cuộn ngang tạm ổn, thẻ sẽ đẹp hơn).
-- [ ] **A11y**: `aria-label` cho nút icon (❓🔔🌙), bẫy focus trong modal, kiểm tra tương phản dark mode.
+- [x] **A11y (một phần)**: đã thêm `aria-label` cho nút icon topbar (help/theme/notif/hamburger).
+- [ ] **A11y (còn lại)**: bẫy focus trong modal, kiểm tra tương phản dark mode.
 
 ### Tính năng nâng cao (khi cần)
 - [ ] **Thông báo realtime** (Supabase Realtime) thay vì phải bấm 🔔 tải lại.
