@@ -129,6 +129,12 @@ Sắp theo mức ưu tiên. P0 = rào cản lớn nhất khiến người mới 
 - Trước khi bắt đầu phiên mới: đọc file này trước, không cần kể lại từ đầu.
 
 ## Schema / quyết định kỹ thuật
+- **Iframe init (QUAN TRỌNG)**: `dashboard/page.tsx` gửi `TUTOR_HUB_INIT` qua sự kiện
+  `onLoad` của iframe, KHÔNG đọc `contentDocument.readyState`. Iframe render có điều kiện
+  (chỉ khi role hợp lệ) nên lúc vừa mount readyState='complete' là của `about:blank` —
+  nếu post lúc đó message rơi vào trang blank và mất → app hiện MÀN TRẮNG. Đừng đổi lại.
+- Middleware coi `/` là route công khai (landing page hiện cho người chưa đăng nhập);
+  người đã đăng nhập vào `/` sẽ được `app/page.tsx` chuyển tới `/dashboard`.
 - Đăng nhập THẬT chỉ ở trang Next.js `/login` (Supabase Auth). Form login TRONG
   `tutor-hub-app.html` (`tryLogin`/`quickLogin`) là MOCK — không tạo session Supabase, nên
   "Đổi mật khẩu" chỉ hoạt động khi vào qua `/dashboard`.
