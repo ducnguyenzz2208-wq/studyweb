@@ -21,3 +21,53 @@ body {
     scroll-behavior: auto !important;
   }
 }
+
+/* ===== Giao diện sáng cho login/giới thiệu ===== */
+/* Nền sáng bằng gradient (rẻ, không blur toàn màn hình) */
+.bright-bg {
+  position: relative;
+  min-height: 100dvh;
+  overflow: hidden;
+  background:
+    radial-gradient(1100px 560px at 12% -5%, #d8e6ff 0%, transparent 55%),
+    radial-gradient(900px 520px at 105% 110%, #ece7ff 0%, transparent 52%),
+    linear-gradient(160deg, #eff4ff 0%, #f6f7ff 48%, #eef1fb 100%);
+}
+/* Liquid glass: chỉ áp cho THẺ nhỏ (rẻ). Máy không hỗ trợ backdrop-filter → nền đặc */
+.glass {
+  background: rgba(255, 255, 255, 0.68);
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 20px 60px rgba(79, 70, 229, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.75);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+  backdrop-filter: blur(16px) saturate(150%);
+}
+@supports not ((backdrop-filter: blur(4px)) or (-webkit-backdrop-filter: blur(4px))) {
+  .glass { background: rgba(255, 255, 255, 0.95); }
+}
+/* Thẻ nổi trang trí (đặc, không blur → nhẹ) */
+.floaty {
+  background: #fff;
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  box-shadow: 0 12px 30px rgba(30, 41, 59, 0.1);
+  border-radius: 16px;
+}
+.field {
+  width: 100%;
+  padding: 11px 14px;
+  font-size: 14px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  outline: none;
+  background: rgba(255, 255, 255, 0.7);
+  box-sizing: border-box;
+  transition: border-color .15s, box-shadow .15s;
+  font-family: inherit;
+  color: #1e2437;
+}
+.field:focus { border-color: #4f46e5; box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15); }
+
+/* Thẻ nổi trang trí: ẩn trên màn nhỏ, float nhẹ (transform → rẻ, 60fps) */
+.auth-chip { animation: chipFloat 6s ease-in-out infinite; will-change: transform; }
+.auth-chip:nth-of-type(2) { animation-delay: -3s; }
+@keyframes chipFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+@media (max-width: 900px) { .auth-chip { display: none !important; } }
