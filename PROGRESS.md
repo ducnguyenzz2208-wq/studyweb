@@ -102,6 +102,14 @@ Sắp theo mức ưu tiên. P0 = rào cản lớn nhất khiến người mới 
       ngang mượt (`min-width` + `-webkit-overflow-scrolling`), vùng chạm lớn hơn, input 16px
       chống zoom nhảy iOS, quick-actions 2 cột. (Drawer sidebar + overlay đã có sẵn từ trước.)
 
+## Giao diện ✅ ĐÃ LÀM (theme giống tham chiếu Hireism)
+- [x] **Font** Segoe UI → **Be Vietnam Pro** (dấu tiếng Việt đẹp, bớt generic/AI).
+- [x] **Sidebar trắng** + item active pill indigo + thanh accent trái; nền **lavender**;
+      primary **indigo #4f46e5**; radius 16; shadow mềm. Token hoá `--nav-active-*`, `--brand-grad`
+      để đồng bộ light/dark. Đã test 2 chế độ, 0 lỗi console.
+- [ ] **Thay emoji icon → bộ SVG (Lucide)** ở sidebar/nav/nút. Đây là "AI tell" còn lại lớn nhất;
+      skill ui-ux-pro-max cấm emoji làm icon. Việc vừa, nên làm để giống tham chiếu 100%.
+
 ## Làm tiếp để web tốt hơn (đề xuất, theo giá trị/công sức)
 
 ### Trải nghiệm người mới (nối tiếp P1/P2)
