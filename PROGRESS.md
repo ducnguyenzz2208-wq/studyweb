@@ -110,7 +110,12 @@ Sắp theo mức ưu tiên. P0 = rào cản lớn nhất khiến người mới 
 - [x] **Glass tối ưu mọi máy**: `.glass`/`.bright-bg`/`.floaty`/`.field` trong globals.css —
       backdrop-filter CHỈ ở vài thẻ nhỏ tĩnh + `@supports` fallback nền đặc; nền lớn = gradient
       (không blur); float chip = transform + guard reduced-motion; chip ẩn <900px.
-- [ ] **Áp cùng phong cách cho signup + reset-password** (2 trang này vẫn nền tối cũ → lệch tông).
+- [x] **signup + reset-password** đã build lại theo phong cách sáng/glass (đồng bộ login),
+      bỏ emoji → icon SVG.
+- [x] **Glass bên trong dashboard**: modal dùng liquid-glass (overlay tĩnh → rẻ) + `@supports`
+      fallback nền đặc + `--modal-bg` theme-aware; welcome banner indigo + sheen; card inset highlight.
+- [x] **Bỏ số liệu ảo ở landing**: preview còn 2 thẻ Giáo viên/Học sinh để TRỐNG (—) đến khi có
+      dữ liệu thật; chip nổi bỏ số bịa. (Sau này nối số thật từ DB vào 2 thẻ này.)
 
 ## Giao diện ✅ ĐÃ LÀM (theme giống tham chiếu Hireism)
 - [x] **Font** Segoe UI → **Be Vietnam Pro** (dấu tiếng Việt đẹp, bớt generic/AI).
