@@ -6,7 +6,9 @@
 - **Next.js** (`tutor-hub-next/`) lo phần auth thật + khung ngoài:
   - `/login`, `/signup`, `/reset-password`, `/auth/callback` (OAuth + PKCE), middleware bảo vệ route.
   - `/dashboard` render **iframe** trỏ tới `public/tutor-hub-app.html`, truyền session (access/refresh token) xuống qua `postMessage`.
-- **tutor-hub-app.html** là toàn bộ UI ứng dụng (1 file lớn, vanilla JS) — nhận session rồi gọi thẳng Supabase.
+- **tutor-hub-app.html** = HTML khung + CSS (~4000 dòng). Toàn bộ JS đã tách thành
+  **25 module trong `public/js/01-*.js … 25-*.js`**, nạp bằng `<script src>` classic theo
+  đúng thứ tự (xem "Schema / quyết định kỹ thuật"). Nhận session rồi gọi thẳng Supabase.
 - **Supabase**: Auth + Postgres + RLS. 17 migration trong `supabase/migrations/`.
 - Phân quyền theo role: `Teacher`, `Admin`, `Parent`, `Student`, `Pending` (xem `ROLE_SECTIONS`).
 
@@ -110,7 +112,10 @@ Sắp theo mức ưu tiên. P0 = rào cản lớn nhất khiến người mới 
 - [ ] **Loading skeleton** cho các bảng khi `loadDbData()` chưa xong.
 
 ### Chất lượng & độ tin cậy
-- [ ] **Tách `tutor-hub-app.html`** (hiện ~9k dòng) thành module — rất khó bảo trì, dễ vỡ khi sửa.
+- [x] **Tách `tutor-hub-app.html` thành 25 module** (`public/js/`) — Cách A (classic script,
+      giữ global scope). HTML còn ~4000 dòng. Đã test app nạp không lỗi + build pass.
+      Nhân tiện lộ ra & cần dọn: 2 hàm `deleteMaterial` trùng tên (giờ ở `02-db-api.js` dòng
+      ~4 và `24-materials.js` — bản trong 02 là code chết, bị đè).
 - [ ] **Kiểm thử tự động**: thêm test cho luồng auth + vài hàm thuần (avgScore, getGrade…).
 - [ ] **Thay `confirm()`/`alert()` native** bằng modal xác nhận trong app cho đồng nhất giao diện.
 - [ ] **Error boundary + trạng thái rỗng khi RLS/500** thay vì bảng trắng im lặng.
@@ -138,6 +143,14 @@ Sắp theo mức ưu tiên. P0 = rào cản lớn nhất khiến người mới 
 - Trước khi bắt đầu phiên mới: đọc file này trước, không cần kể lại từ đầu.
 
 ## Schema / quyết định kỹ thuật
+- **Cấu trúc JS module (QUAN TRỌNG)**: JS của app nằm ở `public/js/01-*.js … 25-*.js`,
+  nạp bằng `<script src>` **classic (KHÔNG `type="module"`)** theo đúng thứ tự đánh số.
+  Lý do: ~300 hàm gọi qua `onclick="fn()"` viết trong chuỗi HTML → cần global scope.
+  - **Thứ tự nạp là bắt buộc**: `01-core-state` (biến state) phải trước; đừng đảo thứ tự.
+  - Hoisting KHÔNG xuyên file: code chạy ở top-level không được gọi hàm ở file nạp SAU.
+    (Vì vậy khối khôi phục cỡ chữ/dark mode đã dời xuống `25-init.js`.)
+  - **`proxy.ts` phải loại trừ `js/`** khỏi middleware auth; nếu không, mỗi `<script src>`
+    bị redirect sang `/login` → app trắng/thiếu hàm. Đừng bỏ mục `js/` trong matcher.
 - **Iframe init (QUAN TRỌNG)**: `dashboard/page.tsx` gửi `TUTOR_HUB_INIT` qua sự kiện
   `onLoad` của iframe, KHÔNG đọc `contentDocument.readyState`. Iframe render có điều kiện
   (chỉ khi role hợp lệ) nên lúc vừa mount readyState='complete' là của `about:blank` —
