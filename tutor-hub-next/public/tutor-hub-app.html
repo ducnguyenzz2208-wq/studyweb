@@ -1011,6 +1011,64 @@
       }
     }
 
+    /* ── Tối ưu mobile bổ sung ─────────────────────────────────── */
+    @media (max-width: 640px) {
+      /* Topbar đỡ chật: đổi ngôn ngữ & Edit Mode chuyển vào Cài đặt */
+      .lang-switch,
+      .edit-mode-btn {
+        display: none !important;
+      }
+
+      .topbar-title {
+        font-size: 17px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 42vw;
+      }
+
+      /* Bảng: cuộn ngang mượt, không bị bóp méo cột */
+      .card {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      table {
+        min-width: 560px;
+      }
+
+      /* Vùng chạm dễ hơn cho ngón tay */
+      .nav-item {
+        padding-top: 12px;
+        padding-bottom: 12px;
+      }
+
+      .btn {
+        min-height: 40px;
+      }
+
+      /* Quick actions & KPI xếp gọn */
+      .quick-actions {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      /* Modal & overlay bận rộn vừa màn nhỏ */
+      .modal {
+        width: 94%;
+        max-height: 90vh;
+        overflow-y: auto;
+      }
+    }
+
+    /* Không cho zoom nhảy khi focus input trên iOS (font < 16px) */
+    @media (max-width: 640px) {
+      input,
+      select,
+      textarea {
+        font-size: 16px;
+      }
+    }
+
     /* PROGRESS RING */
     .progress-ring {
       position: relative;
@@ -5909,19 +5967,21 @@
         if (fileUrl) payload.file_url = fileUrl;
         _db.from('assignment_submissions').upsert(payload, { onConflict: 'assignment_id,student_id' }).select()
           .then(function (r) {
+            hideBusy();
             if (r.error) { showToast('Lỗi nộp bài: ' + r.error.message, 'error'); return; }
             showToast('Đã nộp bài.', 'success');
             reloadSubmissions();
           });
       }
+      showBusy(file ? 'Đang nộp bài…' : 'Đang nộp…');
       if (file) {
         var safe = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
         var path = 'assignments/' + assignmentId + '/' + _dbUserId + '_' + Date.now() + '_' + safe;
         _db.storage.from('materials').upload(path, file, { upsert: true }).then(function (r) {
-          if (r.error) { showToast('Lỗi tải tệp: ' + r.error.message, 'error'); return; }
+          if (r.error) { hideBusy(); showToast('Lỗi tải tệp: ' + r.error.message, 'error'); return; }
           var url = _db.storage.from('materials').getPublicUrl(path).data.publicUrl;
           _save(url);
-        });
+        }).catch(function (e) { hideBusy(); showToast('Lỗi mạng khi tải tệp. Thử lại.', 'error'); });
       } else { _save(null); }
     }
 
@@ -6742,6 +6802,39 @@
     function closeModal() {
       document.getElementById('modalOverlay').classList.remove('open');
       document.body.style.overflow = '';
+    }
+
+    // ── BUSY OVERLAY (phản hồi khi tải lên / lưu) ─────────────────
+    // Dùng chung cho cả modal lẫn thao tác inline. Có timeout an toàn 30s
+    // để overlay không bao giờ kẹt nếu lỡ thiếu một nhánh hideBusy().
+    var _busyTimer = null;
+    function showBusy(msg) {
+      var el = document.getElementById('busyOverlay');
+      if (!el) {
+        var st = document.createElement('style');
+        st.textContent = '@keyframes thspin{to{transform:rotate(360deg)}}' +
+          '.th-spinner{width:22px;height:22px;border:3px solid rgba(59,130,246,0.25);' +
+          'border-top-color:#3b82f6;border-radius:50%;animation:thspin .7s linear infinite;}';
+        document.head.appendChild(st);
+        el = document.createElement('div');
+        el.id = 'busyOverlay';
+        el.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;' +
+          'justify-content:center;background:rgba(15,22,35,0.45);';
+        el.innerHTML = '<div style="background:var(--card,#fff);padding:18px 24px;border-radius:14px;' +
+          'display:flex;align-items:center;gap:14px;box-shadow:0 20px 50px rgba(0,0,0,0.3);">' +
+          '<span class="th-spinner"></span>' +
+          '<span id="busyMsg" style="font-weight:600;color:var(--text,#1e2a3a);"></span></div>';
+        document.body.appendChild(el);
+      }
+      document.getElementById('busyMsg').textContent = msg || 'Đang xử lý…';
+      el.style.display = 'flex';
+      if (_busyTimer) clearTimeout(_busyTimer);
+      _busyTimer = setTimeout(hideBusy, 30000);
+    }
+    function hideBusy() {
+      var el = document.getElementById('busyOverlay');
+      if (el) el.style.display = 'none';
+      if (_busyTimer) { clearTimeout(_busyTimer); _busyTimer = null; }
     }
 
     // ============================================================
@@ -9254,6 +9347,7 @@
       var description = document.getElementById('mMatDesc') ? document.getElementById('mMatDesc').value.trim() : '';
 
       function _doSave(fileUrl, fileName, filePath) {
+        hideBusy();
         var existingMat = id ? materials.find(function (x) { return x.id === id; }) : null;
         var resolvedUrl = fileUrl || (existingMat && existingMat.downloadUrl) || '';
         var resolvedName = fileName || (existingMat && existingMat.fileName) || '';
@@ -9298,12 +9392,14 @@
       if (file && _db) {
         var safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
         var storagePath = (_dbUserId || 'anon') + '/' + Date.now() + '_' + safeName;
+        showBusy('Đang tải lên tài liệu…');
         _db.storage.from('materials').upload(storagePath, file, { upsert: true })
           .then(function (r) {
-            if (r.error) { console.error('Storage upload failed:', r.error); showToast('Lỗi tải file: ' + r.error.message, 'error'); return; }
+            if (r.error) { hideBusy(); console.error('Storage upload failed:', r.error); showToast('Lỗi tải file: ' + r.error.message, 'error'); return; }
             var pubUrl = _db.storage.from('materials').getPublicUrl(storagePath).data.publicUrl;
             _doSave(pubUrl, file.name, storagePath);
-          });
+          })
+          .catch(function (e) { hideBusy(); showToast('Lỗi mạng khi tải tệp. Thử lại.', 'error'); });
       } else {
         _doSave(null, null, null);
       }
