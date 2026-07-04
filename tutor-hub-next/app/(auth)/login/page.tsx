@@ -71,12 +71,9 @@ export default function LoginPage() {
       {/* Thẻ nổi trang trí — chỉ hiện desktop, nền đặc nên rất nhẹ */}
       <div className="floaty auth-chip" style={{ position: 'absolute', left: '14%', top: '24%', padding: '12px 16px', display: 'flex', gap: 10, alignItems: 'center' }}>
         <span style={{ width: 34, height: 34, borderRadius: 10, background: '#eef2ff', display: 'grid', placeItems: 'center', color: '#4f46e5' }} aria-hidden>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
         </span>
-        <div>
-          <div style={{ fontSize: 15, fontWeight: 700, color: '#1e2437', lineHeight: 1 }}>1.200+</div>
-          <div style={{ fontSize: 12, color: '#64748b' }}>học sinh đang học</div>
-        </div>
+        <div style={{ fontSize: 13.5, fontWeight: 600, color: '#334155' }}>Quản lý học sinh &amp; lớp</div>
       </div>
       <div className="floaty auth-chip" style={{ position: 'absolute', right: '13%', bottom: '22%', padding: '12px 16px', display: 'flex', gap: 10, alignItems: 'center' }}>
         <span style={{ width: 34, height: 34, borderRadius: 10, background: '#ecfdf5', display: 'grid', placeItems: 'center', color: '#059669' }} aria-hidden>

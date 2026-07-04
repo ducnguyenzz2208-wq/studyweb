@@ -43,11 +43,11 @@ export default async function Home() {
         <section style={{ textAlign: 'center', padding: '52px 0 40px', position: 'relative' }}>
           <div className="floaty auth-chip" style={{ position: 'absolute', left: 8, top: 70, padding: '10px 14px', display: 'flex', gap: 8, alignItems: 'center', textAlign: 'left' }}>
             <span style={{ width: 30, height: 30, borderRadius: 8, background: '#eef2ff', color: '#4f46e5', display: 'grid', placeItems: 'center' }} aria-hidden>{ic('<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>')}</span>
-            <div><div style={{ fontWeight: 700, fontSize: 15, lineHeight: 1 }}>1.200+</div><div style={{ fontSize: 12, color: '#64748b' }}>học sinh</div></div>
+            <div style={{ fontWeight: 600, fontSize: 13.5, color: '#334155' }}>Quản lý học sinh</div>
           </div>
           <div className="floaty auth-chip" style={{ position: 'absolute', right: 8, top: 130, padding: '10px 14px', display: 'flex', gap: 8, alignItems: 'center', textAlign: 'left' }}>
-            <span style={{ width: 30, height: 30, borderRadius: 8, background: '#ecfdf5', color: '#059669', display: 'grid', placeItems: 'center' }} aria-hidden>{ic('<path d="M22 12A10 10 0 1 1 12 2"/><path d="m9 11 3 3L22 4"/>')}</span>
-            <div><div style={{ fontWeight: 700, fontSize: 15, lineHeight: 1 }}>98%</div><div style={{ fontSize: 12, color: '#64748b' }}>chuyên cần</div></div>
+            <span style={{ width: 30, height: 30, borderRadius: 8, background: '#ecfdf5', color: '#059669', display: 'grid', placeItems: 'center' }} aria-hidden>{ic('<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="m9 16 2 2 4-4"/>')}</span>
+            <div style={{ fontWeight: 600, fontSize: 13.5, color: '#334155' }}>Điểm danh tự động</div>
           </div>
 
           <div style={{ display: 'inline-block', padding: '6px 14px', borderRadius: 999, background: 'rgba(79,70,229,0.1)', color: '#4338ca', fontSize: 13, fontWeight: 600, marginBottom: 20 }}>Nền tảng quản lý trung tâm gia sư</div>
@@ -64,18 +64,19 @@ export default async function Home() {
           </div>
         </section>
 
-        {/* Preview dashboard (glass, 1 thẻ nên nhẹ) */}
+        {/* Preview dashboard (glass, 1 thẻ nên nhẹ) — số liệu để trống đến khi có dữ liệu thật */}
         <section className="glass" style={{ borderRadius: 20, padding: 18, marginBottom: 56 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
             {[
-              { k: 'Học sinh', v: '128', c: '#4f46e5' },
-              { k: 'Lớp đang mở', v: '12', c: '#0891b2' },
-              { k: 'Điểm TB', v: '8.1', c: '#059669' },
-              { k: 'Học phí tháng', v: '96%', c: '#d97706' },
+              { k: 'Giáo viên', c: '#4f46e5', d: '<path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/>' },
+              { k: 'Học sinh', c: '#0891b2', d: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>' },
             ].map(s => (
-              <div key={s.k} style={{ background: '#fff', borderRadius: 14, padding: '16px 18px', border: '1px solid #eef1f7' }}>
-                <div style={{ fontSize: 13, color: '#64748b', marginBottom: 6 }}>{s.k}</div>
-                <div style={{ fontSize: 26, fontWeight: 700, color: s.c }}>{s.v}</div>
+              <div key={s.k} style={{ background: '#fff', borderRadius: 14, padding: '16px 18px', border: '1px solid #eef1f7', display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span style={{ width: 40, height: 40, borderRadius: 11, background: '#eef2ff', color: s.c, display: 'grid', placeItems: 'center' }} aria-hidden>{ic(s.d)}</span>
+                <div>
+                  <div style={{ fontSize: 13, color: '#64748b' }}>{s.k}</div>
+                  <div style={{ fontSize: 24, fontWeight: 700, color: '#cbd5e1', letterSpacing: '0.05em' }}>—</div>
+                </div>
               </div>
             ))}
           </div>

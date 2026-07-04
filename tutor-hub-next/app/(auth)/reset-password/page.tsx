@@ -81,99 +81,42 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: 'linear-gradient(135deg, #1e2a3a, #0f1623)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      fontFamily: 'var(--font-sans)',
-    }}>
-      <div style={{
-        background: '#fff',
-        borderRadius: 20,
-        padding: '40px',
-        width: '100%',
-        maxWidth: 420,
-        boxShadow: '0 25px 60px rgba(0,0,0,0.4)',
-      }}>
-        {/* Logo */}
-        <div style={{ textAlign: 'center', marginBottom: 28 }}>
+    <div className="bright-bg" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, fontFamily: 'var(--font-sans)' }}>
+      <div className="glass" style={{ borderRadius: 24, padding: 40, width: '100%', maxWidth: 420 }}>
+        <div style={{ textAlign: 'center', marginBottom: 26 }}>
           <div style={{
-            width: 56, height: 56,
-            background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)',
-            borderRadius: 16,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            margin: '0 auto 12px',
-            fontSize: 24,
-          }}>📚</div>
-          <h1 style={{ fontSize: 26, fontWeight: 700, color: '#1e2a3a', margin: 0 }}>Tutor Hub</h1>
-          <p style={{ color: '#64748b', fontSize: 14, marginTop: 4 }}>Đặt lại mật khẩu mới</p>
+            width: 56, height: 56, background: 'linear-gradient(135deg, #4f46e5, #7c3aed)',
+            borderRadius: 16, display: 'grid', placeItems: 'center', margin: '0 auto 14px',
+            color: '#fff', boxShadow: '0 8px 20px rgba(79,70,229,0.32)',
+          }} aria-hidden>
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          </div>
+          <h1 style={{ fontSize: 25, fontWeight: 700, color: '#1e2437', margin: 0, letterSpacing: '-0.02em' }}>Đặt lại mật khẩu</h1>
+          <p style={{ color: '#64748b', fontSize: 14, marginTop: 6 }}>Tạo mật khẩu mới cho tài khoản của bạn.</p>
         </div>
 
         {error && (
-          <div style={{
-            background: '#fee2e2', border: '1px solid #fca5a5',
-            borderRadius: 8, padding: '10px 14px',
-            color: '#dc2626', fontSize: 13, marginBottom: 16,
-          }}>{error}</div>
+          <div role="alert" style={{ background: '#fee2e2', border: '1px solid #fca5a5', borderRadius: 10, padding: '10px 14px', color: '#b91c1c', fontSize: 13, marginBottom: 14 }}>{error}</div>
         )}
-
         {success && (
-          <div style={{
-            background: '#ecfdf5', border: '1px solid #a7f3d0',
-            borderRadius: 8, padding: '10px 14px',
-            color: '#047857', fontSize: 13, marginBottom: 16,
-          }}>{success}</div>
+          <div style={{ background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: 10, padding: '10px 14px', color: '#047857', fontSize: 13, marginBottom: 14 }}>{success}</div>
         )}
 
         <form onSubmit={handleReset}>
           <div style={{ marginBottom: 16 }}>
-            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>
-              Mật khẩu mới
-            </label>
-            <input
-              type="password"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              required
-              placeholder="••••••••"
-              style={{
-                width: '100%', padding: '10px 14px',
-                border: '1.5px solid #e2e8f0', borderRadius: 10,
-                fontSize: 14, outline: 'none', boxSizing: 'border-box',
-              }}
-            />
+            <label htmlFor="np" style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Mật khẩu mới</label>
+            <input id="np" type="password" autoComplete="new-password" value={password} onChange={e => setPassword(e.target.value)} required placeholder="••••••••" className="field" />
           </div>
-
-          <div style={{ marginBottom: 22 }}>
-            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>
-              Xác nhận mật khẩu mới
-            </label>
-            <input
-              type="password"
-              value={confirmPassword}
-              onChange={e => setConfirmPassword(e.target.value)}
-              required
-              placeholder="••••••••"
-              style={{
-                width: '100%', padding: '10px 14px',
-                border: '1.5px solid #e2e8f0', borderRadius: 10,
-                fontSize: 14, outline: 'none', boxSizing: 'border-box',
-              }}
-            />
+          <div style={{ marginBottom: 20 }}>
+            <label htmlFor="cp" style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Xác nhận mật khẩu mới</label>
+            <input id="cp" type="password" autoComplete="new-password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required placeholder="••••••••" className="field" />
           </div>
-
-          <button
-            type="submit"
-            disabled={loading || !ready}
-            style={{
-              width: '100%', padding: '12px 0',
-              background: (loading || !ready) ? '#93c5fd' : 'linear-gradient(135deg, #3b82f6, #2563eb)',
-              color: '#fff', border: 'none', borderRadius: 10,
-              fontSize: 15, fontWeight: 700, cursor: (loading || !ready) ? 'not-allowed' : 'pointer',
-            }}
-          >
+          <button type="submit" disabled={loading || !ready} style={{
+            width: '100%', padding: '13px 0',
+            background: (loading || !ready) ? '#a5b4fc' : 'linear-gradient(135deg, #4f46e5, #6d28d9)',
+            color: '#fff', border: 'none', borderRadius: 12, fontSize: 15, fontWeight: 600,
+            cursor: (loading || !ready) ? 'not-allowed' : 'pointer', boxShadow: '0 8px 20px rgba(79,70,229,0.28)',
+          }}>
             {loading ? 'Đang lưu…' : !ready ? 'Đang xác thực liên kết…' : 'Cập nhật mật khẩu'}
           </button>
         </form>
