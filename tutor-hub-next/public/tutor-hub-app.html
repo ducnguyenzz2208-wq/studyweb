@@ -17,31 +17,41 @@
     };
   </script>
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap');
+
     :root {
-      --bg: #f0f4f8;
-      --sidebar-bg: #1e2a3a;
-      --sidebar-text: #a8b8cc;
-      --sidebar-active: #3b82f6;
+      /* Nền lavender + sidebar trắng theo tham chiếu Hireism */
+      --bg: #eef1fb;
+      --sidebar-bg: #ffffff;
+      --sidebar-text: #64748b;
+      --sidebar-active: #4f46e5;
+      --nav-active-bg: #eef2ff;
+      --nav-active-fg: #4f46e5;
+      --nav-hover-bg: #f1f5f9;
       --card-bg: #ffffff;
-      --text: #1a2332;
+      --text: #1e2437;
       --text-muted: #6b7280;
-      --border: #e2e8f0;
-      --accent: #3b82f6;
+      --border: #e6e8f0;
+      --accent: #4f46e5;
       --accent2: #8b5cf6;
       --accent3: #10b981;
       --accent4: #f59e0b;
       --danger: #ef4444;
       --success: #10b981;
       --warning: #f59e0b;
-      --shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.05);
-      --radius: 12px;
+      --brand-grad: linear-gradient(135deg, #4f46e5, #7c3aed);
+      --shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 10px 28px rgba(79, 70, 229, 0.07);
+      --radius: 16px;
       --sidebar-w: 240px;
     }
 
     [data-theme="dark"] {
       --bg: #0f1623;
-      --sidebar-bg: #0a0f1a;
+      --sidebar-bg: #131a2a;
       --sidebar-text: #8899aa;
+      --nav-active-bg: rgba(99, 102, 241, 0.18);
+      --nav-active-fg: #a5b4fc;
+      --nav-hover-bg: rgba(255, 255, 255, 0.06);
       --card-bg: #1a2235;
       --text: #e2e8f0;
       --text-muted: #8899aa;
@@ -56,8 +66,11 @@
     }
 
     body {
-      font-family: 'Segoe UI', system-ui, sans-serif;
+      font-family: 'Be Vietnam Pro', 'Segoe UI', system-ui, sans-serif;
       background: var(--bg);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      letter-spacing: -0.01em;
       color: var(--text);
       display: flex;
       height: 100vh;
@@ -69,6 +82,7 @@
     #sidebar {
       width: var(--sidebar-w);
       background: var(--sidebar-bg);
+      border-right: 1px solid var(--border);
       display: flex;
       flex-direction: column;
       height: 100vh;
@@ -89,7 +103,7 @@
     .logo-icon {
       width: 36px;
       height: 36px;
-      background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+      background: var(--brand-grad);
       border-radius: 10px;
       display: flex;
       align-items: center;
@@ -98,7 +112,7 @@
     }
 
     .logo-text {
-      color: #fff;
+      color: var(--text);
       font-size: 20px;
       font-weight: 700;
       letter-spacing: -0.5px;
@@ -115,12 +129,13 @@
     }
 
     .nav-item {
+      position: relative;
       display: flex;
       align-items: center;
       gap: 10px;
       padding: 10px 16px;
-      margin: 2px 8px;
-      border-radius: 8px;
+      margin: 2px 10px;
+      border-radius: 10px;
       cursor: pointer;
       color: var(--sidebar-text);
       font-size: 14px;
@@ -130,13 +145,26 @@
     }
 
     .nav-item:hover {
-      background: rgba(255, 255, 255, 0.07);
-      color: #fff;
+      background: var(--nav-hover-bg);
+      color: var(--text);
     }
 
     .nav-item.active {
+      background: var(--nav-active-bg);
+      color: var(--nav-active-fg);
+      font-weight: 600;
+    }
+
+    .nav-item.active::before {
+      content: "";
+      position: absolute;
+      left: -10px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 3px;
+      height: 20px;
+      border-radius: 0 3px 3px 0;
       background: var(--sidebar-active);
-      color: #fff;
     }
 
     .nav-item .nav-icon {
@@ -148,7 +176,7 @@
     .sidebar-footer {
       margin-top: auto;
       padding: 16px;
-      border-top: 1px solid rgba(255, 255, 255, 0.07);
+      border-top: 1px solid var(--border);
     }
 
     .user-badge {
@@ -157,14 +185,14 @@
       gap: 10px;
       padding: 10px;
       border-radius: 10px;
-      background: rgba(255, 255, 255, 0.05);
+      background: var(--nav-hover-bg);
     }
 
     .user-avatar {
       width: 34px;
       height: 34px;
       border-radius: 50%;
-      background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+      background: var(--brand-grad);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -174,7 +202,7 @@
     }
 
     .user-info .user-name {
-      color: #fff;
+      color: var(--text);
       font-size: 13px;
       font-weight: 600;
     }
@@ -235,7 +263,7 @@
     }
 
     .btn-primary:hover {
-      background: #2563eb;
+      background: #4338ca;
     }
 
     .btn-ghost {
