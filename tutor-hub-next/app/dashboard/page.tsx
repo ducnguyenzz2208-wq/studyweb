@@ -98,15 +98,14 @@ export default function DashboardPage() {
     return () => window.removeEventListener('message', handleMessage)
   }, [initApp, router])
 
-  // Gửi payload xuống iframe SAU khi nó đã mount (gate === 'ready').
-  useEffect(() => {
-    if (gate !== 'ready' || !payload) return
-    const frame = iframeRef.current
-    if (!frame) return
-    const send = () => frame.contentWindow?.postMessage(payload, window.location.origin)
-    if (frame.contentDocument?.readyState === 'complete') send()
-    else frame.addEventListener('load', send, { once: true })
-  }, [gate, payload])
+  // Gửi payload xuống iframe khi nó bắn sự kiện onLoad (đã tải xong
+  // tutor-hub-app.html và đăng ký listener). KHÔNG dựa vào readyState:
+  // iframe vừa mount có readyState='complete' cho about:blank ban đầu →
+  // nếu post lúc đó message rơi vào trang blank và mất, app hiện màn trắng.
+  function handleIframeLoad() {
+    if (!payload) return
+    iframeRef.current?.contentWindow?.postMessage(payload, window.location.origin)
+  }
 
   async function handleSignOut() {
     const supabase = createClient()
@@ -132,6 +131,7 @@ export default function DashboardPage() {
     <iframe
       ref={iframeRef}
       src="/tutor-hub-app.html"
+      onLoad={handleIframeLoad}
       style={{ width: '100vw', height: '100vh', border: 'none', display: 'block' }}
       title="Tutor Hub"
     />

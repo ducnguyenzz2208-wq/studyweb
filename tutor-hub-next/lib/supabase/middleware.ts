@@ -26,9 +26,11 @@ export async function updateSession(request: NextRequest) {
 
   const path = request.nextUrl.pathname
   const isAuthRoute = path.startsWith('/login') || path.startsWith('/signup') || path.startsWith('/auth') || path.startsWith('/reset-password')
+  // Trang giới thiệu công khai — người chưa đăng nhập vẫn xem được.
+  const isPublicRoute = isAuthRoute || path === '/'
 
   // Redirect unauthenticated users to login
-  if (!user && !isAuthRoute) {
+  if (!user && !isPublicRoute) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)
