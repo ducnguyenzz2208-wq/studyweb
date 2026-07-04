@@ -122,7 +122,7 @@ export default function DashboardPage() {
       <div style={{
         minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
         background: 'linear-gradient(135deg, #1e2a3a, #0f1623)', color: '#94a3b8',
-        fontFamily: "'Segoe UI', system-ui, sans-serif", fontSize: 15,
+        fontFamily: 'var(--font-sans)', fontSize: 15,
       }}>Đang tải…</div>
     )
   }

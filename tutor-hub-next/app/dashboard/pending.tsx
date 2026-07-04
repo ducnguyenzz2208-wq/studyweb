@@ -16,7 +16,7 @@ export default function PendingApproval({
       minHeight: '100vh',
       background: 'linear-gradient(135deg, #1e2a3a, #0f1623)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontFamily: "'Segoe UI', system-ui, sans-serif", padding: 24,
+      fontFamily: 'var(--font-sans)', padding: 24,
     }}>
       <div style={{
         background: '#fff', borderRadius: 20, padding: '40px 36px',

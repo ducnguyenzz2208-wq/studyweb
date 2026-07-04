@@ -22,7 +22,7 @@ export default async function Home() {
       minHeight: '100vh',
       background: 'linear-gradient(135deg, #1e2a3a, #0f1623)',
       color: '#e2e8f0',
-      fontFamily: "'Segoe UI', system-ui, sans-serif",
+      fontFamily: 'var(--font-sans)',
     }}>
       <div style={{ maxWidth: 1040, margin: '0 auto', padding: '0 24px' }}>
         {/* Header */}

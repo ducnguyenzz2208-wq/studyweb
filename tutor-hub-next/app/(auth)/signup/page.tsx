@@ -63,7 +63,7 @@ export default function SignupPage() {
         minHeight: '100vh',
         background: 'linear-gradient(135deg, #1e2a3a, #0f1623)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontFamily: "'Segoe UI', system-ui, sans-serif",
+        fontFamily: 'var(--font-sans)',
       }}>
         <div style={{
           background: '#fff', borderRadius: 20, padding: '40px',
@@ -103,7 +103,7 @@ export default function SignupPage() {
       minHeight: '100vh',
       background: 'linear-gradient(135deg, #1e2a3a, #0f1623)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontFamily: "'Segoe UI', system-ui, sans-serif",
+      fontFamily: 'var(--font-sans)',
     }}>
       <div style={{
         background: '#fff', borderRadius: 20, padding: '40px',

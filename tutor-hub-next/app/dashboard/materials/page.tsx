@@ -44,7 +44,7 @@ export default async function MaterialsPage() {
     .order('created_at', { ascending: false })
 
   return (
-    <main style={{ padding: '2rem', fontFamily: "'Segoe UI', system-ui, sans-serif", maxWidth: 1100, margin: '0 auto' }}>
+    <main style={{ padding: '2rem', fontFamily: 'var(--font-sans)', maxWidth: 1100, margin: '0 auto' }}>
       <div style={{ marginBottom: '2rem' }}>
         <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0 }}>Lecture Materials</h1>
         <p style={{ color: '#64748b', marginTop: 4 }}>Browse and download lecture resources and files.</p>

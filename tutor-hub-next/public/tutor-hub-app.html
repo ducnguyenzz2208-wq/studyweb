@@ -78,6 +78,16 @@
       transition: background 0.3s, color 0.3s;
     }
 
+    /* Máy yếu / người dùng tắt hiệu ứng: bỏ animation & transition tốn kém */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+      }
+    }
+
     /* SIDEBAR */
     #sidebar {
       width: var(--sidebar-w);
@@ -1270,11 +1280,10 @@
       display: none;
       position: fixed;
       inset: 0;
-      background: rgba(0, 0, 0, 0.55);
+      background: rgba(17, 24, 39, 0.5);
       z-index: 1000;
       align-items: center;
       justify-content: center;
-      backdrop-filter: blur(4px);
       animation: fadeIn 0.2s;
     }
 

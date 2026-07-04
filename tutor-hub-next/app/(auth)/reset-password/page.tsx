@@ -87,7 +87,7 @@ export default function ResetPasswordPage() {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      fontFamily: "'Segoe UI', system-ui, sans-serif",
+      fontFamily: 'var(--font-sans)',
     }}>
       <div style={{
         background: '#fff',

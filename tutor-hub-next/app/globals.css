@@ -1,3 +1,23 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Font thống nhất toàn app (login → giới thiệu → dashboard) */
+:root {
+  --font-sans: 'Be Vietnam Pro', 'Segoe UI', system-ui, sans-serif;
+}
+body {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Tôn trọng người dùng tắt hiệu ứng + nhẹ hơn cho máy yếu */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
