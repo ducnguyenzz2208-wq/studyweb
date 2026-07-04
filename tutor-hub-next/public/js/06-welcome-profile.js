@@ -57,7 +57,7 @@
       box.innerHTML =
         '<div style="background:var(--card,#fff);border:1px solid var(--border,#e2e8f0);border-radius:14px;padding:18px 20px;margin-bottom:18px;">' +
         '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">' +
-        '<strong style="font-size:15px;">🚀 Bắt đầu nhanh</strong>' +
+        '<strong style="font-size:15px;display:inline-flex;align-items:center;gap:8px;"><span style="color:var(--accent);">' + svgIcon('scores', 17) + '</span>Bắt đầu nhanh</strong>' +
         '<button onclick="dismissOnboard()" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:13px;">Bỏ qua</button>' +
         '</div>' +
         '<div style="font-size:13px;color:var(--text-muted);margin-bottom:12px;">Hoàn thành ' + doneCount + '/' + steps.length + ' bước để thiết lập trung tâm của bạn.</div>' +
@@ -101,7 +101,7 @@
         '<div class="modal-body">' +
         '<p style="color:var(--text-muted);margin-bottom:14px;">Vài điều bạn có thể làm ngay:</p>' +
         '<ul style="padding-left:20px;margin:0 0 8px;">' + list + '</ul>' +
-        '<p style="color:var(--text-muted);font-size:13px;margin-top:14px;">Cần trợ giúp? Bấm nút <b>❓</b> ở góc trên bất cứ lúc nào.</p>' +
+        '<p style="color:var(--text-muted);font-size:13px;margin-top:14px;">Cần trợ giúp? Bấm biểu tượng dấu hỏi ở góc trên bất cứ lúc nào.</p>' +
         '</div>' +
         '<div class="modal-footer"><button class="btn btn-primary" onclick="closeModal()">Bắt đầu</button></div>',
         'modal-sm'
@@ -123,7 +123,7 @@
           '<div style="color:var(--text-muted);margin-top:8px;line-height:1.5;font-size:14px;">' + f[1] + '</div></details>';
       }).join('');
       openModal(
-        '<div class="modal-header"><h3>❓ Trợ giúp</h3><button class="modal-close" onclick="closeModal()">✕</button></div>' +
+        '<div class="modal-header"><h3 style="display:flex;align-items:center;gap:8px;">' + svgIcon('help', 18) + 'Trợ giúp</h3><button class="modal-close" onclick="closeModal()">✕</button></div>' +
         '<div class="modal-body">' + body + '</div>',
         'modal-sm'
       );
@@ -136,31 +136,31 @@
       var actions = [];
       if (role === 'Teacher' || role === 'Admin') {
         actions = [
-          { icon: '👨‍🎓', label: t('qa.addStudent'), fn: "openStudentModal()" },
-          { icon: '📝', label: t('qa.addHomework'), fn: "openHomeworkModal()" },
-          { icon: '🏫', label: t('qa.addClass'), fn: "openClassModal()" },
-          { icon: '📊', label: t('qa.viewReports'), fn: "showSection('reports')" },
-          { icon: '📂', label: t('qa.addMaterial'), fn: "openMaterialModal()" },
-          { icon: '🃏', label: t('qa.addDeck'), fn: "openDeckModal()" },
+          { icon: 'user-plus', label: t('qa.addStudent'), fn: "openStudentModal()" },
+          { icon: 'file-plus', label: t('qa.addHomework'), fn: "openHomeworkModal()" },
+          { icon: 'plus-square', label: t('qa.addClass'), fn: "openClassModal()" },
+          { icon: 'reports', label: t('qa.viewReports'), fn: "showSection('reports')" },
+          { icon: 'folder-plus', label: t('qa.addMaterial'), fn: "openMaterialModal()" },
+          { icon: 'flashcards', label: t('qa.addDeck'), fn: "openDeckModal()" },
         ];
       } else if (role === 'Student') {
         actions = [
-          { icon: '🃏', label: 'Học Flashcards', fn: "showSection('flashcards')" },
-          { icon: '📝', label: 'Xem bài tập', fn: "showSection('student-portal')" },
-          { icon: '📅', label: 'Lịch của tôi', fn: "showSection('schedule')" },
-          { icon: '📂', label: 'Tài liệu', fn: "showSection('materials')" },
+          { icon: 'flashcards', label: 'Học Flashcards', fn: "showSection('flashcards')" },
+          { icon: 'assignments', label: 'Xem bài tập', fn: "showSection('student-portal')" },
+          { icon: 'schedule', label: 'Lịch của tôi', fn: "showSection('schedule')" },
+          { icon: 'materials', label: 'Tài liệu', fn: "showSection('materials')" },
         ];
       } else if (role === 'Parent') {
         actions = [
-          { icon: '📊', label: 'Tiến độ của con', fn: "showSection('parent-portal')" },
-          { icon: '📅', label: 'Lịch học', fn: "showSection('schedule')" },
-          { icon: '💳', label: 'Học phí', fn: "showSection('payments')" },
-          { icon: '📂', label: 'Tài liệu', fn: "showSection('materials')" },
+          { icon: 'reports', label: 'Tiến độ của con', fn: "showSection('parent-portal')" },
+          { icon: 'schedule', label: 'Lịch học', fn: "showSection('schedule')" },
+          { icon: 'payments', label: 'Học phí', fn: "showSection('payments')" },
+          { icon: 'materials', label: 'Tài liệu', fn: "showSection('materials')" },
         ];
       }
       if (!actions.length) { qa.innerHTML = ''; return; }
       qa.innerHTML = '<div class="quick-actions">' + actions.map(function (a) {
-        return '<div class="qa-btn" onclick="' + a.fn + '"><div class="qa-icon">' + a.icon + '</div><div class="qa-label">' + a.label + '</div></div>';
+        return '<div class="qa-btn" onclick="' + a.fn + '"><div class="qa-icon">' + svgIcon(a.icon, 22) + '</div><div class="qa-label">' + a.label + '</div></div>';
       }).join('') + '</div>';
     }
 

@@ -381,7 +381,7 @@
     function toggleTheme() {
       isDark = !isDark;
       document.documentElement.setAttribute('data-theme', isDark ? 'dark' : '');
-      document.getElementById('themeBtn').textContent = isDark ? '☀️' : '🌙';
+      document.getElementById('themeBtn').innerHTML = svgIcon(isDark ? 'sun' : 'moon', 19);
       var t = document.getElementById('darkModeToggle');
       if (t) { if (isDark) t.classList.add('on'); else t.classList.remove('on'); }
       try { localStorage.setItem('th_dark', isDark ? '1' : '0'); } catch (e) { }

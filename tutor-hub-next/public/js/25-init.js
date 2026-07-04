@@ -24,7 +24,7 @@
       if (localStorage.getItem('th_dark') === '1') {
         isDark = true;
         document.documentElement.setAttribute('data-theme', 'dark');
-        var _tb = document.getElementById('themeBtn'); if (_tb) _tb.textContent = '☀️';
+        var _tb = document.getElementById('themeBtn'); if (_tb) _tb.innerHTML = svgIcon('sun', 19);
         var _dt = document.getElementById('darkModeToggle'); if (_dt) _dt.classList.add('on');
       }
     } catch (e) { }
