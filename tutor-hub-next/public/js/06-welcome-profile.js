@@ -241,7 +241,8 @@
         html += '<div class="pp-name">' + escHtml(u.name) + '</div>';
         html += '<div class="pp-email">' + escHtml(u.email) + '</div>';
         html += '<div class="pp-role-badge">' + escHtml(u.role) + '</div>';
-        html += '<button onclick="_profileEditing=true;renderProfilePanel()" style="margin-top:8px;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:4px 12px;font-size:12px;cursor:pointer;color:var(--text-muted);">✏️ Sửa thông tin</button>';
+        html += '<button onclick="_profileEditing=true;renderProfilePanel()" style="margin-top:10px;display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.25);border-radius:8px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;color:#fff;">' +
+          '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>Sửa thông tin</button>';
       }
       html += '</div>';
 

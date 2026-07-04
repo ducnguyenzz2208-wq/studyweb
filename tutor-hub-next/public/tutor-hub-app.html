@@ -728,25 +728,28 @@
     .settings-group {
       background: var(--card-bg);
       border-radius: var(--radius);
-      padding: 20px;
-      margin-bottom: 16px;
+      padding: 6px 20px 14px;
+      margin-bottom: 14px;
       box-shadow: var(--shadow);
       border: 1px solid var(--border);
     }
 
     .settings-group h3 {
-      font-size: 14px;
+      font-size: 11px;
       font-weight: 700;
-      margin-bottom: 16px;
-      padding-bottom: 12px;
-      border-bottom: 1px solid var(--border);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+      margin: 0;
+      padding: 14px 0 4px;
     }
 
     .setting-row {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 12px 0;
+      gap: 20px;
+      padding: 13px 0;
       border-bottom: 1px solid var(--border);
     }
 
@@ -799,14 +802,26 @@
     }
 
     .settings-input {
-      background: var(--bg);
+      background: var(--card-bg);
       border: 1px solid var(--border);
       border-radius: 8px;
-      padding: 8px 12px;
+      padding: 9px 12px;
       color: var(--text);
       font-size: 13px;
       outline: none;
-      width: 200px;
+      width: 220px;
+      transition: border-color .15s, box-shadow .15s;
+    }
+
+    .settings-input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--nav-active-bg);
+    }
+
+    .settings-input[readonly] {
+      background: var(--bg);
+      color: var(--text-muted);
+      cursor: default;
     }
 
     /* ATTENDANCE DOTS */
@@ -2165,44 +2180,47 @@
     }
 
     .pp-header {
-      padding: 28px 24px 20px;
-      background: linear-gradient(135deg, #1e2a3a, #3b4f6b);
+      padding: 24px 22px 18px;
+      background: var(--brand-grad);
       color: #fff;
     }
 
     .pp-avatar {
-      width: 68px;
-      height: 68px;
+      width: 60px;
+      height: 60px;
       border-radius: 50%;
-      background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+      background: rgba(255, 255, 255, 0.18);
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 26px;
-      font-weight: 800;
+      font-size: 22px;
+      font-weight: 700;
       color: #fff;
-      margin-bottom: 14px;
-      border: 3px solid rgba(255, 255, 255, 0.25);
+      margin-bottom: 12px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
     }
 
     .pp-name {
-      font-size: 20px;
-      font-weight: 700;
+      font-size: 17px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
     }
 
     .pp-email {
       font-size: 13px;
-      opacity: 0.7;
+      opacity: 0.75;
       margin-top: 2px;
     }
 
     .pp-role-badge {
       display: inline-flex;
-      padding: 4px 12px;
-      border-radius: 20px;
-      background: rgba(255, 255, 255, 0.15);
-      font-size: 12px;
+      padding: 3px 10px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.18);
+      font-size: 11px;
       font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
       margin-top: 10px;
     }
 
@@ -2253,7 +2271,7 @@
       width: 30px;
       height: 30px;
       border-radius: 8px;
-      background: rgba(59, 130, 246, 0.1);
+      background: var(--nav-active-bg);
       color: var(--accent);
       display: flex;
       align-items: center;
@@ -2308,7 +2326,7 @@
     .pp-lang-btn.active {
       border-color: var(--accent);
       color: var(--accent);
-      background: rgba(59, 130, 246, 0.08);
+      background: var(--nav-active-bg);
     }
 
     .pp-close {
@@ -3722,40 +3740,40 @@
     <!-- SETTINGS -->
     <div class="section content" id="section-settings">
       <div class="page-header">
-        <h2>Settings</h2>
-        <p>Customize your Tutor Hub experience.</p>
+        <h2>Cài đặt</h2>
+        <p>Tùy chỉnh trải nghiệm Tutor Hub của bạn.</p>
       </div>
       <div class="settings-group">
         <h3>Hồ sơ tài khoản</h3>
         <div class="setting-row">
           <div>
-            <div class="setting-label">Display Name</div>
-            <div class="setting-desc">Your name shown in the app</div>
+            <div class="setting-label">Tên hiển thị</div>
+            <div class="setting-desc">Tên hiển thị trong ứng dụng</div>
           </div>
           <input class="settings-input" id="settingName" value="" oninput="updateProfile()">
         </div>
         <div class="setting-row">
           <div>
-            <div class="setting-label">Role</div>
-            <div class="setting-desc">Vai trò tài khoản</div>
+            <div class="setting-label">Vai trò</div>
+            <div class="setting-desc">Vai trò tài khoản (do quản trị viên cấp)</div>
           </div>
-          <input class="settings-input" id="settingRole" value="" readonly style="background:var(--bg);">
+          <input class="settings-input" id="settingRole" value="" readonly>
         </div>
         <div class="setting-row">
           <div>
             <div class="setting-label">Email</div>
-            <div class="setting-desc">Contact email</div>
+            <div class="setting-desc">Email đăng nhập &amp; liên hệ</div>
           </div>
-          <input class="settings-input" id="settingEmail" value="" readonly style="background:var(--bg);">
+          <input class="settings-input" id="settingEmail" value="" readonly>
         </div>
       </div>
 
       <div class="settings-group">
-        <h3>Language</h3>
+        <h3>Ngôn ngữ</h3>
         <div class="setting-row">
           <div>
-            <div class="setting-label">Interface Language</div>
-            <div class="setting-desc">Switch between English and Vietnamese</div>
+            <div class="setting-label">Ngôn ngữ giao diện</div>
+            <div class="setting-desc">Chuyển giữa Tiếng Anh và Tiếng Việt</div>
           </div>
           <div class="lang-switch">
             <button class="lang-btn active" id="settingLangEn"
@@ -3769,7 +3787,7 @@
       </div>
 
       <div class="settings-group" id="settingsDemoGroup">
-        <h3>Demo Account Switcher</h3>
+        <h3>Chuyển tài khoản Demo</h3>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
           <div class="demo-btn" onclick="quickLogin('teacher@tutorhub.com')"
             style="border-radius:10px;padding:12px;cursor:pointer;">👩‍🏫 <strong>Teacher</strong>
@@ -3791,7 +3809,7 @@
       </div>
 
       <div class="settings-group">
-        <h3>Account</h3>
+        <h3>Tài khoản</h3>
         <div class="setting-row" style="display:flex; flex-direction:column; align-items:stretch; gap:10px;">
           <div style="display:flex; justify-content:space-between; align-items:center;">
             <div>
@@ -3807,19 +3825,19 @@
         </div>
         <div class="setting-row">
           <div>
-            <div class="setting-label">Logout</div>
-            <div class="setting-desc">Sign out of your account</div>
+            <div class="setting-label">Đăng xuất</div>
+            <div class="setting-desc">Đăng xuất khỏi tài khoản</div>
           </div>
-          <button class="btn btn-danger" onclick="logout()">Logout</button>
+          <button class="btn btn-danger" onclick="logout()">Đăng xuất</button>
         </div>
       </div>
 
       <div class="settings-group">
-        <h3>Appearance</h3>
+        <h3>Giao diện</h3>
         <div class="setting-row">
           <div>
-            <div class="setting-label">Dark Mode</div>
-            <div class="setting-desc">Toggle dark/light theme</div>
+            <div class="setting-label">Giao diện tối</div>
+            <div class="setting-desc">Bật/tắt chế độ tối</div>
           </div>
           <button class="toggle" id="darkModeToggle" onclick="toggleTheme()"></button>
         </div>
@@ -3837,74 +3855,69 @@
         </div>
         <div class="setting-row">
           <div>
-            <div class="setting-label">Compact Sidebar</div>
-            <div class="setting-desc">Show icons only in sidebar</div>
+            <div class="setting-label">Thu gọn thanh bên</div>
+            <div class="setting-desc">Chỉ hiện biểu tượng ở thanh bên</div>
           </div>
           <button class="toggle" id="compactToggle" onclick="toggleCompact()"></button>
         </div>
         <div class="setting-row">
           <div>
-            <div class="setting-label">Accent Color</div>
-            <div class="setting-desc">Primary color theme</div>
+            <div class="setting-label">Màu nhấn</div>
+            <div class="setting-desc">Màu chủ đạo của giao diện</div>
           </div>
           <div style="display:flex;gap:8px;">
-            <div onclick="setAccent('#3b82f6')"
-              style="width:24px;height:24px;border-radius:50%;background:#3b82f6;cursor:pointer;border:2px solid var(--border);">
-            </div>
-            <div onclick="setAccent('#8b5cf6')"
-              style="width:24px;height:24px;border-radius:50%;background:#8b5cf6;cursor:pointer;border:2px solid var(--border);">
-            </div>
-            <div onclick="setAccent('#10b981')"
-              style="width:24px;height:24px;border-radius:50%;background:#10b981;cursor:pointer;border:2px solid var(--border);">
-            </div>
-            <div onclick="setAccent('#f59e0b')"
-              style="width:24px;height:24px;border-radius:50%;background:#f59e0b;cursor:pointer;border:2px solid var(--border);">
-            </div>
-            <div onclick="setAccent('#ef4444')"
-              style="width:24px;height:24px;border-radius:50%;background:#ef4444;cursor:pointer;border:2px solid var(--border);">
-            </div>
+            <div onclick="setAccent('#4f46e5')" title="Indigo"
+              style="width:22px;height:22px;border-radius:50%;background:#4f46e5;cursor:pointer;border:2px solid var(--border);"></div>
+            <div onclick="setAccent('#7c3aed')" title="Tím"
+              style="width:22px;height:22px;border-radius:50%;background:#7c3aed;cursor:pointer;border:2px solid var(--border);"></div>
+            <div onclick="setAccent('#0891b2')" title="Xanh ngọc"
+              style="width:22px;height:22px;border-radius:50%;background:#0891b2;cursor:pointer;border:2px solid var(--border);"></div>
+            <div onclick="setAccent('#059669')" title="Xanh lá"
+              style="width:22px;height:22px;border-radius:50%;background:#059669;cursor:pointer;border:2px solid var(--border);"></div>
+            <div onclick="setAccent('#d97706')" title="Cam"
+              style="width:22px;height:22px;border-radius:50%;background:#d97706;cursor:pointer;border:2px solid var(--border);"></div>
           </div>
         </div>
       </div>
 
       <div class="settings-group">
-        <h3>Notifications</h3>
+        <h3>Thông báo</h3>
         <div class="setting-row">
           <div>
-            <div class="setting-label">Payment Alerts</div>
-            <div class="setting-desc">Notify on overdue payments</div>
+            <div class="setting-label">Cảnh báo học phí</div>
+            <div class="setting-desc">Báo khi học phí quá hạn</div>
           </div>
           <button class="toggle on" onclick="this.classList.toggle('on')"></button>
         </div>
         <div class="setting-row">
           <div>
-            <div class="setting-label">Attendance Alerts</div>
-            <div class="setting-desc">Notify on absences</div>
+            <div class="setting-label">Cảnh báo điểm danh</div>
+            <div class="setting-desc">Báo khi học sinh vắng mặt</div>
           </div>
           <button class="toggle on" onclick="this.classList.toggle('on')"></button>
         </div>
         <div class="setting-row">
           <div>
-            <div class="setting-label">Homework Reminders</div>
-            <div class="setting-desc">Due date reminders</div>
+            <div class="setting-label">Nhắc bài tập</div>
+            <div class="setting-desc">Nhắc trước hạn nộp</div>
           </div>
           <button class="toggle" onclick="this.classList.toggle('on')"></button>
         </div>
       </div>
 
       <div class="settings-group">
-        <h3>Academic Settings</h3>
+        <h3>Thiết lập học tập</h3>
         <div class="setting-row">
           <div>
-            <div class="setting-label">Grade Thresholds</div>
+            <div class="setting-label">Ngưỡng xếp loại</div>
             <div class="setting-desc">A ≥ 90, B ≥ 80, C ≥ 70, D ≥ 60</div>
           </div>
-          <span class="badge badge-info">Default</span>
+          <span class="badge badge-info">Mặc định</span>
         </div>
         <div class="setting-row">
           <div>
-            <div class="setting-label">Attendance Warning</div>
-            <div class="setting-desc">Flag below this percentage</div>
+            <div class="setting-label">Cảnh báo chuyên cần</div>
+            <div class="setting-desc">Đánh dấu khi thấp hơn mức này</div>
           </div>
           <input class="settings-input" value="75%" style="width:80px;">
         </div>
