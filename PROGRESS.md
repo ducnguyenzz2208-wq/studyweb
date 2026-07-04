@@ -102,6 +102,16 @@ Sắp theo mức ưu tiên. P0 = rào cản lớn nhất khiến người mới 
       ngang mượt (`min-width` + `-webkit-overflow-scrolling`), vùng chạm lớn hơn, input 16px
       chống zoom nhảy iOS, quick-actions 2 cột. (Drawer sidebar + overlay đã có sẵn từ trước.)
 
+## Giao diện — login + landing sáng/glass ✅ ĐÃ LÀM
+- [x] **Login** build lại theo phong cách sáng (Ebolt): nền gradient sky/lavender + thẻ
+      liquid-glass, logo SVG mũ tốt nghiệp, nút hiện/ẩn MK, thẻ nổi trang trí, tông giáo dục.
+- [x] **Landing** tông sáng: hero heading gradient + thẻ nổi thống kê + mini-dashboard glass;
+      feature card dùng **icon SVG** (đã bỏ emoji ở landing).
+- [x] **Glass tối ưu mọi máy**: `.glass`/`.bright-bg`/`.floaty`/`.field` trong globals.css —
+      backdrop-filter CHỈ ở vài thẻ nhỏ tĩnh + `@supports` fallback nền đặc; nền lớn = gradient
+      (không blur); float chip = transform + guard reduced-motion; chip ẩn <900px.
+- [ ] **Áp cùng phong cách cho signup + reset-password** (2 trang này vẫn nền tối cũ → lệch tông).
+
 ## Giao diện ✅ ĐÃ LÀM (theme giống tham chiếu Hireism)
 - [x] **Font** Segoe UI → **Be Vietnam Pro** (dấu tiếng Việt đẹp, bớt generic/AI).
 - [x] **Sidebar trắng** + item active pill indigo + thanh accent trái; nền **lavender**;
