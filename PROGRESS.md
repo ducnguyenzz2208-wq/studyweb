@@ -70,23 +70,52 @@ Sắp theo mức ưu tiên. P0 = rào cản lớn nhất khiến người mới 
 
   > Lưu ý: nội dung bên trong `tutor-hub-app.html` vẫn còn vài chuỗi tiếng Anh lẻ (P1).
 
-### P1 — Giúp người mới biết phải làm gì trong app
-- [ ] **Empty state có hướng dẫn** cho mọi section (Students, Classes, Assignments…).
-      Thay vì bảng trống, hiện: "Chưa có học sinh nào — Nhấn + để thêm học sinh đầu tiên" kèm nút hành động.
-- [ ] **Tour/onboarding lần đầu đăng nhập**: 3–5 bước tooltip chỉ vào sidebar, nút Thêm, Settings.
-      Có thể dùng thư viện nhẹ (driver.js/shepherd) hoặc modal welcome đơn giản.
-- [ ] **Checklist "Bắt đầu nhanh"** trên Dashboard cho tài khoản mới (VD giáo viên: tạo lớp →
-      thêm học sinh → giao bài → xong), tự ẩn khi hoàn thành.
-- [ ] **Nút "Xem thử dữ liệu mẫu"**: seed vài học sinh/lớp/bài mẫu để người mới nghịch, kèm nút xoá sạch.
+### P1 — Giúp người mới biết phải làm gì trong app ✅ ĐÃ LÀM
+- [x] **Empty state có hướng dẫn** — Students giờ phân biệt "Chưa có học sinh nào" (icon + nút
+      "＋ Thêm học sinh đầu tiên") với "không khớp bộ lọc". Helper `_studentsEmptyRow()` trong
+      `tutor-hub-app.html`. (Classes/Assignments có thể áp dụng cùng pattern sau — xem "Làm tiếp".)
+- [x] **Welcome modal lần đầu đăng nhập** — `maybeShowWelcome()` hiện 1 lần (cờ `th_welcome_seen`),
+      gợi ý theo role, trỏ tới nút ❓.
+- [x] **Checklist "Bắt đầu nhanh"** trên Dashboard cho GV/Admin — `renderOnboardChecklist()`:
+      tạo lớp → thêm học sinh → giao bài → tải tài liệu, có thanh tiến độ, tự ẩn khi xong hoặc bấm "Bỏ qua".
+- [ ] **Nút "Xem thử dữ liệu mẫu"** (seed) — CHƯA làm, chuyển sang "Làm tiếp".
 
-### P2 — Đánh bóng trải nghiệm
-- [ ] **Tooltip/help icon** cạnh các thuật ngữ (enrollment request, flashcard deck…).
-- [ ] **Trang Help/FAQ** trong app + link "Cần trợ giúp?".
-- [ ] **Thông báo lỗi thân thiện**: gói lỗi Supabase (VD "duplicate key", RLS 401) thành câu người thường hiểu.
-- [ ] **Kiểm tra responsive/mobile** cho các bảng lớn (Students, Payments) — dễ vỡ layout trên điện thoại.
-- [ ] **Loading skeleton** thay vì bảng trống chớp nháy khi đang tải DB.
-- [ ] **Xác nhận trước khi xoá** (học sinh, lớp, bài) để người mới đỡ lỡ tay.
-- [ ] **Accessibility cơ bản**: nhãn cho input, focus rõ ràng, tương phản màu ở dark mode.
+### P2 — Đánh bóng trải nghiệm ✅ PHẦN LỚN ĐÃ LÀM
+- [x] **Trang Help/FAQ** — nút ❓ trên thanh trên → `openHelp()` mở modal FAQ (5 câu hỏi thường gặp).
+- [x] **Thông báo lỗi thân thiện** — `lib/auth-messages.ts` cho luồng auth (đã làm ở P0).
+- [x] **Xác nhận trước khi xoá** — đã có sẵn `confirm()` cho mọi thao tác xoá; Việt hoá 4 hộp thoại
+      còn tiếng Anh (học sinh, lớp, BTVN, buổi học) + nhãn quick-action của Student/Parent.
+- [ ] **Tooltip/help icon** cạnh thuật ngữ (enrollment request, flashcard deck…) — CHƯA, để "Làm tiếp".
+- [ ] **Kiểm tra responsive/mobile** cho bảng lớn (Students, Payments) — CHƯA, để "Làm tiếp".
+- [ ] **Loading skeleton** thay bảng trống chớp nháy khi tải DB — CHƯA, để "Làm tiếp".
+- [ ] **Accessibility cơ bản** (nhãn input, focus, tương phản dark mode) — CHƯA, để "Làm tiếp".
+
+---
+
+## Làm tiếp để web tốt hơn (đề xuất, theo giá trị/công sức)
+
+### Trải nghiệm người mới (nối tiếp P1/P2)
+- [ ] **Áp empty-state có hướng dẫn cho Classes, Assignments, Materials, Flashcards** (đã có mẫu
+      `_studentsEmptyRow`, chỉ cần nhân bản pattern).
+- [ ] **Dữ liệu mẫu 1 chạm**: nút "Nạp dữ liệu mẫu" + "Xoá dữ liệu mẫu" để người mới nghịch thử.
+- [ ] **Tooltip giải thích thuật ngữ** (enrollment request, deck, submission…).
+- [ ] **Loading skeleton** cho các bảng khi `loadDbData()` chưa xong.
+
+### Chất lượng & độ tin cậy
+- [ ] **Tách `tutor-hub-app.html`** (hiện ~9k dòng) thành module — rất khó bảo trì, dễ vỡ khi sửa.
+- [ ] **Kiểm thử tự động**: thêm test cho luồng auth + vài hàm thuần (avgScore, getGrade…).
+- [ ] **Thay `confirm()`/`alert()` native** bằng modal xác nhận trong app cho đồng nhất giao diện.
+- [ ] **Error boundary + trạng thái rỗng khi RLS/500** thay vì bảng trắng im lặng.
+
+### Di động & khả năng tiếp cận
+- [ ] **Responsive cho bảng lớn**: cho cuộn ngang hoặc chuyển sang dạng thẻ trên điện thoại.
+- [ ] **A11y**: `aria-label` cho nút icon (❓🔔🌙), bẫy focus trong modal, kiểm tra tương phản dark mode.
+
+### Tính năng nâng cao (khi cần)
+- [ ] **Thông báo realtime** (Supabase Realtime) thay vì phải bấm 🔔 tải lại.
+- [ ] **Xuất báo cáo** (điểm/điểm danh/học phí) ra Excel/PDF.
+- [ ] **Nhắc học phí/BTVN qua email** tự động.
+- [ ] **Nhật ký hoạt động (audit log)** cho thao tác của admin.
 
 ---
 
