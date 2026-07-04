@@ -92,6 +92,14 @@ Sắp theo mức ưu tiên. P0 = rào cản lớn nhất khiến người mới 
 
 ---
 
+## Mượt hơn & mobile ✅ ĐÃ LÀM (đợt gần nhất)
+- [x] **Upload có phản hồi** — overlay "đang xử lý" dùng chung (`showBusy`/`hideBusy`, timeout
+      an toàn 30s) wire vào `saveMaterial` + `submitWork`. Trước đây upload không có phản hồi,
+      dễ double-submit và tưởng treo. (`saveAssignment` vốn đã có nút "Đang lưu…".)
+- [x] **Tối ưu mobile** — @media ≤640px: ẩn lang-switch/Edit Mode khỏi topbar chật, bảng cuộn
+      ngang mượt (`min-width` + `-webkit-overflow-scrolling`), vùng chạm lớn hơn, input 16px
+      chống zoom nhảy iOS, quick-actions 2 cột. (Drawer sidebar + overlay đã có sẵn từ trước.)
+
 ## Làm tiếp để web tốt hơn (đề xuất, theo giá trị/công sức)
 
 ### Trải nghiệm người mới (nối tiếp P1/P2)
@@ -108,7 +116,8 @@ Sắp theo mức ưu tiên. P0 = rào cản lớn nhất khiến người mới 
 - [ ] **Error boundary + trạng thái rỗng khi RLS/500** thay vì bảng trắng im lặng.
 
 ### Di động & khả năng tiếp cận
-- [ ] **Responsive cho bảng lớn**: cho cuộn ngang hoặc chuyển sang dạng thẻ trên điện thoại.
+- [x] **Responsive cho bảng lớn** — đã cho cuộn ngang mượt trên mobile (đợt gần nhất).
+- [ ] **Dạng thẻ thay bảng trên mobile** cho Students/Payments (cuộn ngang tạm ổn, thẻ sẽ đẹp hơn).
 - [ ] **A11y**: `aria-label` cho nút icon (❓🔔🌙), bẫy focus trong modal, kiểm tra tương phản dark mode.
 
 ### Tính năng nâng cao (khi cần)
