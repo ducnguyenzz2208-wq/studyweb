@@ -143,78 +143,93 @@
 
     function openStudentModal(id) {
       var s = id ? students.find(function (x) { return x.id === id; }) : null;
-      var title = s ? 'Edit Student' : 'Add Student';
-      // Chỉ admin được chỉnh điểm; GV thấy điểm ở dạng chỉ đọc (đồng bộ với trigger DB)
-      var canScore = currentUser && currentUser.role === 'Admin';
-      var scoreLock = canScore ? '' : ' readonly title="Chỉ admin được chỉnh điểm" style="background:var(--bg);cursor:not-allowed;"';
+      var title = s ? 'Sửa học sinh' : 'Thêm học sinh';
       var html = '<div class="modal-header"><h3>' + title + '</h3><button class="modal-close" onclick="closeModal()">✕</button></div>' +
         '<div class="modal-body">' +
-        '<div class="form-group"><label>Email tài khoản (tra cứu để gán tên)</label>' +
+        '<div class="form-group"><label>Tra cứu tài khoản (email hoặc tên)</label>' +
         '<div style="display:flex;gap:8px;">' +
-        '<input class="form-input" id="mStudentEmail" placeholder="hocsinh@gmail.com" value="' + (s ? escAttr(s.email || '') : '') + '" style="flex:1;">' +
+        '<input class="form-input" id="mStudentLookupInput" placeholder="email hoặc tên học sinh" style="flex:1;">' +
         '<button class="btn btn-ghost" type="button" onclick="lookupStudentEmail()">🔎 Tra cứu</button>' +
         '</div>' +
-        '<div class="hint">Nhập email rồi bấm Tra cứu để tự điền tên từ tài khoản đã đăng ký.</div>' +
+        '<div class="hint">Nhập email hoặc tên rồi bấm Tra cứu để tự điền tên &amp; email từ tài khoản đã đăng ký.</div>' +
         '<div id="mStudentLookup" style="font-size:12px;margin-top:4px;"></div></div>' +
         '<div class="form-row">' +
-        '<div class="form-group"><label>Name</label><input class="form-input" id="mStudentName" value="' + (s ? escHtml(s.name) : '') + '"></div>' +
-        '<div class="form-group"><label>Class</label><select class="form-select" id="mStudentClass">' +
+        '<div class="form-group"><label>Họ và tên</label><input class="form-input" id="mStudentName" value="' + (s ? escHtml(s.name) : '') + '"></div>' +
+        '<div class="form-group"><label>Email</label><input class="form-input" id="mStudentEmail" placeholder="hocsinh@gmail.com" value="' + (s ? escAttr(s.email || '') : '') + '"></div>' +
+        '</div>' +
+        '<div class="form-row">' +
+        '<div class="form-group"><label>Lớp</label><select class="form-select" id="mStudentClass">' +
         classes.map(function (c) { return '<option value="' + c.name + '"' + (s && s.class === c.name ? ' selected' : '') + '>' + c.name + '</option>'; }).join('') +
         '</select></div>' +
+        '<div class="form-group"><label>Chuyên cần %</label><input class="form-input" type="number" min="0" max="100" id="mStudentAttend" value="' + (s ? s.attendance : 85) + '"></div>' +
         '</div>' +
-        '<div class="form-row">' +
-        '<div class="form-group"><label>Math Score' + (canScore ? '' : ' 🔒') + '</label><input class="form-input" type="number" min="0" max="100" id="mStudentMath" value="' + (s ? s.mathScore : 75) + '"' + scoreLock + '></div>' +
-        '<div class="form-group"><label>English Score' + (canScore ? '' : ' 🔒') + '</label><input class="form-input" type="number" min="0" max="100" id="mStudentEng" value="' + (s ? s.engScore : 75) + '"' + scoreLock + '></div>' +
-        '</div>' +
-        '<div class="form-row">' +
-        '<div class="form-group"><label>Attendance %</label><input class="form-input" type="number" min="0" max="100" id="mStudentAttend" value="' + (s ? s.attendance : 85) + '"></div>' +
-        '<div class="form-group"><label>Parent Contact</label><input class="form-input" id="mStudentParent" value="' + (s ? escHtml(s.parentContact || '') : '') + '"></div>' +
-        '</div>' +
-        '<div class="form-group"><label>Notes</label><textarea class="form-textarea" id="mStudentNotes">' + (s ? escHtml(s.notes || '') : '') + '</textarea></div>' +
+        '<div class="form-group"><label>Liên hệ phụ huynh</label><input class="form-input" id="mStudentParent" value="' + (s ? escHtml(s.parentContact || '') : '') + '"></div>' +
+        '<div class="form-group"><label>Ghi chú</label><textarea class="form-textarea" id="mStudentNotes">' + (s ? escHtml(s.notes || '') : '') + '</textarea></div>' +
+        '<div class="hint" style="color:var(--text-muted);">Điểm số được đồng bộ tự động từ mục Bài tập, không nhập tay ở đây.</div>' +
         '</div>' +
         '<div class="modal-footer">' +
-        '<button class="btn btn-ghost" onclick="closeModal()">Cancel</button>' +
-        '<button class="btn btn-primary" onclick="saveStudent(' + (id ? qid(id) : 'null') + ')">Save</button>' +
+        '<button class="btn btn-ghost" onclick="closeModal()">Hủy</button>' +
+        '<button class="btn btn-primary" onclick="saveStudent(' + (id ? qid(id) : 'null') + ')">Lưu</button>' +
         '</div>';
       openModal(html);
     }
 
+    // Tra cứu tài khoản theo EMAIL (có @) hoặc TÊN → tự điền cả tên lẫn email.
     function lookupStudentEmail() {
-      var email = ((document.getElementById('mStudentEmail') || {}).value || '').trim();
+      var q = ((document.getElementById('mStudentLookupInput') || {}).value || '').trim();
       var out = document.getElementById('mStudentLookup');
-      if (!email) { showToast('Nhập email để tra cứu.', 'error'); return; }
+      if (!q) { showToast('Nhập email hoặc tên để tra cứu.', 'error'); return; }
       if (!_db) { showToast('Chưa kết nối.', 'error'); return; }
-      if (out) out.innerHTML = '<span style="color:var(--text-muted);">Đang tra cứu...</span>';
-      _db.rpc('find_account', { _email: email }).then(function (r) {
-        if (r.error) { if (out) out.innerHTML = '<span style="color:var(--danger);">Lỗi: ' + escHtml(r.error.message) + '</span>'; return; }
-        if (!r.data || !r.data.length) {
-          if (out) out.innerHTML = '<span style="color:var(--danger);">Không tìm thấy tài khoản với email này.</span>';
-          return;
-        }
-        var acc = r.data[0];
+      if (out) out.innerHTML = '<span style="color:var(--text-muted);">Đang tra cứu…</span>';
+
+      function _fill(acc) {
         var nameInp = document.getElementById('mStudentName');
-        if (nameInp) nameInp.value = acc.name || nameInp.value;
-        if (out) out.innerHTML = '<span style="color:var(--success);">✓ Tìm thấy: <strong>' + escHtml(acc.name || acc.email) + '</strong>' + (acc.role ? ' (' + escHtml(acc.role) + ')' : '') + ' — đã gán tên.</span>';
-      });
+        var emailInp = document.getElementById('mStudentEmail');
+        if (nameInp && acc.name) nameInp.value = acc.name;
+        if (emailInp && acc.email) emailInp.value = acc.email;
+        if (out) out.innerHTML = '<span style="color:var(--success);">✓ Đã điền: <strong>' + escHtml(acc.name || '') + '</strong> — ' + escHtml(acc.email || '') + (acc.role ? ' (' + escHtml(acc.role) + ')' : '') + '</span>';
+      }
+
+      if (q.indexOf('@') !== -1) {
+        _db.rpc('find_account', { _email: q }).then(function (r) {
+          if (r.error) { if (out) out.innerHTML = '<span style="color:var(--danger);">Lỗi: ' + escHtml(r.error.message) + '</span>'; return; }
+          if (!r.data || !r.data.length) { if (out) out.innerHTML = '<span style="color:var(--danger);">Không tìm thấy tài khoản với email này.</span>'; return; }
+          _fill(r.data[0]);
+        });
+      } else {
+        _db.rpc('find_account_by_name', { _q: q }).then(function (r) {
+          if (r.error) {
+            if (out) out.innerHTML = '<span style="color:var(--danger);">Chưa bật tra cứu theo tên (cần chạy migration 018) — hãy nhập email. ' + escHtml(r.error.message) + '</span>';
+            return;
+          }
+          if (!r.data || !r.data.length) { if (out) out.innerHTML = '<span style="color:var(--danger);">Không tìm thấy tài khoản nào khớp tên này.</span>'; return; }
+          _fill(r.data[0]);
+          if (r.data.length > 1 && out) out.innerHTML += ' <span style="color:var(--text-muted);">(+' + (r.data.length - 1) + ' kết quả khác, đã chọn khớp nhất)</span>';
+        });
+      }
     }
 
     function saveStudent(id) {
       var name = document.getElementById('mStudentName').value.trim();
       if (!name) { showToast('Name is required.', 'error'); return; }
+      // Điểm số KHÔNG nhập ở modal nữa (đồng bộ tự động từ Bài tập).
+      // Sửa: giữ nguyên điểm cũ. Thêm: mặc định 0.
+      var existing = id ? students.find(function (x) { return x.id === id; }) : null;
       var data = {
         name: name,
         email: ((document.getElementById('mStudentEmail') || {}).value || '').trim(),
         class: document.getElementById('mStudentClass').value,
-        mathScore: parseInt(document.getElementById('mStudentMath').value) || 0,
-        engScore: parseInt(document.getElementById('mStudentEng').value) || 0,
         attendance: parseInt(document.getElementById('mStudentAttend').value) || 0,
         parentContact: document.getElementById('mStudentParent').value.trim(),
         notes: document.getElementById('mStudentNotes').value.trim(),
+        mathScore: existing ? existing.mathScore : 0,
+        engScore: existing ? existing.engScore : 0,
       };
       var dbRow = {
         name: data.name, email: data.email || null, class_name: data.class,
-        math_score: data.mathScore, eng_score: data.engScore, attendance: data.attendance,
+        attendance: data.attendance,
       };
+      if (!existing) { dbRow.math_score = 0; dbRow.eng_score = 0; } // thêm mới → 0, để trigger cập nhật sau
       function _done(msg) {
         closeModal(); renderStudents();
         var kpi = document.getElementById('kpiStudents');

@@ -449,18 +449,46 @@
       var d = flashcardDecks.find(function (x) { return x.id === deckId; });
       if (!d) return;
       var lines = text.split('\n').map(function (l) { return l.trim(); }).filter(Boolean);
-      var count = 0;
+      var parsed = [];
       lines.forEach(function (line) {
-        var parsed = _parseBulkLine(line);
-        if (parsed && parsed.front && parsed.back) {
-          d.cards.push({ id: nextCardId++, front: parsed.front, back: parsed.back, hint: '', example: '', difficulty: 'medium' });
-          count++;
-        }
+        var p = _parseBulkLine(line);
+        if (p && p.front && p.back) parsed.push({ front: p.front, back: p.back });
       });
-      d.lastUpdated = new Date().toISOString().split('T')[0];
-      if (count) persistDeck(d);
-      showToast('Đã nhập ' + count + ' thẻ.', count ? 'success' : 'error');
-      closeModal();
-      if (count) openDeckDetail(deckId);
+      if (!parsed.length) {
+        showToast('Không nhận diện được thẻ nào. Dùng định dạng: Mặt trước | Mặt sau', 'error');
+        return;
+      }
+
+      // Thêm thẻ vào bộ nhớ + (nếu có DB) gán dbId trả về để lần sau sửa/xoá đúng.
+      function _finish(dbRows) {
+        parsed.forEach(function (c, i) {
+          d.cards.push({
+            id: nextCardId++, dbId: (dbRows && dbRows[i]) ? dbRows[i].id : null,
+            front: c.front, back: c.back, hint: '', example: '', difficulty: 'medium'
+          });
+        });
+        d.lastUpdated = new Date().toISOString().split('T')[0];
+        showToast('Đã nhập ' + parsed.length + ' thẻ.', 'success');
+        closeModal();
+        openDeckDetail(deckId);
+      }
+
+      // Lưu THẬT: chèn vào bảng flashcards với deck_id = UUID của bộ thẻ (giống saveCard).
+      // KHÔNG dùng persistDeck cũ (upsert id số vào cột uuid → lỗi 400 "invalid uuid").
+      if (_db && _dbUserId && d.dbId) {
+        var rows = parsed.map(function (c) {
+          return { deck_id: d.dbId, owner_id: _dbUserId, front: c.front, back: c.back, difficulty: 'medium' };
+        });
+        showBusy('Đang lưu ' + parsed.length + ' thẻ…');
+        _db.from('flashcards').insert(rows).select().then(function (r) {
+          hideBusy();
+          if (r.error) { showToast('Lỗi lưu thẻ: ' + r.error.message, 'error'); return; }
+          _finish(r.data || []);
+        }).catch(function () { hideBusy(); showToast('Lỗi mạng khi lưu thẻ. Thử lại.', 'error'); });
+      } else if (_db && _dbUserId && !d.dbId) {
+        showToast('Bộ thẻ chưa đồng bộ với máy chủ. Tải lại trang rồi thử lại.', 'error');
+      } else {
+        _finish(null);
+      }
     }
 
