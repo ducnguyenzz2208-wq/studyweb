@@ -31,7 +31,16 @@
       sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
       menu: '<path d="M3 12h18M3 6h18M3 18h18"/>',
       info: '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>',
-      'alert-triangle': '<path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4M12 17h.01"/>'
+      'alert-triangle': '<path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4M12 17h.01"/>',
+      pomodoro: '<path d="M10 2h4"/><path d="M12 14l3-3"/><circle cx="12" cy="14" r="8"/>',
+      rotate: '<polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>',
+      play: '<polygon points="6 4 20 12 6 20 6 4"/>',
+      pause: '<rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>',
+      skip: '<polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/>',
+      skipback: '<polygon points="19 20 9 12 19 4 19 20"/><line x1="5" y1="19" x2="5" y2="5"/>',
+      lock: '<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+      unlock: '<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/>',
+      volume: '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>'
     };
     function svgIcon(name, size) {
       var p = SVG_ICONS[name] || '';
@@ -94,6 +103,11 @@
         vi: 'Khoản học phí chưa thanh toán và đã qua ngày đến hạn. Hệ thống tự đánh dấu để nhắc thu.',
         en: 'A tuition fee that is unpaid and past its due date. The system flags it automatically for follow-up.'
       },
+      'pomodoro': {
+        label: { vi: 'Pomodoro', en: 'Pomodoro' },
+        vi: 'Kỹ thuật học tập trung: làm 25 phút rồi nghỉ ngắn 5 phút; sau 4 phiên thì nghỉ dài. Giúp duy trì sự tập trung.',
+        en: 'A focus technique: work 25 minutes then take a 5-minute break; after 4 sessions take a longer break. Helps sustain concentration.'
+      },
       'avg-score': {
         label: { vi: 'Điểm trung bình', en: 'Average score' },
         vi: 'Trung bình điểm các môn của học sinh. Điểm được đồng bộ tự động từ kết quả chấm bài trong mục Bài tập.',
@@ -152,6 +166,7 @@
         group: 'Academic', items: [
           { id: 'assignments', icon: '📋', key: 'nav.assignments' },
           { id: 'flashcards', icon: '🃏', key: 'nav.flashcards' },
+          { id: 'pomodoro', icon: '⏱️', key: 'nav.pomodoro' },
           { id: 'materials', icon: '📂', key: 'nav.materials' },
           { id: 'attendance', icon: '✅', key: 'nav.attendance' },
           { id: 'scores', icon: '🎯', key: 'nav.scores' },

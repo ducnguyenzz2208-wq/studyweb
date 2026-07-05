@@ -111,6 +111,27 @@ enrollment_requests, notifications`.
       `color`; sau khi đổi emoji→SVG (`stroke=currentColor`) icon bị tối trên nền tối. Thêm
       `color: var(--text)` → bám theme. Đã test light+dark (icon = #e2e8f0 dark / #1e2437 light).
 
+## Mục Pomodoro / Study tools ✅ ĐÃ LÀM (port từ my-clone)
+Port 5 tính năng từ `my-clone/` (repo `ai-website-clone-template` — React/Next) sang Tutor Hub,
+viết LẠI theo kiến trúc classic-JS (KHÔNG copy React). Mục MỚI **Pomodoro** cho GV + HS.
+- **Module mới** `public/js/26-pomodoro.js` (nạp trước `25-init.js`); section `#section-pomodoro`
+  trong `tutor-hub-app.html`; CSS Pomodoro + token `--streak-1..4`.
+- **Pomodoro timer**: đếm ngược drift-resistant (dựa `phaseEndAt` wall-clock), chu kỳ tập trung/
+  nghỉ ngắn/nghỉ dài, cài đặt thời lượng, tự cộng phút tập trung vào nhật ký, **chạy nền** (đổi mục
+  vẫn đếm) + tiếp tục sau reload. Ring SVG + chuông báo hết phiên.
+- **Focus Lock**: toàn màn hình + cảnh báo khi rời tab/thoát fullscreen. Thêm `allow="fullscreen"`
+  cho iframe ở `app/dashboard/page.tsx` (degrade an toàn nếu bị chặn).
+- **Ghi chú nhanh**: tối đa 8 sticky note màu, hoàn thành/xoá, sửa inline.
+- **Nhạc học tập (YouTube)**: dán link → hàng chờ (tiêu đề/thumbnail qua oEmbed), phát/tạm dừng/
+  chuyển bài/âm lượng qua YouTube IFrame API, tự chuyển bài khi hết.
+- **Chuỗi tập trung**: lịch tháng heatmap 5 mức (ngưỡng ≤1.5h/2.5h/4.5h), tooltip số giờ chính xác.
+- **Phân quyền**: thêm `pomodoro` vào `ROLE_SECTIONS` (Teacher/Admin/Student) + nav + i18n + tooltip.
+- Lưu localStorage (`th_pomo_*`, `th_focus_log`, `th_notes`, `th_music_*`) — không cần backend.
+- **Verify**: mock-login HS+GV → section render đủ 5 phần, timer chạy/dừng, note thêm được, heatmap
+  tô màu theo phút (lvl3 cho 200'), parser link YT đúng mọi định dạng, 0 lỗi console; build+test pass.
+
+---
+
 ## Đợt patch 2 (Realtime / Export / Reminders / Audit / A11y) ✅ ĐÃ LÀM
 Patch tiếp trên app hiện có, diff nhỏ + an toàn, giữ route/auth/RLS/data-flow, song ngữ.
 - [x] **Realtime notifications** — client đã có; migration `019_realtime_notifications.sql` bật

@@ -6,7 +6,7 @@
         'nav.dashboard': 'Dashboard', 'nav.students': 'Students', 'nav.classes': 'Classes',
         'nav.homework': 'Homework', 'nav.attendance': 'Attendance', 'nav.scores': 'Scores',
         'nav.payments': 'Payments', 'nav.schedule': 'Schedule', 'nav.materials': 'Materials',
-        'nav.flashcards': 'Flashcards', 'nav.reports': 'Reports', 'nav.assignments': 'Assignments', 'nav.users': 'User Management',
+        'nav.flashcards': 'Flashcards', 'nav.pomodoro': 'Pomodoro', 'nav.reports': 'Reports', 'nav.assignments': 'Assignments', 'nav.users': 'User Management',
         'nav.subjects': 'Subjects', 'nav.parent-portal': 'Parent Portal', 'nav.student-portal': 'Student Portal', 'nav.settings': 'Settings',
         'login.subtitle': 'Sign in to your account', 'login.email': 'Email Address', 'login.password': 'Password',
         'login.btn': 'Sign In', 'login.demo': 'Quick Demo Login', 'login.error': 'Invalid email or password',
@@ -36,7 +36,7 @@
         'nav.dashboard': 'Tổng quan', 'nav.students': 'Học sinh', 'nav.classes': 'Lớp học',
         'nav.homework': 'Bài tập', 'nav.attendance': 'Điểm danh', 'nav.scores': 'Điểm số',
         'nav.payments': 'Thanh toán', 'nav.schedule': 'Lịch học', 'nav.materials': 'Tài liệu',
-        'nav.flashcards': 'Thẻ học', 'nav.reports': 'Báo cáo', 'nav.assignments': 'Bài tập & Nộp bài', 'nav.users': 'Quản lý ND',
+        'nav.flashcards': 'Thẻ học', 'nav.pomodoro': 'Pomodoro', 'nav.reports': 'Báo cáo', 'nav.assignments': 'Bài tập & Nộp bài', 'nav.users': 'Quản lý ND',
         'nav.subjects': 'Môn học', 'nav.parent-portal': 'Cổng phụ huynh', 'nav.student-portal': 'Cổng học sinh', 'nav.settings': 'Cài đặt',
         'login.subtitle': 'Đăng nhập vào tài khoản của bạn', 'login.email': 'Địa chỉ Email', 'login.password': 'Mật khẩu',
         'login.btn': 'Đăng nhập', 'login.demo': 'Đăng nhập Demo nhanh', 'login.error': 'Email hoặc mật khẩu không đúng',
@@ -107,10 +107,10 @@
     ];
 
     var ROLE_SECTIONS = {
-      Teacher: ['dashboard', 'students', 'classes', 'assignments', 'attendance', 'scores', 'payments', 'schedule', 'materials', 'flashcards', 'reports', 'users', 'settings'],
-      Admin: ['dashboard', 'students', 'classes', 'assignments', 'attendance', 'scores', 'payments', 'schedule', 'materials', 'flashcards', 'reports', 'users', 'subjects', 'settings'],
+      Teacher: ['dashboard', 'students', 'classes', 'assignments', 'attendance', 'scores', 'payments', 'schedule', 'materials', 'flashcards', 'pomodoro', 'reports', 'users', 'settings'],
+      Admin: ['dashboard', 'students', 'classes', 'assignments', 'attendance', 'scores', 'payments', 'schedule', 'materials', 'flashcards', 'pomodoro', 'reports', 'users', 'subjects', 'settings'],
       Parent: ['parent-portal', 'materials', 'flashcards', 'schedule', 'payments', 'settings'],
-      Student: ['student-portal', 'assignments', 'materials', 'flashcards', 'schedule', 'payments', 'settings'],
+      Student: ['student-portal', 'assignments', 'materials', 'flashcards', 'pomodoro', 'schedule', 'payments', 'settings'],
       Pending: ['settings'],
     };
 

@@ -39,6 +39,11 @@
       --danger: #ef4444;
       --success: #10b981;
       --warning: #f59e0b;
+      /* Thang màu chuỗi tập trung (Pomodoro streak heatmap) */
+      --streak-1: #c6f6d5;
+      --streak-2: #86efac;
+      --streak-3: #34a853;
+      --streak-4: #166534;
       --brand-grad: linear-gradient(135deg, #4f46e5, #7c3aed);
       --shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 10px 28px rgba(79, 70, 229, 0.07), inset 0 1px 0 rgba(255, 255, 255, 0.6);
       --modal-bg: rgba(255, 255, 255, 0.85);
@@ -1403,6 +1408,91 @@
     .skel-row { height: 20px; margin: 14px 0; }
     .skel-card { height: 132px; border-radius: var(--radius); }
     .skel-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
+
+    /* ── POMODORO / STUDY TOOLS ─────────────────────────────────── */
+    .pomo-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      grid-template-areas: "timer notes" "timer music";
+      gap: 16px;
+      align-items: start;
+    }
+    .pomo-col-timer { grid-area: timer; }
+    .pomo-col-notes { grid-area: notes; }
+    .pomo-col-music { grid-area: music; }
+    @media (max-width: 900px) {
+      .pomo-grid { grid-template-columns: 1fr; grid-template-areas: "timer" "notes" "music"; }
+    }
+    .pomo-card { display: flex; flex-direction: column; }
+    .pomo-ring-wrap { position: relative; display: flex; align-items: center; justify-content: center; padding: 8px 0 4px; }
+    .pomo-ring { width: 200px; height: 200px; max-width: 60vw; }
+    #pomoRingFg { transition: stroke-dashoffset 0.25s linear; }
+    .pomo-ring-center { position: absolute; display: flex; flex-direction: column; align-items: center; }
+    .pomo-clock { font-size: 40px; font-weight: 700; letter-spacing: 0.5px; font-variant-numeric: tabular-nums; color: var(--text); }
+    .pomo-sessions { font-size: 12.5px; color: var(--text-muted); margin-top: 2px; }
+    .pomo-controls { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 6px 0 4px; }
+    .pomo-main-btn { min-width: 132px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+
+    /* Focus lock warning */
+    .pomo-warn {
+      display: flex; align-items: center; gap: 10px;
+      background: rgba(239, 68, 68, 0.1); border: 1px solid var(--danger);
+      color: var(--text); border-radius: 12px; padding: 10px 14px; margin-bottom: 14px; font-size: 13.5px;
+    }
+    .pomo-warn button { margin-left: auto; }
+
+    /* Notes */
+    .pomo-notes-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; padding: 4px; }
+    @media (max-width: 480px) { .pomo-notes-grid { grid-template-columns: 1fr; } }
+    .pomo-note { border-radius: 12px; padding: 8px 10px 10px; box-shadow: 0 1px 3px rgba(16, 24, 40, 0.12); }
+    .pomo-note.done { opacity: 0.6; }
+    .pomo-note-top { display: flex; align-items: center; justify-content: space-between; }
+    .pomo-note-check, .pomo-note-del {
+      width: 22px; height: 22px; border-radius: 6px; border: 1.5px solid rgba(0, 0, 0, 0.25);
+      background: rgba(255, 255, 255, 0.5); color: #14532d; cursor: pointer; font-size: 12px; line-height: 1;
+      display: inline-flex; align-items: center; justify-content: center;
+    }
+    .pomo-note-del { border-color: transparent; background: transparent; color: rgba(0, 0, 0, 0.45); font-weight: 700; }
+    .pomo-note-text {
+      width: 100%; border: none; background: transparent; resize: vertical; margin-top: 6px;
+      font-family: inherit; font-size: 13.5px; color: #1e2437; line-height: 1.45; outline: none; min-height: 54px;
+    }
+    .pomo-note.done .pomo-note-text { text-decoration: line-through; }
+    .pomo-note-text::placeholder { color: rgba(0, 0, 0, 0.4); }
+
+    /* Music */
+    .pomo-music-add { display: flex; gap: 8px; padding: 4px 4px 10px; }
+    .pomo-music-add .form-input { flex: 1; min-width: 0; }
+    .pomo-player { position: relative; padding-top: 56.25%; border-radius: 12px; overflow: hidden; background: #000; margin: 0 4px 10px; }
+    .pomo-player iframe, #pomoYtPlayer { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+    .pomo-music-ctrl { display: flex; align-items: center; gap: 10px; padding: 0 4px 10px; }
+    .pomo-vol { flex: 1; accent-color: var(--accent); }
+    .pomo-vol-ic { color: var(--text-muted); display: inline-flex; }
+    .pomo-queue { display: flex; flex-direction: column; gap: 6px; padding: 0 4px 4px; max-height: 220px; overflow-y: auto; }
+    .pomo-track { display: flex; align-items: center; gap: 10px; padding: 6px; border-radius: 10px; cursor: pointer; }
+    .pomo-track:hover { background: var(--nav-hover-bg); }
+    .pomo-track.current { background: var(--nav-active-bg); }
+    .pomo-track img { width: 48px; height: 36px; object-fit: cover; border-radius: 6px; flex-shrink: 0; }
+    .pomo-track-title { flex: 1; min-width: 0; font-size: 13px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .pomo-track-del { border: none; background: transparent; color: var(--text-muted); cursor: pointer; font-weight: 700; padding: 4px 6px; }
+
+    /* Streak calendar */
+    .pomo-cal-nav { display: flex; align-items: center; gap: 4px; }
+    .pomo-cal-label { min-width: 128px; text-align: center; font-size: 13.5px; font-weight: 600; text-transform: capitalize; }
+    .pomo-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; padding: 6px 4px 4px; }
+    .pomo-cal-wd { text-align: center; font-size: 11px; color: var(--text-muted); padding-bottom: 2px; }
+    .pomo-cal-cell {
+      aspect-ratio: 1 / 1; display: flex; align-items: center; justify-content: center;
+      border-radius: 8px; font-size: 11.5px; color: var(--text-muted); background: var(--nav-hover-bg);
+    }
+    .pomo-cal-cell.lvl1 { background: var(--streak-1); color: #14532d; }
+    .pomo-cal-cell.lvl2 { background: var(--streak-2); color: #14532d; }
+    .pomo-cal-cell.lvl3 { background: var(--streak-3); color: #fff; }
+    .pomo-cal-cell.lvl4 { background: var(--streak-4); color: #fff; }
+    .pomo-cal-cell.out { opacity: 0.35; }
+    .pomo-cal-cell.today { outline: 2px solid var(--accent); outline-offset: 1px; }
+    .pomo-cal-legend { display: flex; align-items: center; justify-content: flex-end; gap: 5px; padding: 8px 4px 2px; font-size: 11px; color: var(--text-muted); }
+    .pomo-cal-legend .pomo-cal-cell { width: 14px; height: 14px; aspect-ratio: auto; }
 
     /* ── Help tooltip (giải thích thuật ngữ) ─────────────────────── */
     .help-tip {
@@ -4288,6 +4378,24 @@
       </div>
     </div>
 
+    <!-- POMODORO / STUDY TOOLS -->
+    <div class="section content" id="section-pomodoro">
+      <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+        <div>
+          <h2>Pomodoro <span class="hdr-help" data-help="pomodoro"></span></h2>
+          <p>Bộ công cụ tập trung: hẹn giờ Pomodoro, ghi chú nhanh, nhạc học và chuỗi tập trung.</p>
+        </div>
+        <button class="btn btn-ghost" id="pomoFocusBtn" onclick="togglePomoFocusLock()">Khoá tập trung</button>
+      </div>
+      <div id="pomoWarnBar" class="pomo-warn" style="display:none;"></div>
+      <div class="pomo-grid">
+        <div id="pomoTimerCard" class="pomo-col-timer"></div>
+        <div id="pomoNotes" class="pomo-col-notes"></div>
+        <div id="pomoMusic" class="pomo-col-music"></div>
+      </div>
+      <div id="pomoStreak" style="margin-top:16px;"></div>
+    </div>
+
     <!-- ASSIGNMENTS -->
     <div class="section content" id="section-assignments">
       <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between;">
@@ -4385,6 +4493,7 @@
   <script src="js/22-student-portal.js"></script>
   <script src="js/23-flashcards.js"></script>
   <script src="js/24-materials.js"></script>
+  <script src="js/26-pomodoro.js"></script>
   <script src="js/25-init.js"></script>
 </body>
 

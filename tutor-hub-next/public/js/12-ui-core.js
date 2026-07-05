@@ -388,7 +388,7 @@
       renderNavigation();
       var titles = {
         'dashboard': 'Tổng quan', 'students': 'Học sinh', 'classes': 'Lớp học', 'homework': 'Bài tập',
-        'flashcards': 'Thẻ học', 'materials': 'Tài liệu', 'attendance': 'Điểm danh',
+        'flashcards': 'Thẻ học', 'pomodoro': 'Pomodoro', 'materials': 'Tài liệu', 'attendance': 'Điểm danh',
         'scores': 'Điểm số', 'payments': 'Thanh toán', 'schedule': 'Lịch học', 'reports': 'Báo cáo',
         'parent-portal': 'Cổng phụ huynh', 'student-portal': 'Cổng học sinh', 'settings': 'Cài đặt',
         'assignments': 'Bài tập & Nộp bài', 'users': 'Quản lý người dùng', 'subjects': 'Môn học'
@@ -409,6 +409,7 @@
       if (id === 'classes') renderClasses();
       if (id === 'homework') renderHomework();
       if (id === 'flashcards') renderDecks();
+      if (id === 'pomodoro') renderPomodoro();
       if (id === 'materials') renderMaterials();
       if (id === 'attendance') renderAttendance();
       if (id === 'scores') renderScores();

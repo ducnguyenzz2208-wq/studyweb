@@ -132,6 +132,8 @@ export default function DashboardPage() {
       ref={iframeRef}
       src="/tutor-hub-app.html"
       onLoad={handleIframeLoad}
+      // allow fullscreen để tính năng "Khoá tập trung" (Pomodoro) vào toàn màn hình được
+      allow="fullscreen"
       style={{ width: '100vw', height: '100vh', border: 'none', display: 'block' }}
       title="Tutor Hub"
     />
