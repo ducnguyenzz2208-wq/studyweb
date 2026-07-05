@@ -37,20 +37,43 @@ export default function DashboardPage() {
     const user = session.user
     setUserEmail(user.email ?? '')
 
-    // Load profile from DB — always fresh, never rely on session claims
+    // Load profile from DB — always fresh, never rely on session claims.
+    // maybeSingle(): 0 dòng → null (không ném lỗi) để xử lý "tạo profile bù".
     const { data: profile, error: profileErr } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', user.id)
-      .single()
+      .maybeSingle()
 
     if (profileErr) {
       // Likely RLS recursion (500) — run migration 001_fix_rls_recursion.sql
       console.error('[DashboardPage] profiles fetch failed:', profileErr.message, profileErr.code)
     }
 
+    // An toàn: nếu trigger tạo profile chưa chạy/hỏng → tạo bù ngay để admin
+    // thấy tài khoản trong "Quản lý người dùng" và cấp quyền được.
+    let effectiveProfile = profile
+    if (!effectiveProfile && !profileErr) {
+      const fallback = {
+        id: user.id,
+        email: user.email ?? '',
+        name: user.user_metadata?.full_name
+          ?? user.user_metadata?.name
+          ?? user.email?.split('@')[0]
+          ?? 'User',
+        role: 'Pending',
+        language: 'vi',
+      }
+      const { data: created } = await supabase
+        .from('profiles')
+        .upsert(fallback, { onConflict: 'id' })
+        .select('*')
+        .maybeSingle()
+      effectiveProfile = created ?? fallback
+    }
+
     // Tài khoản chưa được cấp quyền → hiện màn hình chờ duyệt thay vì app.
-    const role = profile?.role ?? 'Pending'
+    const role = effectiveProfile?.role ?? 'Pending'
     if (role === 'Pending') { setGate('pending'); return }
 
     setPayload({
@@ -63,14 +86,14 @@ export default function DashboardPage() {
         id: user.id,
         email: user.email ?? '',
         role,
-        name: profile?.name
+        name: effectiveProfile?.name
           ?? user.user_metadata?.full_name
           ?? user.user_metadata?.name
           ?? user.email?.split('@')[0]
           ?? 'User',
-        avatar: profile?.avatar ?? '',
-        subject: profile?.subject ?? '',
-        language: profile?.language ?? 'vi',
+        avatar: effectiveProfile?.avatar ?? '',
+        subject: effectiveProfile?.subject ?? '',
+        language: effectiveProfile?.language ?? 'vi',
       },
     })
     setGate('ready')

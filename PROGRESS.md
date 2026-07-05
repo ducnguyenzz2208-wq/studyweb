@@ -59,6 +59,8 @@ enrollment_requests, notifications`.
 - [ ] **Chạy migration `022_secure_notifications_insert.sql`** (BẢO MẬT — nên chạy sớm): siết RLS
       INSERT của `notifications` + RPC `send_payment_reminder`. Chưa chạy: học sinh vẫn có thể spam/giả
       mạo thông báo, VÀ nút "🔔 Nhắc đóng" (từng khoản) sẽ báo lỗi RPC. Chạy SAU `017` và `021`.
+- [ ] **Chạy migration `023_fix_signup_trigger.sql`** (GẤP — đang chặn đăng ký): sửa lỗi
+      "Database error saving new user" (500) khi tạo tài khoản. Sau khi chạy, đăng ký được ngay.
 - [ ] Sau khi push: chờ Vercel build xong rồi test lại reset password.
 
 ## Ổn định cho người dùng THẬT (roadmap — làm tiếp)
@@ -94,11 +96,20 @@ enrollment_requests, notifications`.
 - [ ] **Backup dữ liệu** Supabase (PITR/định kỳ) trước khi có dữ liệu thật của học sinh.
 
 ### Nghiệm thu nhanh (chạy với tài khoản thật, mọi vai trò)
-- [ ] Đăng ký mới → email xác nhận → đăng nhập → màn "chờ duyệt".
-- [ ] Admin cấp quyền → học sinh reload thấy đúng cổng.
-- [ ] Reset mật khẩu end-to-end được.
-- [ ] Học sinh A KHÔNG thấy dữ liệu học sinh B (kiểm RLS thực tế).
-- [ ] GV tạo lớp/giao bài → học sinh trong lớp thấy bài.
+> Code đã sẵn sàng; các bước cần MÔI TRƯỜNG THẬT của bạn (chạy migration `023`, cấu hình SMTP,
+> tài khoản admin) — chạy theo runbook dưới. Trạng thái: ✅ code-verified / ⏳ chờ bạn thao tác.
+- [x] **Lỗi "Database error saving new user" khi đăng ký** — ĐÃ FIX (migration `023_fix_signup_trigger.sql`:
+      `handle_new_user()` bọc EXCEPTION nên không bao giờ 500; + `dashboard/page.tsx` tạo profile bù
+      nếu thiếu). ⏳ Cần chạy `023` trên prod rồi thử đăng ký lại.
+- [ ] ⏳ Đăng ký mới → email xác nhận → đăng nhập → màn "chờ duyệt". (cần chạy `023` + SMTP; màn
+      pending + gate Pending đã có sẵn trong `dashboard/page.tsx`.)
+- [ ] ⏳ Admin cấp quyền → học sinh reload thấy đúng cổng. (code: `changeUserRole` + RLS "Admin updates
+      any profile" + dashboard đọc role tươi mỗi lần vào — ✅ đường đi đúng, cần test với tài khoản thật.)
+- [ ] ⏳ Reset mật khẩu end-to-end. (code #7b đã xong; cần SMTP + Site URL/Redirect đúng.)
+- [ ] ⏳ Học sinh A KHÔNG thấy dữ liệu học sinh B. (RLS `students`: "Students read own record" theo email
+      — ✅ chính sách đúng; cần kiểm thực tế với 2 tài khoản HS.)
+- [ ] ⏳ GV tạo lớp/giao bài → HS trong lớp thấy bài. (code: assignments RLS cho Student đọc + feed lọc
+      theo `class_members`; cần thêm HS vào lớp bằng email rồi kiểm.)
 
 ## Fix lỗi (đợt gần nhất)
 - [x] **Flashcard bulk-import không lưu** (400 `invalid uuid: "6"`): `bulkImport` gọi `persistDeck`
