@@ -48,7 +48,20 @@ enrollment_requests, notifications`.
       **Site URL** đúng domain prod (đây là nơi bị đá về khi redirect sai — lý do reset MK "không thấy lỗi gì").
 - [ ] Kiểm tra email recovery/confirm có về không (cả Spam); SMTP mặc định Supabase bị giới hạn rate.
 - [ ] Chạy migration `017_notifications.sql`.
+- [ ] Chạy migration `018_find_account_by_name.sql` (bật tra cứu học sinh theo TÊN; nếu chưa chạy,
+      tra theo email vẫn hoạt động, tra theo tên sẽ báo lỗi nhắc chạy migration).
 - [ ] Sau khi push: chờ Vercel build xong rồi test lại reset password.
+
+## Fix lỗi (đợt gần nhất)
+- [x] **Flashcard bulk-import không lưu** (400 `invalid uuid: "6"`): `bulkImport` gọi `persistDeck`
+      cũ (upsert **id số** vào cột `uuid`). Đã sửa: chèn thẳng vào `flashcards` với `deck_id=dbId`
+      (giống `saveCard`), gán `dbId` trả về. (Đúng gợi ý memory `demo-to-db-pattern`: qid/UUID.)
+      `persistDeck` giờ là code chết — nên xoá sau.
+- [x] **Add Student**: ô tra cứu nhận email/tên → điền cả tên & email; **bỏ 2 ô điểm số**
+      (đồng bộ tự động từ Bài tập); `saveStudent` giữ điểm cũ khi sửa, 0 khi thêm.
+- [ ] **Dark mode "mất logo góc phải"**: CHƯA tái hiện được — mọi phần tử góc phải (avatar chữ/ảnh,
+      icon help/theme/bell) đều hiện đúng trong dark ở preview + 2 ảnh user gửi. Cần user chỉ rõ
+      phần tử nào (hoặc chụp lúc bị mất).
 
 ---
 
