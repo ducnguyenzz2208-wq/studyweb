@@ -48,13 +48,47 @@
       if (!_db) return;
       _db.from('classes').update({ owner_id: teacherId }).eq('id', String(classId)).then(function (r) {
         if (r.error) { showToast('Lỗi phân lớp: ' + r.error.message, 'error'); return; }
+        var tName = (appUsers.find(function (u) { return u.id === teacherId; }) || {}).name || teacherId;
+        var cName = (classes.find(function (c) { return String(c.id) === String(classId); }) || {}).name || classId;
+        try { logAudit('assign_class', 'class', 'Phân lớp "' + cName + '" cho GV ' + tName); } catch (e) { }
         closeModal(); showToast('Đã phân lớp cho giáo viên.', 'success');
+      });
+    }
+
+    // ── NHẬT KÝ HOẠT ĐỘNG (audit log) — chỉ Admin ────────────────
+    var _AUDIT_LABEL = {
+      role_change: 'Đổi vai trò', assign_class: 'Phân lớp', payment_create: 'Tạo học phí',
+      payment_paid: 'Đánh dấu đã thu', sample_load: 'Nạp dữ liệu mẫu', sample_clear: 'Xoá dữ liệu mẫu',
+      remind_payments: 'Nhắc học phí', remind_homework: 'Nhắc nộp bài', export: 'Xuất báo cáo'
+    };
+    function openAuditLog() {
+      if (!(currentUser && currentUser.role === 'Admin')) { showToast('Chỉ admin xem được nhật ký.', 'error'); return; }
+      if (!_db) { showToast('Chưa kết nối.', 'error'); return; }
+      openModal('<div class="modal-header"><h3 style="display:flex;align-items:center;gap:8px;">' + svgIcon('reports', 18) + 'Nhật ký hoạt động</h3><button class="modal-close" onclick="closeModal()" aria-label="Đóng">✕</button></div>' +
+        '<div class="modal-body" id="auditBody"><div class="skel skel-row"></div><div class="skel skel-row"></div><div class="skel skel-row"></div></div>', 'modal-lg');
+      _db.from('audit_logs').select('*').order('created_at', { ascending: false }).limit(100).then(function (r) {
+        var box = document.getElementById('auditBody');
+        if (!box) return;
+        if (r.error) { box.innerHTML = errorBlock(_dbErrMsg(r.error), null); return; }
+        var rows = r.data || [];
+        if (!rows.length) { box.innerHTML = '<div class="empty" style="padding:20px;">Chưa có hoạt động nào được ghi.</div>'; return; }
+        box.innerHTML = '<div style="overflow-x:auto;"><table><thead><tr><th>Thời gian</th><th>Người thực hiện</th><th>Hành động</th><th>Chi tiết</th></tr></thead><tbody>' +
+          rows.map(function (a) {
+            var when = (a.created_at || '').replace('T', ' ').slice(0, 16);
+            return '<tr><td style="white-space:nowrap;font-size:12px;color:var(--text-muted);">' + escHtml(when) + '</td>' +
+              '<td>' + escHtml(a.actor_name || '—') + '<div style="font-size:11px;color:var(--text-muted);">' + escHtml(a.actor_role || '') + '</div></td>' +
+              '<td><span class="badge badge-info">' + escHtml(_AUDIT_LABEL[a.action] || a.action) + '</span></td>' +
+              '<td style="font-size:13px;">' + escHtml(a.detail || '') + '</td></tr>';
+          }).join('') + '</tbody></table></div>';
       });
     }
 
     function renderUserManagement() {
       var list = document.getElementById('userMgmtList');
       if (!list) return;
+      // Nút "Nhật ký" chỉ hiện cho Admin
+      var auditBtn = document.getElementById('auditLogBtn');
+      if (auditBtn) auditBtn.style.display = (currentUser && currentUser.role === 'Admin') ? '' : 'none';
       if (!appUsers.length) {
         list.innerHTML = '<tr><td colspan="5" class="empty">' + t('users.noUsers') + '</td></tr>';
         return;
@@ -113,7 +147,10 @@
       showToast((u.name || u.email) + ' → ' + newRole, 'success');
       if (_db) {
         _db.from('profiles').update({ role: newRole }).eq('id', userId)
-          .then(function (r) { if (r.error) showToast('Lỗi lưu: ' + r.error.message, 'error'); });
+          .then(function (r) {
+            if (r.error) { showToast('Lỗi lưu: ' + r.error.message, 'error'); return; }
+            try { logAudit('role_change', 'user', (u.name || u.email) + ' → ' + newRole); } catch (e) { }
+          });
       }
     }
 

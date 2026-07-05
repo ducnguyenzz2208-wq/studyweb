@@ -2,6 +2,9 @@
     // ASSIGNMENTS
     // ============================================================
     function renderAssignments() {
+      var isTA = currentUser && (currentUser.role === 'Teacher' || currentUser.role === 'Admin');
+      var hwBtn = document.getElementById('hwRemindBtn');
+      if (hwBtn) hwBtn.style.display = isTA ? '' : 'none';
       renderClassSidebar();
       renderClassFeed();
     }
@@ -260,6 +263,24 @@
         renderAssignments();
         if (_db) _db.from('assignments').delete().eq('id', String(id)).then(function (r) { if (r.error) showToast('Lỗi xóa: ' + r.error.message, 'error'); });
       });
+    }
+
+    // Nhắc nộp bài HÀNG LOẠT (GV/Admin) — RPC server (migration 021): với mỗi bài
+    // đang mở, nhắc thành viên lớp chưa nộp; chống spam 6h. Bản an toàn, bấm chủ động.
+    function remindPendingHomework() {
+      if (!(currentUser && (currentUser.role === 'Teacher' || currentUser.role === 'Admin'))) { showToast('Chỉ GV/Admin gửi được nhắc nộp bài.', 'error'); return; }
+      if (!_db) return;
+      uiConfirm('Gửi nhắc nộp bài tới học sinh chưa nộp các bài đang mở?', function () {
+        showBusy('Đang gửi nhắc nộp bài…');
+        _db.rpc('remind_pending_homework').then(function (r) {
+          hideBusy();
+          if (r.error) { showToast('Lỗi: ' + r.error.message, 'error'); return; }
+          var n = r.data;
+          if (n === -1) { showToast('Bạn không có quyền.', 'error'); return; }
+          showToast(n > 0 ? ('Đã gửi ' + n + ' nhắc nộp bài.') : 'Không có ai cần nhắc (hoặc vừa nhắc gần đây).', n > 0 ? 'success' : 'info');
+          try { logAudit('remind_homework', 'assignment', 'Gửi ' + n + ' nhắc nộp bài'); } catch (e) { }
+        });
+      }, { danger: false, okText: 'Gửi nhắc' });
     }
 
     function openMembersModal(classId) {

@@ -217,10 +217,12 @@
     function subscribeNotifications() {
       if (!_db || !_dbUserId) return;
       if (_notifChannel) _notifChannel.unsubscribe();
+      // Nghe MỌI thay đổi (INSERT/UPDATE/DELETE) để đồng bộ cả trạng thái đã đọc
+      // / đã xoá giữa các thiết bị; chỉ hiện toast khi có thông báo MỚI (INSERT).
       _notifChannel = _db.channel('public:notifications')
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications', filter: 'user_id=eq.' + _dbUserId }, function (payload) {
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications', filter: 'user_id=eq.' + _dbUserId }, function (payload) {
           loadNotifications();
-          if (payload.new && payload.new.message) {
+          if (payload.eventType === 'INSERT' && payload.new && payload.new.message) {
             showToast(payload.new.message, 'info');
           }
         })

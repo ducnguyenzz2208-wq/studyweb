@@ -49,6 +49,19 @@
       content.setAttribute('role', 'dialog');
       content.setAttribute('aria-modal', 'true');
       content.innerHTML = html;
+      // A11y: gắn <label> với ô nhập kế tiếp trong cùng .form-group (khi chưa gắn)
+      // để trình đọc màn hình đọc đúng nhãn. Chỉ thêm id/for khi còn thiếu.
+      try {
+        var _grps = content.querySelectorAll('.form-group');
+        Array.prototype.forEach.call(_grps, function (g, i) {
+          var lbl = g.querySelector('label');
+          var field = g.querySelector('input:not([type=hidden]), select, textarea');
+          if (lbl && field && !lbl.getAttribute('for')) {
+            if (!field.id) field.id = '_fld_' + Date.now().toString(36) + '_' + i;
+            lbl.setAttribute('for', field.id);
+          }
+        });
+      } catch (e) { }
       overlay.classList.add('open');
       document.body.style.overflow = 'hidden';
       if (!overlay.classList.contains('_focus-bound')) { _modalPrevFocus = document.activeElement; }

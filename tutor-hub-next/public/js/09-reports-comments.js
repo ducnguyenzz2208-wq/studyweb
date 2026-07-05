@@ -76,7 +76,7 @@
               }
             ]
           },
-          options: { responsive: true, plugins: { legend: { labels: { color: '#6b7280', font: { size: 11 } } } }, scales: { x: { ticks: { color: '#6b7280' } }, y: { ticks: { color: '#6b7280' }, beginAtZero: true } } }
+          options: { responsive: true, plugins: { legend: { labels: { color: getChartTextColor(), font: { size: 11 } } } }, scales: { x: { ticks: { color: getChartTextColor() }, grid: { color: getChartGridColor() } }, y: { ticks: { color: getChartTextColor() }, grid: { color: getChartGridColor() }, beginAtZero: true } } }
         });
       }
       if (hwCtx) {
@@ -88,9 +88,128 @@
         reportCharts.hw = new Chart(hwCtx, {
           type: 'bar',
           data: { labels: hwLabels, datasets: [{ label: 'Số bài nộp', backgroundColor: 'rgba(16,185,129,0.7)', data: hwData }] },
-          options: { indexAxis: 'y', responsive: true, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#6b7280' }, beginAtZero: true }, y: { ticks: { color: '#6b7280', font: { size: 10 } } } } }
+          options: { indexAxis: 'y', responsive: true, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: getChartTextColor() }, grid: { color: getChartGridColor() }, beginAtZero: true }, y: { ticks: { color: getChartTextColor(), font: { size: 10 } }, grid: { color: getChartGridColor() } } } }
         });
       }
+    }
+
+    // ============================================================
+    // XUẤT BÁO CÁO (Điểm / Điểm danh / Học phí) — CSV (Excel) + In/PDF
+    // ============================================================
+    // CSV mở tốt trong Excel: có BOM UTF-8 cho tiếng Việt, ô có dấu phẩy/xuống
+    // dòng được bọc "". In/PDF dùng cửa sổ in (giống exportInvoice) — không cần
+    // thư viện ngoài, an toàn và không đụng dữ liệu/RLS.
+    function _csvCell(v) {
+      var s = (v == null ? '' : String(v));
+      if (/[",\r\n]/.test(s)) s = '"' + s.replace(/"/g, '""') + '"';
+      return s;
+    }
+    function _csvFromRows(rows) {
+      return '﻿' + rows.map(function (r) { return r.map(_csvCell).join(','); }).join('\r\n');
+    }
+    function _downloadText(filename, text, mime) {
+      try {
+        var blob = new Blob([text], { type: (mime || 'text/csv') + ';charset=utf-8;' });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url; a.download = filename;
+        document.body.appendChild(a); a.click();
+        setTimeout(function () { document.body.removeChild(a); URL.revokeObjectURL(url); }, 0);
+      } catch (e) { showToast('Trình duyệt không hỗ trợ tải tệp.', 'error'); }
+    }
+    function _today() { return new Date().toISOString().split('T')[0]; }
+
+    function exportGradesCSV() {
+      if (!students.length) { showToast('Chưa có dữ liệu học sinh để xuất.', 'error'); return; }
+      var rows = [['Học sinh', 'Lớp', 'Điểm Toán', 'Điểm Anh', 'Điểm TB', 'Xếp loại', 'Chuyên cần %']];
+      students.forEach(function (s) {
+        var avg = avgScore(s);
+        rows.push([s.name, s.class || '', s.mathScore, s.engScore, avg, getGrade(avg), s.attendance || 0]);
+      });
+      _downloadText('bao-cao-diem_' + _today() + '.csv', _csvFromRows(rows));
+      showToast('Đã xuất báo cáo điểm (CSV).', 'success');
+      try { logAudit('export', 'grades', 'Xuất báo cáo điểm ' + students.length + ' HS'); } catch (e) { }
+    }
+
+    function exportAttendanceCSV() {
+      if (!attendanceRecords.length) { showToast('Chưa có dữ liệu điểm danh để xuất.', 'error'); return; }
+      var label = { present: 'Có mặt', absent: 'Vắng', late: 'Muộn' };
+      var rows = [['Ngày', 'Học sinh', 'Lớp', 'Trạng thái']];
+      attendanceRecords.slice().sort(function (a, b) { return String(b.date).localeCompare(String(a.date)); })
+        .forEach(function (r) {
+          rows.push([r.date || '', r.studentName || '', r.className || r.class || '', label[r.status] || r.status || '']);
+        });
+      _downloadText('bao-cao-diem-danh_' + _today() + '.csv', _csvFromRows(rows));
+      showToast('Đã xuất báo cáo điểm danh (CSV).', 'success');
+      try { logAudit('export', 'attendance', 'Xuất điểm danh ' + attendanceRecords.length + ' lượt'); } catch (e) { }
+    }
+
+    function exportPaymentsCSV() {
+      if (!(currentUser && currentUser.role === 'Admin')) { showToast('Chỉ admin xuất được báo cáo học phí.', 'error'); return; }
+      if (!payments.length) { showToast('Chưa có khoản thu để xuất.', 'error'); return; }
+      var label = { Paid: 'Đã thanh toán', Pending: 'Chưa thanh toán', Overdue: 'Quá hạn' };
+      var rows = [['Học sinh', 'Số tiền (USD)', 'Hạn đóng', 'Ngày đóng', 'Trạng thái', 'Ghi chú']];
+      payments.forEach(function (p) {
+        rows.push([p.student || '', p.amount, p.due || '', p.paid || '', label[p.status] || p.status, p.note || '']);
+      });
+      _downloadText('bao-cao-hoc-phi_' + _today() + '.csv', _csvFromRows(rows));
+      showToast('Đã xuất báo cáo học phí (CSV).', 'success');
+      try { logAudit('export', 'payments', 'Xuất học phí ' + payments.length + ' khoản'); } catch (e) { }
+    }
+
+    function exportReportPDF() {
+      var w = window.open('', '_blank', 'width=900,height=700');
+      if (!w) { showToast('Vui lòng cho phép popup để in báo cáo.', 'error'); return; }
+      var totalStudents = students.length;
+      var avgMath = totalStudents ? Math.round(students.reduce(function (a, x) { return a + x.mathScore; }, 0) / totalStudents) : 0;
+      var avgEng = totalStudents ? Math.round(students.reduce(function (a, x) { return a + x.engScore; }, 0) / totalStudents) : 0;
+      var paid = payments.filter(function (p) { return p.status === 'Paid'; }).length;
+      var overdueN = payments.filter(function (p) { return p.status === 'Overdue'; }).length;
+      var sorted = students.slice().sort(function (a, b) { return avgScore(b) - avgScore(a); }).slice(0, 10);
+      var topRows = sorted.map(function (s, i) {
+        return '<tr><td>' + (i + 1) + '</td><td>' + escHtml(s.name) + '</td><td>' + escHtml(s.class || '') + '</td><td>' + avgScore(s) + '%</td><td>' + getGrade(avgScore(s)) + '</td></tr>';
+      }).join('');
+      var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Báo cáo tổng hợp — Tutor Hub</title>' +
+        '<style>body{font-family:system-ui,"Segoe UI",sans-serif;color:#1e293b;padding:40px;line-height:1.5;}' +
+        'h1{color:#4f46e5;margin:0 0 4px;}.sub{color:#64748b;margin-bottom:24px;}' +
+        '.kpis{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:28px;}' +
+        '.kpi{border:1px solid #e2e8f0;border-radius:10px;padding:14px 18px;min-width:130px;}' +
+        '.kpi b{display:block;font-size:22px;color:#4f46e5;}.kpi span{font-size:12px;color:#64748b;}' +
+        'table{width:100%;border-collapse:collapse;margin-top:8px;}th,td{border:1px solid #e2e8f0;padding:8px 10px;text-align:left;font-size:13px;}th{background:#f8fafc;}' +
+        '.footer{margin-top:40px;font-size:11px;color:#94a3b8;text-align:center;}' +
+        '@media print{.no-print{display:none;}}</style></head><body>' +
+        '<h1>📚 Tutor Hub — Báo cáo tổng hợp</h1>' +
+        '<div class="sub">Ngày xuất: ' + _today() + '</div>' +
+        '<button class="no-print" onclick="window.print()" style="padding:8px 16px;background:#4f46e5;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:600;margin-bottom:20px;">In / Lưu PDF</button>' +
+        '<div class="kpis">' +
+        '<div class="kpi"><b>' + totalStudents + '</b><span>Tổng học sinh</span></div>' +
+        '<div class="kpi"><b>' + avgMath + '%</b><span>Điểm TB Toán</span></div>' +
+        '<div class="kpi"><b>' + avgEng + '%</b><span>Điểm TB Anh</span></div>' +
+        '<div class="kpi"><b>' + paid + '/' + payments.length + '</b><span>Học phí đã thu</span></div>' +
+        '<div class="kpi"><b>' + overdueN + '</b><span>Học phí quá hạn</span></div>' +
+        '</div>' +
+        '<h3>Top học sinh</h3>' +
+        '<table><thead><tr><th>#</th><th>Học sinh</th><th>Lớp</th><th>Điểm TB</th><th>Xếp loại</th></tr></thead><tbody>' +
+        (topRows || '<tr><td colspan="5">Chưa có dữ liệu</td></tr>') + '</tbody></table>' +
+        '<div class="footer">Xuất tự động từ hệ thống quản lý học tập Tutor Hub.</div>' +
+        '<script>window.onload=function(){setTimeout(function(){window.print();},400);};<\/script>' +
+        '</body></html>';
+      w.document.write(html); w.document.close();
+      try { logAudit('export', 'report_pdf', 'In/PDF báo cáo tổng hợp'); } catch (e) { }
+    }
+
+    // Menu xuất — mở modal chọn định dạng (đồng bộ giao diện app).
+    function openExportMenu() {
+      var isAdmin = currentUser && currentUser.role === 'Admin';
+      var body = '<div class="modal-header"><h3 style="display:flex;align-items:center;gap:8px;">' + svgIcon('reports', 18) + 'Xuất báo cáo</h3><button class="modal-close" onclick="closeModal()" aria-label="Đóng">✕</button></div>' +
+        '<div class="modal-body"><div style="display:flex;flex-direction:column;gap:10px;">' +
+        '<button class="btn btn-ghost" style="justify-content:flex-start;" onclick="exportGradesCSV()">📊 Điểm số — CSV (Excel)</button>' +
+        '<button class="btn btn-ghost" style="justify-content:flex-start;" onclick="exportAttendanceCSV()">🗓️ Điểm danh — CSV (Excel)</button>' +
+        (isAdmin ? '<button class="btn btn-ghost" style="justify-content:flex-start;" onclick="exportPaymentsCSV()">💳 Học phí — CSV (Excel)</button>' : '') +
+        '<button class="btn btn-primary" style="justify-content:flex-start;" onclick="closeModal();exportReportPDF()">🖨️ Báo cáo tổng hợp — In / PDF</button>' +
+        '</div><div class="hint" style="margin-top:12px;">Tệp CSV mở trực tiếp bằng Excel/Google Sheets (đã có dấu tiếng Việt).</div>' +
+        '</div>';
+      openModal(body, 'modal-sm');
     }
 
     // ============================================================

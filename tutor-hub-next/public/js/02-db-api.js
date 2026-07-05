@@ -32,6 +32,17 @@
       return _db.from(table).delete().eq('id', id).then(function (r) { if (r.error) console.warn('db del', table, r.error.message); });
     }
 
+    // Ghi nhật ký hoạt động (best-effort). Server (RPC log_audit) tự lấy actor =
+    // auth.uid() và chỉ ghi nếu là Teacher/Admin — client không cần kiểm quyền.
+    // Không bao giờ chặn luồng chính nếu ghi log lỗi.
+    function logAudit(action, entity, detail) {
+      if (!_db || !_dbUserId) return;
+      try {
+        _db.rpc('log_audit', { _action: action, _entity: entity || null, _detail: detail || null })
+          .then(function (r) { if (r && r.error) console.warn('audit log', r.error.message); });
+      } catch (e) { }
+    }
+
     // Pull all user data from Supabase and overwrite in-memory arrays
     function loadMaterials() {
       if (!_db) return;
@@ -478,6 +489,7 @@
           try { renderWelcome(); } catch (e) { }
           var kpi = document.getElementById('kpiStudents'); if (kpi) kpi.textContent = students.length;
           try { renderSampleDataControls(); } catch (e) { }
+          try { logAudit('sample_load', 'sample', 'Nạp ' + ids.classes.length + ' lớp, ' + ids.students.length + ' HS mẫu'); } catch (e) { }
           showToast('Đã nạp ' + ids.classes.length + ' lớp và ' + ids.students.length + ' học sinh mẫu.', 'success');
         });
       });
@@ -505,6 +517,7 @@
           try { renderWelcome(); } catch (e) { }
           var kpi = document.getElementById('kpiStudents'); if (kpi) kpi.textContent = students.length;
           try { renderSampleDataControls(); } catch (e) { }
+          try { logAudit('sample_clear', 'sample', 'Xoá ' + ids.classes.length + ' lớp, ' + ids.students.length + ' HS mẫu'); } catch (e) { }
           showToast('Đã xoá dữ liệu mẫu.', 'success');
         }).catch(function (e) { hideBusy(); showToast('Lỗi xoá dữ liệu mẫu.', 'error'); });
       });

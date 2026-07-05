@@ -50,6 +50,12 @@ enrollment_requests, notifications`.
 - [ ] Chạy migration `017_notifications.sql`.
 - [ ] Chạy migration `018_find_account_by_name.sql` (bật tra cứu học sinh theo TÊN; nếu chưa chạy,
       tra theo email vẫn hoạt động, tra theo tên sẽ báo lỗi nhắc chạy migration).
+- [ ] Chạy migration `019_realtime_notifications.sql` — bật Supabase Realtime cho `notifications`
+      (không có bước này thì 🔔 vẫn cần bấm tải lại; app không lỗi).
+- [ ] Chạy migration `020_audit_log.sql` — bảng nhật ký + `log_audit()`. Chưa chạy: nút "Nhật ký"
+      báo lỗi khi mở, các thao tác vẫn chạy bình thường (ghi log là best-effort, không chặn).
+- [ ] Chạy migration `021_reminders.sql` — RPC nhắc học phí/bài tập. Chưa chạy: nút "Nhắc…" báo lỗi
+      RPC; mọi thứ khác không ảnh hưởng. (Tuỳ chọn: bật pg_cron theo comment trong file để tự động.)
 - [ ] Sau khi push: chờ Vercel build xong rồi test lại reset password.
 
 ## Fix lỗi (đợt gần nhất)
@@ -62,6 +68,27 @@ enrollment_requests, notifications`.
 - [x] **Dark mode mất icon topbar** (chuông/theme/trợ giúp): `.theme-btn`/`.notif-btn` không set
       `color`; sau khi đổi emoji→SVG (`stroke=currentColor`) icon bị tối trên nền tối. Thêm
       `color: var(--text)` → bám theme. Đã test light+dark (icon = #e2e8f0 dark / #1e2437 light).
+
+## Đợt patch 2 (Realtime / Export / Reminders / Audit / A11y) ✅ ĐÃ LÀM
+Patch tiếp trên app hiện có, diff nhỏ + an toàn, giữ route/auth/RLS/data-flow, song ngữ.
+- [x] **Realtime notifications** — client đã có; migration `019_realtime_notifications.sql` bật
+      publication + `REPLICA IDENTITY FULL`. Subscribe đổi `event:'INSERT'`→`'*'` (đồng bộ đã đọc/xoá).
+- [x] **Export báo cáo** (09-reports-comments.js) — `exportGradesCSV`/`exportAttendanceCSV`/
+      `exportPaymentsCSV` (CSV BOM UTF-8) + `exportReportPDF` (in) + `openExportMenu()`. Nút cũ
+      (toast giả) → mở menu thật. Học phí CSV chỉ admin.
+- [x] **Reminders** — `remindAllUnpaid()` (Payments, admin) + `remindPendingHomework()` (Assignments,
+      GV/Admin) gọi RPC `021_reminders.sql`. Nút `payRemindBtn`/`hwRemindBtn` ẩn/hiện theo vai trò.
+- [x] **Audit log** — `020_audit_log.sql` (bảng + `log_audit()` + RLS admin-read). `logAudit()`
+      (02-db-api.js) wire vào: đổi vai trò, phân lớp, tạo/đánh dấu học phí, nạp/xoá mẫu, nhắc, xuất.
+      Viewer `openAuditLog()` (11-user-management.js) + nút "Nhật ký" (admin) ở Quản lý ND.
+- [x] **A11y thêm** — charts mục Báo cáo dùng màu theo theme (`getChartTextColor`/`getChartGridColor`
+      + đăng ký trong `refreshCharts`) → hết chữ mờ trên nền tối; `openModal` tự gắn `<label for>`
+      với ô nhập trong `.form-group`; toast container `role="status" aria-live="polite"`.
+- **Verify**: mock-login admin trong preview → menu xuất 4 mục, CSV escape đúng (BOM + bọc "),
+      nút nhắc/nhật ký hiện đúng vai trò, label-modal liên kết, 0 lỗi console; charts dark rõ chữ.
+- **Migration cần chạy tay** (Supabase SQL Editor): `019`, `020`, `021` (xem mục dưới).
+
+---
 
 ## Đợt patch UX (production-grade, KHÔNG rebuild) ✅ ĐÃ LÀM
 Patch trên app hiện có, diff nhỏ + an toàn, giữ nguyên route/auth/data-flow, song ngữ.
@@ -223,10 +250,16 @@ Sắp theo mức ưu tiên. P0 = rào cản lớn nhất khiến người mới 
       Payments/Attendance), `aria-hidden` cho icon 🔍 trang trí.
 
 ### Tính năng nâng cao (khi cần)
-- [ ] **Thông báo realtime** (Supabase Realtime) thay vì phải bấm 🔔 tải lại.
-- [ ] **Xuất báo cáo** (điểm/điểm danh/học phí) ra Excel/PDF.
-- [ ] **Nhắc học phí/BTVN qua email** tự động.
-- [ ] **Nhật ký hoạt động (audit log)** cho thao tác của admin.
+- [x] **Thông báo realtime** (Supabase Realtime) — client đã subscribe `postgres_changes` (giờ `event:'*'`
+      để đồng bộ cả đã đọc/đã xoá); migration **019** thêm `notifications` vào publication
+      `supabase_realtime` + `REPLICA IDENTITY FULL`. (Xem "Đợt patch 2".)
+- [x] **Xuất báo cáo** (điểm/điểm danh/học phí) ra Excel/PDF — CSV có BOM UTF-8 (mở Excel, dấu VN)
+      + In/PDF (cửa sổ in). Nút "Xuất báo cáo" ở mục Báo cáo → `openExportMenu()`.
+- [x] **Nhắc học phí/BTVN** — bản an toàn: nút bấm gọi RPC server (migration **021**:
+      `remind_overdue_payments`/`remind_pending_homework`, chống spam 6h). Tự động qua email/pg_cron
+      để sau (đã ghi sẵn 2 dòng `cron.schedule` mẫu trong migration).
+- [x] **Nhật ký hoạt động (audit log)** — migration **020** (`audit_logs` + `log_audit()` SECURITY
+      DEFINER, chỉ Admin đọc). Client `logAudit()` ghi các thao tác admin; xem ở Quản lý ND → "Nhật ký".
 
 ---
 

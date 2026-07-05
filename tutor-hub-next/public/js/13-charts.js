@@ -157,12 +157,16 @@
     }
 
     function refreshCharts() {
-      [attendChart, scoreChart, scoreDistChart, revenueChart].forEach(function (c) {
+      var list = [attendChart, scoreChart, scoreDistChart, revenueChart];
+      // Charts trong mục Báo cáo (nếu đang mở) cũng cập nhật màu theo theme.
+      if (typeof reportCharts !== 'undefined') {
+        if (reportCharts.score) list.push(reportCharts.score);
+        if (reportCharts.hw) list.push(reportCharts.hw);
+      }
+      list.forEach(function (c) {
         if (!c) return;
-        c.options.scales.y.ticks.color = getChartTextColor();
-        c.options.scales.y.grid.color = getChartGridColor();
-        c.options.scales.x.ticks.color = getChartTextColor();
-        if (c.options.scales.x.grid) c.options.scales.x.grid.color = getChartGridColor();
+        if (c.options.scales.y) { c.options.scales.y.ticks.color = getChartTextColor(); if (c.options.scales.y.grid) c.options.scales.y.grid.color = getChartGridColor(); }
+        if (c.options.scales.x) { c.options.scales.x.ticks.color = getChartTextColor(); if (c.options.scales.x.grid) c.options.scales.x.grid.color = getChartGridColor(); }
         if (c.options.plugins.legend && c.options.plugins.legend.labels) c.options.plugins.legend.labels.color = getChartTextColor();
         c.update();
       });

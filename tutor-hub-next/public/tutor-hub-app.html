@@ -3500,7 +3500,7 @@
   <div id="overlay" onclick="closeSidebar()"></div>
 
   <!-- TOAST CONTAINER -->
-  <div class="toast-container" id="toastContainer"></div>
+  <div class="toast-container" id="toastContainer" role="status" aria-live="polite" aria-atomic="false"></div>
 
   <!-- MODAL CONTAINER -->
   <div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)closeModal()">
@@ -3925,7 +3925,10 @@
           <h2>Payments <span class="hdr-help" data-help="overdue"></span></h2>
           <p>Track tuition fees and payment status.</p>
         </div>
-        <button class="btn btn-primary" id="payAddBtn" style="display:none;" onclick="openPaymentModal()">+ Tạo khoản thu</button>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-ghost" id="payRemindBtn" style="display:none;" onclick="remindAllUnpaid()">🔔 Nhắc tất cả</button>
+          <button class="btn btn-primary" id="payAddBtn" style="display:none;" onclick="openPaymentModal()">+ Tạo khoản thu</button>
+        </div>
       </div>
       <div id="payOwnView"></div>
       <div class="filter-bar" id="payTabBar" style="display:none;">
@@ -4252,8 +4255,7 @@
           <h2 id="reportsTitle">Reports &amp; Analytics</h2>
           <p>Academic performance overview for all classes.</p>
         </div>
-        <button class="btn btn-primary" onclick="showToast('Report exported as PDF','success')">📤 Export
-          Report</button>
+        <button class="btn btn-primary" onclick="openExportMenu()">📤 Xuất báo cáo</button>
       </div>
       <div class="report-kpi-grid" id="reportKPIs"></div>
       <div class="two-col">
@@ -4288,11 +4290,12 @@
 
     <!-- ASSIGNMENTS -->
     <div class="section content" id="section-assignments">
-      <div class="page-header">
+      <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between;">
         <div>
           <h2>Lớp học <span class="hdr-help" data-help="submission"></span></h2>
           <p>Bảng tin bài tập theo lớp — đăng bài, nộp bài, chấm điểm.</p>
         </div>
+        <button class="btn btn-ghost" id="hwRemindBtn" style="display:none;" onclick="remindPendingHomework()">🔔 Nhắc nộp bài</button>
       </div>
       <div class="class-feed-wrap" style="display:flex;gap:16px;align-items:flex-start;">
         <aside id="classSidebar" style="width:240px;flex-shrink:0;"></aside>
@@ -4311,6 +4314,7 @@
           <div class="card-title">Danh sách người dùng</div>
           <div style="display:flex;gap:8px;">
             <button class="btn btn-sm btn-primary" onclick="openAddMemberToClass()">+ Thêm học sinh vào lớp</button>
+            <button class="btn btn-sm btn-ghost" id="auditLogBtn" style="display:none;" onclick="openAuditLog()">🧾 Nhật ký</button>
             <button class="btn btn-sm btn-ghost" onclick="loadUsersFromDb()">🔄 Tải lại</button>
           </div>
         </div>

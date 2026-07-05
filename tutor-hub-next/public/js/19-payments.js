@@ -16,6 +16,8 @@
       var iAmAdmin = currentUser && currentUser.role === 'Admin';
       var addBtn = document.getElementById('payAddBtn');
       if (addBtn) addBtn.style.display = iAmAdmin ? '' : 'none';
+      var remindBtn = document.getElementById('payRemindBtn');
+      if (remindBtn) remindBtn.style.display = iAmAdmin ? '' : 'none';
       var tabBar = document.getElementById('payTabBar');
       var kpi = document.getElementById('payKpiGrid');
       var fb = document.getElementById('payFilterBar');
@@ -360,6 +362,7 @@
         if (r.error) { showToast('Lỗi: ' + r.error.message, 'error'); return; }
         if (r.data === 'no_user') { showToast('Không tìm thấy tài khoản với email này.', 'error'); return; }
         if (r.data === 'not_admin') { showToast('Chỉ admin được tạo khoản thu.', 'error'); return; }
+        try { logAudit('payment_create', 'payment', 'Tạo khoản $' + amount + ' cho ' + email); } catch (e) { }
         closeModal(); showToast('Đã tạo khoản thu.', 'success'); loadPayments();
       });
     }
@@ -368,7 +371,28 @@
       if (!_db) return;
       _db.from('payments').update({ status: 'Paid', paid_date: new Date().toISOString().split('T')[0] }).eq('id', String(payId)).then(function (r) {
         if (r.error) { showToast('Lỗi: ' + r.error.message, 'error'); return; }
+        var p = payments.find(function (x) { return x.id === payId; });
+        try { logAudit('payment_paid', 'payment', 'Đã thu $' + (p ? p.amount : '') + ' của ' + (p ? p.student : '')); } catch (e) { }
         showToast('Đã đánh dấu đã thu.', 'success'); loadPayments();
       });
+    }
+
+    // Nhắc học phí HÀNG LOẠT (admin) — gọi RPC server (migration 021), có chống
+    // spam 6h. Ship "bản an toàn": người dùng bấm chủ động; pg_cron có thể gọi
+    // đúng RPC này để tự động hoá sau.
+    function remindAllUnpaid() {
+      if (!(currentUser && currentUser.role === 'Admin')) { showToast('Chỉ admin gửi được nhắc học phí.', 'error'); return; }
+      if (!_db) return;
+      uiConfirm('Gửi nhắc nhở tới TẤT CẢ học viên còn khoản chưa thanh toán?', function () {
+        showBusy('Đang gửi nhắc học phí…');
+        _db.rpc('remind_overdue_payments').then(function (r) {
+          hideBusy();
+          if (r.error) { showToast('Lỗi: ' + r.error.message, 'error'); return; }
+          var n = r.data;
+          if (n === -1) { showToast('Bạn không có quyền.', 'error'); return; }
+          showToast(n > 0 ? ('Đã gửi ' + n + ' nhắc học phí.') : 'Không có ai cần nhắc (hoặc vừa nhắc gần đây).', n > 0 ? 'success' : 'info');
+          try { logAudit('remind_payments', 'payment', 'Gửi ' + n + ' nhắc học phí'); } catch (e) { }
+        });
+      }, { danger: false, okText: 'Gửi nhắc' });
     }
 
