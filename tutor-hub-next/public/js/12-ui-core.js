@@ -28,18 +28,51 @@
     // ============================================================
     // MODAL SYSTEM
     // ============================================================
+    var _modalPrevFocus = null;
+    // A11y: Esc để đóng + bẫy Tab trong modal (không cho focus thoát ra nền).
+    function _modalKeydown(e) {
+      if (e.key === 'Escape') { e.preventDefault(); closeModal(); return; }
+      if (e.key !== 'Tab') return;
+      var content = document.getElementById('modalContent');
+      var f = content.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])');
+      f = Array.prototype.filter.call(f, function (el) { return el.offsetParent !== null; });
+      if (!f.length) return;
+      var first = f[0], last = f[f.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    }
+
     function openModal(html, cls) {
       var overlay = document.getElementById('modalOverlay');
       var content = document.getElementById('modalContent');
       content.className = 'modal' + (cls ? ' ' + cls : '');
+      content.setAttribute('role', 'dialog');
+      content.setAttribute('aria-modal', 'true');
       content.innerHTML = html;
       overlay.classList.add('open');
       document.body.style.overflow = 'hidden';
-      setTimeout(function () { typesetMath(content); }, 50);
+      if (!overlay.classList.contains('_focus-bound')) { _modalPrevFocus = document.activeElement; }
+      document.removeEventListener('keydown', _modalKeydown, true);
+      document.addEventListener('keydown', _modalKeydown, true);
+      overlay.classList.add('_focus-bound');
+      // Đưa focus vào phần tử đầu tiên trong modal (a11y).
+      setTimeout(function () {
+        typesetMath(content);
+        // Ưu tiên ô nhập đầu tiên; nếu không có thì phần tử focus được đầu tiên.
+        var f = content.querySelector('input:not([disabled]):not([type=hidden]), select:not([disabled]), textarea:not([disabled])')
+          || content.querySelector('button:not([disabled]):not(.modal-close), a[href]')
+          || content.querySelector('.modal-close');
+        if (f) { try { f.focus(); } catch (e) { } }
+      }, 50);
     }
     function closeModal() {
-      document.getElementById('modalOverlay').classList.remove('open');
+      var overlay = document.getElementById('modalOverlay');
+      overlay.classList.remove('open');
+      overlay.classList.remove('_focus-bound');
       document.body.style.overflow = '';
+      document.removeEventListener('keydown', _modalKeydown, true);
+      if (_modalPrevFocus && _modalPrevFocus.focus) { try { _modalPrevFocus.focus(); } catch (e) { } }
+      _modalPrevFocus = null;
     }
 
     // ── BUSY OVERLAY (phản hồi khi tải lên / lưu) ─────────────────
