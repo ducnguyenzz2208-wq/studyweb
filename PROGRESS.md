@@ -188,7 +188,9 @@ Sắp theo mức ưu tiên. P0 = rào cản lớn nhất khiến người mới 
 - [x] **Responsive cho bảng lớn** — đã cho cuộn ngang mượt trên mobile (đợt gần nhất).
 - [ ] **Dạng thẻ thay bảng trên mobile** cho Students/Payments (cuộn ngang tạm ổn, thẻ sẽ đẹp hơn).
 - [x] **A11y (một phần)**: đã thêm `aria-label` cho nút icon topbar (help/theme/notif/hamburger).
-- [ ] **A11y (còn lại)**: bẫy focus trong modal, kiểm tra tương phản dark mode.
+- [x] **A11y modal**: `role="dialog"` + `aria-modal`, bẫy focus (Tab/Shift+Tab), Esc đóng,
+      focus vào ô đầu + khôi phục focus cũ khi đóng (`openModal`/`closeModal` trong 12-ui-core).
+- [ ] **A11y (còn lại)**: kiểm tra tương phản dark mode toàn bộ, nhãn cho input rời rạc.
 
 ### Tính năng nâng cao (khi cần)
 - [ ] **Thông báo realtime** (Supabase Realtime) thay vì phải bấm 🔔 tải lại.
