@@ -61,6 +61,9 @@ enrollment_requests, notifications`.
       mạo thông báo, VÀ nút "🔔 Nhắc đóng" (từng khoản) sẽ báo lỗi RPC. Chạy SAU `017` và `021`.
 - [ ] **Chạy migration `023_fix_signup_trigger.sql`** (GẤP — đang chặn đăng ký): sửa lỗi
       "Database error saving new user" (500) khi tạo tài khoản. Sau khi chạy, đăng ký được ngay.
+- [ ] **Chạy migration `024_admin_list_all_users.sql`** (GẤP — admin không thấy tài khoản chờ duyệt):
+      RPC `admin_list_users()` (thấy cả user chưa có profile) + `admin_set_role()` (duyệt = tạo profile).
+      Chưa chạy: app tự fallback đọc bảng profiles (chỉ thấy user ĐÃ có profile).
 - [ ] Sau khi push: chờ Vercel build xong rồi test lại reset password.
 
 ## Ổn định cho người dùng THẬT (roadmap — làm tiếp)
@@ -101,6 +104,11 @@ enrollment_requests, notifications`.
 - [x] **Lỗi "Database error saving new user" khi đăng ký** — ĐÃ FIX (migration `023_fix_signup_trigger.sql`:
       `handle_new_user()` bọc EXCEPTION nên không bao giờ 500; + `dashboard/page.tsx` tạo profile bù
       nếu thiếu). ⏳ Cần chạy `023` trên prod rồi thử đăng ký lại.
+- [x] **Admin không thấy tài khoản chờ duyệt trong "Quản lý người dùng"** — ĐÃ FIX. Nguyên nhân: mục
+      này đọc bảng `profiles`; tài khoản mà trigger tạo profile lỗi → có trong `auth.users` nhưng thiếu
+      profile → vô hình với admin. Fix: migration `024` (RPC `admin_list_users` join `auth.users` → thấy
+      cả user chưa có profile; `admin_set_role` duyệt = tạo profile) + client `loadUsersFromDb`/
+      `changeUserRole` gọi RPC (fallback đọc profiles nếu chưa chạy 024). ⏳ Cần chạy `024`.
 - [ ] ⏳ Đăng ký mới → email xác nhận → đăng nhập → màn "chờ duyệt". (cần chạy `023` + SMTP; màn
       pending + gate Pending đã có sẵn trong `dashboard/page.tsx`.)
 - [ ] ⏳ Admin cấp quyền → học sinh reload thấy đúng cổng. (code: `changeUserRole` + RLS "Admin updates

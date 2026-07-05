@@ -122,6 +122,7 @@
       }).join('');
     }
 
+    function _mapUserRow(u) { return { id: u.id, email: u.email, name: u.name, role: u.role, createdAt: u.created_at }; }
     function loadUsersFromDb() {
       if (!_db) {
         renderUserManagement();
@@ -129,12 +130,19 @@
         return;
       }
       showToast('Đang tải danh sách người dùng...', 'info');
+      // Ưu tiên RPC admin_list_users → thấy CẢ tài khoản chưa có profile (chờ duyệt
+      // bị thiếu profile). Nếu chưa chạy migration 024 thì fallback đọc bảng profiles.
+      _db.rpc('admin_list_users').then(function (r) {
+        if (r.error || !r.data) { _loadUsersFallback(); return; }
+        appUsers = r.data.map(_mapUserRow);
+        renderUserManagement();
+      });
+    }
+    function _loadUsersFallback() {
       _db.from('profiles').select('id,email,name,role,created_at').order('created_at', { ascending: false })
         .then(function (r) {
           if (r.error) { showToast('Lỗi: ' + r.error.message, 'error'); return; }
-          appUsers = (r.data || []).map(function (u) {
-            return { id: u.id, email: u.email, name: u.name, role: u.role, createdAt: u.created_at };
-          });
+          appUsers = (r.data || []).map(_mapUserRow);
           renderUserManagement();
         });
     }
@@ -144,13 +152,21 @@
       if (!u) return;
       u.role = newRole;
       renderUserManagement();
-      showToast((u.name || u.email) + ' → ' + newRole, 'success');
-      if (_db) {
-        _db.from('profiles').update({ role: newRole }).eq('id', userId)
-          .then(function (r) {
-            if (r.error) { showToast('Lỗi lưu: ' + r.error.message, 'error'); return; }
+      if (!_db) return;
+      // admin_set_role: đổi vai trò + TẠO profile nếu chưa có. Fallback update profiles.
+      _db.rpc('admin_set_role', { _user_id: userId, _role: newRole }).then(function (r) {
+        if (r.error) {
+          _db.from('profiles').update({ role: newRole }).eq('id', userId).then(function (r2) {
+            if (r2.error) { showToast('Lỗi lưu: ' + r2.error.message, 'error'); return; }
+            showToast((u.name || u.email) + ' → ' + newRole, 'success');
             try { logAudit('role_change', 'user', (u.name || u.email) + ' → ' + newRole); } catch (e) { }
           });
-      }
+          return;
+        }
+        if (r.data === 'not_admin') { showToast('Chỉ admin đổi được vai trò.', 'error'); return; }
+        if (r.data === 'no_user') { showToast('Không tìm thấy tài khoản.', 'error'); return; }
+        showToast((u.name || u.email) + ' → ' + newRole, 'success');
+        try { logAudit('role_change', 'user', (u.name || u.email) + ' → ' + newRole); } catch (e) { }
+      });
     }
 
