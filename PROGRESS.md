@@ -167,8 +167,9 @@ Sắp theo mức ưu tiên. P0 = rào cản lớn nhất khiến người mới 
 ## Làm tiếp để web tốt hơn (đề xuất, theo giá trị/công sức)
 
 ### Trải nghiệm người mới (nối tiếp P1/P2)
-- [ ] **Áp empty-state có hướng dẫn cho Classes, Assignments, Materials, Flashcards** (đã có mẫu
-      `_studentsEmptyRow`, chỉ cần nhân bản pattern).
+- [x] **Empty-state có hướng dẫn cho Classes, Materials, Flashcards (+ deck cards)** — helper
+      `emptyBlock()` (05-navigation.js) + CSS `.empty-state`; icon SVG + tiêu đề VN + nút hành động
+      cho GV/Admin; phân biệt chưa-có vs không-khớp-lọc. (Assignments vốn đã có gợi ý dạng chữ.)
 - [ ] **Dữ liệu mẫu 1 chạm**: nút "Nạp dữ liệu mẫu" + "Xoá dữ liệu mẫu" để người mới nghịch thử.
 - [ ] **Tooltip giải thích thuật ngữ** (enrollment request, deck, submission…).
 - [ ] **Loading skeleton** cho các bảng khi `loadDbData()` chưa xong.
