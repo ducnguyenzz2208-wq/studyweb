@@ -16,10 +16,10 @@ const nextConfig: NextConfig = {
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net",
               "font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net",
               "img-src 'self' data: blob: https:",
-              // youtube.com cho oEmbed (lấy tiêu đề) + IFrame API
-              "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://cdn.jsdelivr.net https://www.youtube.com",
-              // frame-src cho khung nhúng trình phát YouTube
-              "frame-src https://www.youtube.com https://www.youtube-nocookie.com",
+              // oEmbed lấy tiêu đề/ảnh: YouTube + Spotify + SoundCloud
+              "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://cdn.jsdelivr.net https://www.youtube.com https://open.spotify.com https://soundcloud.com",
+              // frame-src cho khung nhúng trình phát: YouTube + Spotify + SoundCloud
+              "frame-src https://www.youtube.com https://www.youtube-nocookie.com https://open.spotify.com https://w.soundcloud.com",
               "worker-src 'self' blob:",
               "frame-ancestors 'self'",
             ].join('; '),

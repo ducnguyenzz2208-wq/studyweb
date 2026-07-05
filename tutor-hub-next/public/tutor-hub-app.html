@@ -1473,8 +1473,22 @@
     .pomo-track:hover { background: var(--nav-hover-bg); }
     .pomo-track.current { background: var(--nav-active-bg); }
     .pomo-track img { width: 48px; height: 36px; object-fit: cover; border-radius: 6px; flex-shrink: 0; }
-    .pomo-track-title { flex: 1; min-width: 0; font-size: 13px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .pomo-track-meta { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+    .pomo-track-title { min-width: 0; font-size: 13px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .pomo-track-del { border: none; background: transparent; color: var(--text-muted); cursor: pointer; font-weight: 700; padding: 4px 6px; }
+    .pomo-track-prov { align-self: flex-start; font-size: 9px; font-weight: 700; letter-spacing: 0.03em; padding: 1px 6px; border-radius: 5px; text-transform: uppercase; }
+    .pomo-track-noimg { width: 48px; height: 36px; flex-shrink: 0; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 16px; color: #fff; }
+    .prov-youtube { background: rgba(255, 0, 0, 0.14); color: #c4302b; }
+    .prov-spotify { background: rgba(29, 185, 84, 0.16); color: #1db954; }
+    .prov-soundcloud { background: rgba(255, 85, 0, 0.16); color: #ff5500; }
+    .pomo-track-noimg.prov-youtube { background: #c4302b; }
+    .pomo-track-noimg.prov-spotify { background: #1db954; }
+    .pomo-track-noimg.prov-soundcloud { background: #ff5500; }
+    /* Khung nhúng Spotify / SoundCloud */
+    .pomo-embed-wrap { margin: 0 4px 10px; border-radius: 12px; overflow: hidden; background: var(--nav-hover-bg); }
+    .pomo-embed { width: 100%; border: 0; display: block; }
+    .pomo-embed-wrap.prov-spotify .pomo-embed { height: 152px; }
+    .pomo-embed-wrap.prov-soundcloud .pomo-embed { height: 166px; }
 
     /* Streak calendar */
     .pomo-cal-nav { display: flex; align-items: center; gap: 4px; }

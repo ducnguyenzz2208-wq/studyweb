@@ -111,6 +111,21 @@ enrollment_requests, notifications`.
       `color`; sau khi đổi emoji→SVG (`stroke=currentColor`) icon bị tối trên nền tối. Thêm
       `color: var(--text)` → bám theme. Đã test light+dark (icon = #e2e8f0 dark / #1e2437 light).
 
+## Nhạc đa nền tảng: YouTube + Spotify + SoundCloud ✅ ĐÃ LÀM
+- [x] **Nhận link Spotify & SoundCloud** ngoài YouTube (26-pomodoro.js): `_parseMusicUrl()` nhận diện
+      nguồn (YouTube/Spotify/SoundCloud, kể cả link `intl-*` của Spotify), track lưu thêm `provider`/`ref`/`url`.
+      YouTube giữ IFrame API (điều khiển đầy đủ + tự chuyển bài); Spotify/SoundCloud dùng **khung nhúng
+      chính thức** (`open.spotify.com/embed`, `w.soundcloud.com/player`) — phát ngay trong khung + nút
+      chuyển bài trong hàng chờ. oEmbed lấy tiêu đề/ảnh theo từng nguồn (fallback tên nguồn). Hàng chờ
+      có badge nguồn (YouTube/Spotify/SoundCloud) + ảnh/placeholder. Tương thích ngược track cũ (chỉ có videoId).
+- [x] **CSP** (`next.config.ts`): thêm `open.spotify.com`, `w.soundcloud.com` vào `frame-src`;
+      `open.spotify.com`, `soundcloud.com` vào `connect-src` (oEmbed). ⚠️ Cần Vercel redeploy.
+- **Verify**: parser đúng cả 3 nguồn (+intl Spotify, loại link sai), embed src đúng, iframe render
+      152px (Spotify) không lỗi CSP, badge hàng chờ hiện đúng; build pass. Lưu ý: Spotify chỉ phát đầy
+      đủ khi trình duyệt đang đăng nhập Spotify Premium (nếu không chỉ 30s preview — giới hạn của Spotify).
+
+---
+
 ## Fix nhạc YouTube (CSP) + Lịch → Google Calendar ✅ ĐÃ LÀM
 - [x] **Fix nhạc YouTube bị chặn**: CSP trong `next.config.ts` chỉ cho Supabase/jsdelivr → chặn
       `youtube.com/iframe_api`, oEmbed và khung nhúng. Đã thêm youtube vào `script-src`
