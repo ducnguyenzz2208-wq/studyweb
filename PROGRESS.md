@@ -172,7 +172,8 @@ Sắp theo mức ưu tiên. P0 = rào cản lớn nhất khiến người mới 
       cho GV/Admin; phân biệt chưa-có vs không-khớp-lọc. (Assignments vốn đã có gợi ý dạng chữ.)
 - [ ] **Dữ liệu mẫu 1 chạm**: nút "Nạp dữ liệu mẫu" + "Xoá dữ liệu mẫu" để người mới nghịch thử.
 - [ ] **Tooltip giải thích thuật ngữ** (enrollment request, deck, submission…).
-- [ ] **Loading skeleton** cho các bảng khi `loadDbData()` chưa xong.
+- [x] **Loading skeleton** — flag `_dbLoading` + `skelTableRows()`/`skelCards()` + CSS `.skel`;
+      guard trong render Students/Materials/Flashcards/Classes; tự tắt sau 1.4s. Đã test 4 section.
 
 ### Chất lượng & độ tin cậy
 - [x] **Tách `tutor-hub-app.html` thành 25 module** (`public/js/`) — Cách A (classic script,
