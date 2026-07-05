@@ -37,6 +37,17 @@
       return '<svg viewBox="0 0 24 24" width="' + s + '" height="' + s + '" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + p + '</svg>';
     }
 
+    // Empty-state có hướng dẫn dùng chung (icon SVG + tiêu đề + gợi ý + nút hành động).
+    // actionHtml: truyền chuỗi <button…> (thường chỉ cho GV/Admin) hoặc để trống.
+    function emptyBlock(iconKey, title, hint, actionHtml) {
+      return '<div class="empty-state">' +
+        '<span class="empty-state-ic">' + svgIcon(iconKey, 26) + '</span>' +
+        '<div class="empty-state-title">' + title + '</div>' +
+        (hint ? '<div class="empty-state-hint">' + hint + '</div>' : '') +
+        (actionHtml || '') +
+        '</div>';
+    }
+
     // ============================================================
     // NAVIGATION
     // ============================================================

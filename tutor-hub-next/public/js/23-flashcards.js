@@ -9,8 +9,13 @@
       });
       var grid = document.getElementById('deckGrid');
       if (!list.length) {
-        grid.innerHTML = '<div class="empty" style="grid-column:1/-1;"><div class="empty-icon">🃏</div>No flashcard decks found.<br>' +
-          (editMode ? '<button class="btn btn-primary" style="margin-top:12px;" onclick="openDeckModal()">+ Create First Deck</button>' : 'Turn on Edit Mode to create one.') + '</div>';
+        var isTA = currentUser && (currentUser.role === 'Teacher' || currentUser.role === 'Admin');
+        var body = flashcardDecks.length === 0
+          ? emptyBlock('flashcards', 'Chưa có bộ thẻ nào',
+              'Tạo bộ thẻ để học sinh ôn tập từ vựng, khái niệm.',
+              isTA ? '<button class="btn btn-primary" onclick="openDeckModal()">＋ Tạo bộ thẻ</button>' : '')
+          : emptyBlock('flashcards', 'Không tìm thấy bộ thẻ phù hợp', 'Thử đổi từ khoá hoặc bộ lọc.', '');
+        grid.innerHTML = '<div style="grid-column:1/-1;">' + body + '</div>';
         return;
       }
       grid.innerHTML = list.map(function (d) {
@@ -85,7 +90,9 @@
             '</div>';
         }).join('');
       } else {
-        html += '<div class="empty"><div class="empty-icon">📇</div>No cards in this deck yet.' + (editMode ? '<br><button class="btn btn-primary" style="margin-top:12px;" onclick="openCardModal(' + d.id + ')">+ Add First Card</button>' : '') + '</div>';
+        html += emptyBlock('flashcards', 'Bộ thẻ này chưa có thẻ nào',
+          'Thêm thẻ hoặc dùng "Nhập hàng loạt" để tạo nhanh nhiều thẻ.',
+          (editMode ? '<button class="btn btn-primary" onclick="openCardModal(' + d.id + ')">＋ Thêm thẻ đầu tiên</button>' : ''));
       }
       html += '</div>';
       view.innerHTML = html;

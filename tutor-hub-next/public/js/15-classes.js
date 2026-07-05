@@ -2,6 +2,15 @@
     // CLASSES
     // ============================================================
     function renderClasses() {
+      if (!classes.length) {
+        var isTA = currentUser && (currentUser.role === 'Teacher' || currentUser.role === 'Admin');
+        document.getElementById('classGrid').innerHTML = '<div style="grid-column:1/-1;">' + emptyBlock(
+          'classes', 'Chưa có lớp học nào',
+          'Tạo lớp để bắt đầu quản lý học sinh, bài tập và lịch dạy.',
+          isTA ? '<button class="btn btn-primary" onclick="openClassModal()">＋ Tạo lớp đầu tiên</button>' : '') + '</div>';
+        var sb = document.getElementById('scheduleBody'); if (sb) sb.innerHTML = '';
+        return;
+      }
       document.getElementById('classGrid').innerHTML = classes.map(function (c) {
         var enrolled = students.filter(function (s) { return s.class === c.name; }).length;
         var avgAtt = enrolled ? Math.round(students.filter(function (s) { return s.class === c.name; }).reduce(function (a, s) { return a + s.attendance; }, 0) / enrolled) : 0;

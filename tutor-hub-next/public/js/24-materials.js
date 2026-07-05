@@ -25,8 +25,13 @@
       });
       var grid = document.getElementById('materialGrid');
       if (!list.length) {
-        grid.innerHTML = '<div class="empty" style="grid-column:1/-1;"><div class="empty-icon">📂</div>No materials found.<br>' +
-          (editMode ? '<button class="btn btn-primary" style="margin-top:12px;" onclick="openMaterialModal()">+ Upload First Material</button>' : 'Turn on Edit Mode to upload.') + '</div>';
+        var isTA = currentUser && (currentUser.role === 'Teacher' || currentUser.role === 'Admin');
+        var body = materials.length === 0
+          ? emptyBlock('materials', 'Chưa có tài liệu nào',
+              'Tải lên tài liệu để chia sẻ với học sinh và phụ huynh.',
+              isTA ? '<button class="btn btn-primary" onclick="openMaterialModal()">＋ Tải lên tài liệu</button>' : '')
+          : emptyBlock('materials', 'Không tìm thấy tài liệu phù hợp', 'Thử đổi từ khoá hoặc bộ lọc.', '');
+        grid.innerHTML = '<div style="grid-column:1/-1;">' + body + '</div>';
         return;
       }
       grid.innerHTML = list.map(function (m) {
