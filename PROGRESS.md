@@ -59,9 +59,9 @@ enrollment_requests, notifications`.
       `persistDeck` giờ là code chết — nên xoá sau.
 - [x] **Add Student**: ô tra cứu nhận email/tên → điền cả tên & email; **bỏ 2 ô điểm số**
       (đồng bộ tự động từ Bài tập); `saveStudent` giữ điểm cũ khi sửa, 0 khi thêm.
-- [ ] **Dark mode "mất logo góc phải"**: CHƯA tái hiện được — mọi phần tử góc phải (avatar chữ/ảnh,
-      icon help/theme/bell) đều hiện đúng trong dark ở preview + 2 ảnh user gửi. Cần user chỉ rõ
-      phần tử nào (hoặc chụp lúc bị mất).
+- [x] **Dark mode mất icon topbar** (chuông/theme/trợ giúp): `.theme-btn`/`.notif-btn` không set
+      `color`; sau khi đổi emoji→SVG (`stroke=currentColor`) icon bị tối trên nền tối. Thêm
+      `color: var(--text)` → bám theme. Đã test light+dark (icon = #e2e8f0 dark / #1e2437 light).
 
 ---
 
