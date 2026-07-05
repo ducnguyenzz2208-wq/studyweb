@@ -4327,7 +4327,10 @@
           <h2 id="schedTitle">Lịch học</h2>
           <p id="schedSubtitle">Lịch các buổi học theo tháng — bấm vào ngày để xem chi tiết.</p>
         </div>
-        <button class="btn btn-primary edit-only" onclick="openScheduleModal()">+ Thêm buổi học</button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn btn-ghost" onclick="exportScheduleICS()" title="Xuất tệp .ics để nhập vào Google Calendar">📅 Xuất Google Calendar</button>
+          <button class="btn btn-primary edit-only" onclick="openScheduleModal()">+ Thêm buổi học</button>
+        </div>
       </div>
       <div class="sched-filters">
         <button class="tab active" onclick="filterSched('All',this)" id="sched-tab-all">Tất cả</button>

@@ -111,6 +111,20 @@ enrollment_requests, notifications`.
       `color`; sau khi đổi emoji→SVG (`stroke=currentColor`) icon bị tối trên nền tối. Thêm
       `color: var(--text)` → bám theme. Đã test light+dark (icon = #e2e8f0 dark / #1e2437 light).
 
+## Fix nhạc YouTube (CSP) + Lịch → Google Calendar ✅ ĐÃ LÀM
+- [x] **Fix nhạc YouTube bị chặn**: CSP trong `next.config.ts` chỉ cho Supabase/jsdelivr → chặn
+      `youtube.com/iframe_api`, oEmbed và khung nhúng. Đã thêm youtube vào `script-src`
+      (`www.youtube.com` + `s.ytimg.com`), `connect-src` (`www.youtube.com`), và thêm directive
+      `frame-src` (`www.youtube.com` + `www.youtube-nocookie.com`). Verify: header đã có youtube,
+      IFrame API nạp được, player iframe tạo ra, 0 lỗi CSP. ⚠️ **Cần Vercel redeploy** (tự động khi push).
+- [x] **Lịch → Google Calendar (bản an toàn, KHÔNG cần OAuth)** (08-schedule.js):
+      `addToGoogleCalendar(id)` mở link `calendar.google.com/render` (1 chạm thêm 1 buổi) — nút trong
+      modal buổi học; `exportScheduleICS()` xuất `.ics` (iCalendar) toàn bộ lịch của người dùng để
+      nhập vào Google/Apple/Outlook — nút "📅 Xuất Google Calendar" ở header Lịch. Parse giờ 12h/24h,
+      `.ics` chuẩn VEVENT (verify DTSTART/DTEND đúng). Đồng bộ 2 chiều thật cần OAuth → để "làm tiếp".
+
+---
+
 ## Mục Pomodoro / Study tools ✅ ĐÃ LÀM (port từ my-clone)
 Port 5 tính năng từ `my-clone/` (repo `ai-website-clone-template` — React/Next) sang Tutor Hub,
 viết LẠI theo kiến trúc classic-JS (KHÔNG copy React). Mục MỚI **Pomodoro** cho GV + HS.

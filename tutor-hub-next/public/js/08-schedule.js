@@ -250,7 +250,64 @@
       html += '<button class="btn btn-ghost" onclick="closeModal()">Hủy</button>';
       if (s) html += '<button class="btn btn-danger" onclick="deleteSchedule(' + s.id + ')">Xóa</button>';
       html += '</div>';
+      if (s) html += '<div style="margin-top:10px;"><button class="btn btn-ghost" style="width:100%;" onclick="addToGoogleCalendar(' + s.id + ')">📅 Thêm vào Google Calendar</button></div>';
       openModal(html);
+    }
+
+    // ── GOOGLE CALENDAR / ICS (không cần OAuth) ──────────────────
+    // "Thêm vào Google Calendar": mở link render (1 chạm thêm 1 buổi).
+    // "Xuất .ics": tải tệp iCalendar để nhập vào Google/Apple/Outlook Calendar.
+    function _p2(n) { return String(n).padStart(2, '0'); }
+    function _parseSchedTime(t) {
+      var m = (t || '').trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
+      if (!m) return { h: 0, mi: 0 };
+      var h = parseInt(m[1], 10), mi = parseInt(m[2], 10), ap = m[3];
+      if (ap) { ap = ap.toUpperCase(); if (ap === 'PM' && h < 12) h += 12; if (ap === 'AM' && h === 12) h = 0; }
+      return { h: h, mi: mi };
+    }
+    function _schedStartEnd(s) {
+      var d = (s.date || '').split('-'); if (d.length !== 3) return null;
+      var tm = _parseSchedTime(s.time);
+      var start = new Date(+d[0], +d[1] - 1, +d[2], tm.h, tm.mi, 0);
+      if (isNaN(start.getTime())) return null;
+      var end = new Date(start.getTime() + (s.duration || 60) * 60000);
+      function fmt(dt) { return dt.getFullYear() + _p2(dt.getMonth() + 1) + _p2(dt.getDate()) + 'T' + _p2(dt.getHours()) + _p2(dt.getMinutes()) + '00'; }
+      return { start: fmt(start), end: fmt(end) };
+    }
+    function googleCalUrl(s) {
+      var se = _schedStartEnd(s); if (!se) return null;
+      return 'https://calendar.google.com/calendar/render?action=TEMPLATE' +
+        '&text=' + encodeURIComponent('Buổi học: ' + (s.class || '')) +
+        '&dates=' + se.start + '/' + se.end +
+        '&details=' + encodeURIComponent('Giáo viên: ' + (s.teacher || '') + (s.notes ? ('\n' + s.notes) : '')) +
+        '&location=' + encodeURIComponent('Phòng ' + (s.room || ''));
+    }
+    function addToGoogleCalendar(id) {
+      var s = scheduleItems.find(function (x) { return x.id === id; });
+      if (!s) { showToast('Không tìm thấy buổi học.', 'error'); return; }
+      var url = googleCalUrl(s);
+      if (!url) { showToast('Buổi học thiếu ngày/giờ hợp lệ.', 'error'); return; }
+      window.open(url, '_blank', 'noopener');
+    }
+    function _icsEsc(s) { return String(s == null ? '' : s).replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n'); }
+    function exportScheduleICS() {
+      var items = _schedItemsForUser().filter(function (i) { return i.status !== 'Canceled'; });
+      if (!items.length) { showToast('Không có buổi học để xuất.', 'error'); return; }
+      var now = new Date();
+      var stamp = now.getUTCFullYear() + _p2(now.getUTCMonth() + 1) + _p2(now.getUTCDate()) + 'T' + _p2(now.getUTCHours()) + _p2(now.getUTCMinutes()) + _p2(now.getUTCSeconds()) + 'Z';
+      var lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Tutor Hub//Lich hoc//VI', 'CALSCALE:GREGORIAN'];
+      items.forEach(function (s, idx) {
+        var se = _schedStartEnd(s); if (!se) return;
+        lines.push('BEGIN:VEVENT', 'UID:th-' + (s.dbId || s.id) + '-' + idx + '@tutorhub',
+          'DTSTAMP:' + stamp, 'DTSTART:' + se.start, 'DTEND:' + se.end,
+          'SUMMARY:' + _icsEsc('Buổi học: ' + (s.class || '')),
+          'LOCATION:' + _icsEsc('Phòng ' + (s.room || '')),
+          'DESCRIPTION:' + _icsEsc('Giáo viên: ' + (s.teacher || '') + (s.notes ? (' | ' + s.notes) : '')),
+          'END:VEVENT');
+      });
+      lines.push('END:VCALENDAR');
+      _downloadText('lich-hoc.ics', lines.join('\r\n'), 'text/calendar');
+      showToast('Đã xuất lịch (.ics). Nhập tệp này vào Google Calendar để đồng bộ.', 'success');
     }
 
     function loadSchedule() {
