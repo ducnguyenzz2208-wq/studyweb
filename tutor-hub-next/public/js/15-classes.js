@@ -2,6 +2,11 @@
     // CLASSES
     // ============================================================
     function renderClasses() {
+      if (_dbLoading && !classes.length) {
+        document.getElementById('classGrid').innerHTML = skelCards(4);
+        var sbk = document.getElementById('scheduleBody'); if (sbk) sbk.innerHTML = '';
+        return;
+      }
       if (!classes.length) {
         var isTA = currentUser && (currentUser.role === 'Teacher' || currentUser.role === 'Admin');
         document.getElementById('classGrid').innerHTML = '<div style="grid-column:1/-1;">' + emptyBlock(

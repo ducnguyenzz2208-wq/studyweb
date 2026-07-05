@@ -109,6 +109,7 @@
       });
       var tbody = document.getElementById('studentTableBody');
       if (!tbody) return;
+      if (_dbLoading && !students.length) { tbody.innerHTML = skelTableRows(6, 7); return; }
 
       // When a specific class is selected, show flat list; otherwise group by class
       if (cls) {

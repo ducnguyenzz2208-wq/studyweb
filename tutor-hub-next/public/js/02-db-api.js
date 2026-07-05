@@ -1,3 +1,5 @@
+    var _dbLoading = false;   // true trong lúc loadDbData() đang tải → hiện skeleton
+
     // ── DATA PERSISTENCE HELPERS ─────────────────────────────────
     function dbSave(table, payload, matchCol) {
       if (!_db || !_dbUserId) return Promise.resolve();
@@ -41,8 +43,24 @@
       };
     }
 
+    // Render lại section đang xem sau khi tải xong (cho các section có skeleton).
+    function _rerenderAfterLoad() {
+      try {
+        if (currentSection === 'students') renderStudents();
+        else if (currentSection === 'materials') renderMaterials();
+        else if (currentSection === 'flashcards') renderDecks();
+        else if (currentSection === 'classes') renderClasses();
+        else if (currentSection === 'payments') renderPayments();
+      } catch (e) { }
+    }
+
     function loadDbData() {
       if (!_db || !_dbUserId) return;
+
+      // Hiện skeleton trong lúc tải; tự tắt sau 1.4s (các loader xong sớm sẽ render đè trước đó).
+      _dbLoading = true;
+      _rerenderAfterLoad();
+      setTimeout(function () { _dbLoading = false; _rerenderAfterLoad(); }, 1400);
 
       // "Chỉ dữ liệu thật" — bỏ toàn bộ data demo khi đã kết nối DB.
       // Các mảng bên dưới sẽ được nạp lại từ Supabase; nếu chưa có gì thì để trống.

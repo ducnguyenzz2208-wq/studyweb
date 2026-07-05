@@ -48,6 +48,18 @@
         '</div>';
     }
 
+    // Loading skeleton dùng chung (hiện khi đang tải dữ liệu từ DB).
+    function skelTableRows(n, cols) {
+      var h = '';
+      for (var i = 0; i < (n || 6); i++) h += '<tr><td colspan="' + (cols || 6) + '" style="border:none;padding:0 12px;"><div class="skel skel-row"></div></td></tr>';
+      return h;
+    }
+    function skelCards(n) {
+      var h = '';
+      for (var i = 0; i < (n || 6); i++) h += '<div class="skel skel-card"></div>';
+      return '<div class="skel-cards">' + h + '</div>';
+    }
+
     // ============================================================
     // NAVIGATION
     // ============================================================

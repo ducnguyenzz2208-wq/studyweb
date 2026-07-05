@@ -24,6 +24,7 @@
           (!typeF || m.fileType === typeF);
       });
       var grid = document.getElementById('materialGrid');
+      if (_dbLoading && !materials.length) { grid.innerHTML = skelCards(6); return; }
       if (!list.length) {
         var isTA = currentUser && (currentUser.role === 'Teacher' || currentUser.role === 'Admin');
         var body = materials.length === 0

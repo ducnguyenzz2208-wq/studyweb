@@ -1319,6 +1319,26 @@
       margin-top: 14px;
     }
 
+    /* Loading skeleton (shimmer) khi đang tải dữ liệu từ DB */
+    .skel {
+      position: relative;
+      overflow: hidden;
+      background: var(--nav-hover-bg);
+      border-radius: 8px;
+    }
+    .skel::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      transform: translateX(-100%);
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.28), transparent);
+      animation: skelSweep 1.4s infinite;
+    }
+    @keyframes skelSweep { 100% { transform: translateX(100%); } }
+    .skel-row { height: 20px; margin: 14px 0; }
+    .skel-card { height: 132px; border-radius: var(--radius); }
+    .skel-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
+
     .two-col {
       display: grid;
       grid-template-columns: 1fr 1fr;
