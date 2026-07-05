@@ -149,15 +149,16 @@
     }
 
     function deleteSubmission(subId) {
-      if (!confirm('Xóa bài nộp này?')) return;
-      submissions = submissions.filter(function (x) { return x.id !== subId; });
-      renderAssignments();
-      if (_db) {
-        _db.from('assignment_submissions').delete().eq('id', String(subId)).then(function (r) {
-          if (r.error) { showToast('Lỗi xóa: ' + r.error.message, 'error'); reloadSubmissions(); }
-          else showToast('Đã xóa bài nộp.', 'success');
-        });
-      }
+      uiConfirm('Xóa bài nộp này?', function () {
+        submissions = submissions.filter(function (x) { return x.id !== subId; });
+        renderAssignments();
+        if (_db) {
+          _db.from('assignment_submissions').delete().eq('id', String(subId)).then(function (r) {
+            if (r.error) { showToast('Lỗi xóa: ' + r.error.message, 'error'); reloadSubmissions(); }
+            else showToast('Đã xóa bài nộp.', 'success');
+          });
+        }
+      });
     }
 
     function _subFilePicked(assignmentId) {
@@ -254,10 +255,11 @@
     }
 
     function deleteAssignment(id) {
-      if (!confirm('Xóa bài tập này? Mọi bài nộp sẽ bị xóa theo.')) return;
-      assignments = assignments.filter(function (a) { return a.id !== id; });
-      renderAssignments();
-      if (_db) _db.from('assignments').delete().eq('id', String(id)).then(function (r) { if (r.error) showToast('Lỗi xóa: ' + r.error.message, 'error'); });
+      uiConfirm('Xóa bài tập này? Mọi bài nộp sẽ bị xóa theo.', function () {
+        assignments = assignments.filter(function (a) { return a.id !== id; });
+        renderAssignments();
+        if (_db) _db.from('assignments').delete().eq('id', String(id)).then(function (r) { if (r.error) showToast('Lỗi xóa: ' + r.error.message, 'error'); });
+      });
     }
 
     function openMembersModal(classId) {

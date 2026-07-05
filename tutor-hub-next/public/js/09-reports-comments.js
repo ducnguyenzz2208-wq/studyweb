@@ -168,9 +168,10 @@
     }
 
     function deleteStuComment(commentId, studentId) {
-      if (!confirm('Xóa nhận xét này?')) return;
-      teacherComments = teacherComments.filter(function (c) { return c.id !== commentId; });
-      var list = document.getElementById('stuCommentList'); if (list) list.innerHTML = _commentsListHtml(studentId);
-      if (_db) _db.from('teacher_comments').delete().eq('id', String(commentId)).then(function (r) { if (r.error) showToast('Lỗi xóa: ' + r.error.message, 'error'); });
+      uiConfirm('Xóa nhận xét này?', function () {
+        teacherComments = teacherComments.filter(function (c) { return c.id !== commentId; });
+        var list = document.getElementById('stuCommentList'); if (list) list.innerHTML = _commentsListHtml(studentId);
+        if (_db) _db.from('teacher_comments').delete().eq('id', String(commentId)).then(function (r) { if (r.error) showToast('Lỗi xóa: ' + r.error.message, 'error'); });
+      });
     }
 

@@ -285,15 +285,16 @@
     }
 
     function deleteDeck(id) {
-      if (!confirm('Xóa bộ thẻ này và toàn bộ thẻ con?')) return;
-      var d = flashcardDecks.find(function (x) { return x.id === id; });
-      flashcardDecks = flashcardDecks.filter(function (x) { return x.id !== id; });
-      showToast('Đã xóa bộ thẻ.', 'info');
-      renderDecks();
-      if (_db && d && d.dbId) {
-        _db.from('flashcard_decks').delete().eq('id', d.dbId)
-          .then(function (r) { if (r.error) showToast('Lỗi xóa bộ thẻ: ' + r.error.message, 'error'); });
-      }
+      uiConfirm('Xóa bộ thẻ này và toàn bộ thẻ con?', function () {
+        var d = flashcardDecks.find(function (x) { return x.id === id; });
+        flashcardDecks = flashcardDecks.filter(function (x) { return x.id !== id; });
+        showToast('Đã xóa bộ thẻ.', 'info');
+        renderDecks();
+        if (_db && d && d.dbId) {
+          _db.from('flashcard_decks').delete().eq('id', d.dbId)
+            .then(function (r) { if (r.error) showToast('Lỗi xóa bộ thẻ: ' + r.error.message, 'error'); });
+        }
+      });
     }
 
     // ============================================================
@@ -385,16 +386,17 @@
     }
 
     function deleteCard(deckId, cardId) {
-      if (!confirm('Xóa thẻ này?')) return;
-      var d = flashcardDecks.find(function (x) { return x.id === deckId; });
-      var c = d ? d.cards.find(function (x) { return x.id === cardId; }) : null;
-      if (d) d.cards = d.cards.filter(function (x) { return x.id !== cardId; });
-      showToast('Đã xóa thẻ.', 'error');
-      openDeckDetail(deckId);
-      if (_db && c && c.dbId) {
-        _db.from('flashcards').delete().eq('id', c.dbId)
-          .then(function (r) { if (r.error) showToast('Lỗi xóa thẻ: ' + r.error.message, 'error'); });
-      }
+      uiConfirm('Xóa thẻ này?', function () {
+        var d = flashcardDecks.find(function (x) { return x.id === deckId; });
+        var c = d ? d.cards.find(function (x) { return x.id === cardId; }) : null;
+        if (d) d.cards = d.cards.filter(function (x) { return x.id !== cardId; });
+        showToast('Đã xóa thẻ.', 'error');
+        openDeckDetail(deckId);
+        if (_db && c && c.dbId) {
+          _db.from('flashcards').delete().eq('id', c.dbId)
+            .then(function (r) { if (r.error) showToast('Lỗi xóa thẻ: ' + r.error.message, 'error'); });
+        }
+      });
     }
 
     function duplicateCard(deckId, cardId) {

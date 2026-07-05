@@ -130,14 +130,15 @@
     }
 
     function deleteClass(id) {
-      if (!confirm('Xóa lớp học này?')) return;
-      classes = classes.filter(function (c) { return c.id !== id; });
-      showToast('Đã xóa lớp.', 'success');
-      renderClasses();
-      if (_db && /-/.test(String(id))) {
-        _db.from('classes').delete().eq('id', String(id))
-          .then(function (r) { if (r.error) showToast('Lỗi xóa lớp: ' + r.error.message, 'error'); });
-      }
-      if (currentSection === 'assignments') renderAssignments();
+      uiConfirm('Xóa lớp học này?', function () {
+        classes = classes.filter(function (c) { return c.id !== id; });
+        showToast('Đã xóa lớp.', 'success');
+        renderClasses();
+        if (_db && /-/.test(String(id))) {
+          _db.from('classes').delete().eq('id', String(id))
+            .then(function (r) { if (r.error) showToast('Lỗi xóa lớp: ' + r.error.message, 'error'); });
+        }
+        if (currentSection === 'assignments') renderAssignments();
+      });
     }
 

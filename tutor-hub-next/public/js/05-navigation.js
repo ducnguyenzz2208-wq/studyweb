@@ -29,7 +29,9 @@
       bell: '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>',
       moon: '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"/>',
       sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
-      menu: '<path d="M3 12h18M3 6h18M3 18h18"/>'
+      menu: '<path d="M3 12h18M3 6h18M3 18h18"/>',
+      info: '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>',
+      'alert-triangle': '<path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4M12 17h.01"/>'
     };
     function svgIcon(name, size) {
       var p = SVG_ICONS[name] || '';
@@ -58,6 +60,81 @@
       var h = '';
       for (var i = 0; i < (n || 6); i++) h += '<div class="skel skel-card"></div>';
       return '<div class="skel-cards">' + h + '</div>';
+    }
+
+    // ============================================================
+    // HELP TOOLTIPS (giải thích thuật ngữ) — song ngữ vi/en
+    // ============================================================
+    // Mỗi mục: { label:{vi,en}, vi, en }. helpTip('key') trả ra 1 icon ⓘ có
+    // chú giải hiện khi hover/focus (bàn phím). injectHelpTips() điền vào mọi
+    // phần tử [data-help] trong DOM (gọi lại sau render / khi đổi ngôn ngữ).
+    var GLOSSARY = {
+      'enrollment-request': {
+        label: { vi: 'Yêu cầu ghi danh', en: 'Enrollment request' },
+        vi: 'Đề nghị của học sinh/phụ huynh xin vào một lớp. Giáo viên hoặc quản trị viên xét duyệt để thêm họ vào lớp.',
+        en: 'A student/parent request to join a class. A teacher or admin approves it to add them to the class.'
+      },
+      'deck': {
+        label: { vi: 'Bộ thẻ (deck)', en: 'Deck' },
+        vi: 'Một tập hợp các thẻ ghi nhớ (flashcard) cùng chủ đề — dùng để ôn tập kiểu hỏi–đáp.',
+        en: 'A set of flashcards on the same topic — used for question-and-answer style revision.'
+      },
+      'submission': {
+        label: { vi: 'Bài nộp (submission)', en: 'Submission' },
+        vi: 'Bài làm mà học sinh gửi lên cho một bài tập được giao. Giáo viên chấm điểm và nhận xét trên bài nộp.',
+        en: "A student's turned-in work for an assignment. Teachers grade and give feedback on the submission."
+      },
+      'attendance': {
+        label: { vi: 'Điểm danh', en: 'Attendance' },
+        vi: 'Tỷ lệ phần trăm buổi học mà học sinh có mặt, tính từ lịch sử điểm danh từng buổi.',
+        en: "The percentage of sessions a student attended, computed from per-session attendance records."
+      },
+      'overdue': {
+        label: { vi: 'Quá hạn', en: 'Overdue' },
+        vi: 'Khoản học phí chưa thanh toán và đã qua ngày đến hạn. Hệ thống tự đánh dấu để nhắc thu.',
+        en: 'A tuition fee that is unpaid and past its due date. The system flags it automatically for follow-up.'
+      },
+      'avg-score': {
+        label: { vi: 'Điểm trung bình', en: 'Average score' },
+        vi: 'Trung bình điểm các môn của học sinh. Điểm được đồng bộ tự động từ kết quả chấm bài trong mục Bài tập.',
+        en: "The mean of a student's subject scores. Scores sync automatically from grading in the Assignments area."
+      }
+    };
+
+    function helpTip(key) {
+      var g = GLOSSARY[key];
+      if (!g) return '';
+      var lang = (typeof currentLang !== 'undefined') ? currentLang : 'vi';
+      var txt = g[lang] || g.en || '';
+      var lbl = (g.label && (g.label[lang] || g.label.en)) || key;
+      return '<button type="button" class="help-tip" aria-label="' + escAttr(lbl + ': ' + txt) + '"' +
+        ' onclick="event.preventDefault();event.stopPropagation();">' + svgIcon('info', 14) +
+        '<span class="help-tip-pop" role="tooltip"><strong>' + escHtml(lbl) + '</strong>' + escHtml(txt) + '</span></button>';
+    }
+
+    // Điền tooltip vào mọi <span data-help="key"></span> đang có trong DOM.
+    function injectHelpTips(root) {
+      var scope = root || document;
+      var nodes = scope.querySelectorAll('[data-help]');
+      Array.prototype.forEach.call(nodes, function (el) {
+        el.innerHTML = helpTip(el.getAttribute('data-help'));
+      });
+    }
+
+    // Trạng thái LỖI dùng chung (RLS/500/mạng) — thay cho bảng trắng im lặng.
+    // retryFn: tên hàm (chuỗi) để gọi lại khi bấm "Thử lại", vd 'loadDbData()'.
+    function errorBlock(msg, retryFn) {
+      var lang = (typeof currentLang !== 'undefined') ? currentLang : 'vi';
+      var title = lang === 'en' ? "Couldn't load data" : 'Không tải được dữ liệu';
+      var retryLbl = lang === 'en' ? 'Try again' : 'Thử lại';
+      var btn = retryFn
+        ? '<div style="margin-top:14px;"><button class="btn btn-primary" onclick="' + retryFn + '">' + retryLbl + '</button></div>'
+        : '';
+      return '<div class="empty-state error-state">' +
+        '<span class="empty-state-ic" style="background:rgba(239,68,68,0.12);color:var(--danger);">' + svgIcon('alert-triangle', 26) + '</span>' +
+        '<div class="empty-state-title">' + title + '</div>' +
+        (msg ? '<div class="empty-state-hint">' + escHtml(msg) + '</div>' : '') +
+        btn + '</div>';
     }
 
     // ============================================================

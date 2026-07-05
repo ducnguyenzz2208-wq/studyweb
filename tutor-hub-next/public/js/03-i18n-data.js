@@ -92,6 +92,8 @@
         // Re-render current section label
         renderWelcome();
       }
+      // Cập nhật tooltip giải thích thuật ngữ theo ngôn ngữ mới
+      try { injectHelpTips(document); } catch (e) { }
     }
 
     // ============================================================

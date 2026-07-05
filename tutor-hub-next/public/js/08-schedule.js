@@ -320,15 +320,16 @@
     }
 
     function deleteSchedule(id) {
-      if (!confirm('Xóa buổi học này?')) return;
-      var s = scheduleItems.find(function (x) { return x.id === id; });
-      scheduleItems = scheduleItems.filter(function (x) { return x.id !== id; });
-      showToast('Đã xóa buổi học.', 'success');
-      closeModal();
-      renderSchedule();
-      if (_db && s && s.dbId) {
-        _db.from('schedule_events').delete().eq('id', s.dbId)
-          .then(function (r) { if (r.error) showToast('Lỗi xóa lịch: ' + r.error.message, 'error'); });
-      }
+      uiConfirm('Xóa buổi học này?', function () {
+        var s = scheduleItems.find(function (x) { return x.id === id; });
+        scheduleItems = scheduleItems.filter(function (x) { return x.id !== id; });
+        showToast('Đã xóa buổi học.', 'success');
+        closeModal();
+        renderSchedule();
+        if (_db && s && s.dbId) {
+          _db.from('schedule_events').delete().eq('id', s.dbId)
+            .then(function (r) { if (r.error) showToast('Lỗi xóa lịch: ' + r.error.message, 'error'); });
+        }
+      });
     }
 

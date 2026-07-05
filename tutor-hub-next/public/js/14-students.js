@@ -63,20 +63,20 @@
       var actBtns = '';
       if (canEdit) actBtns += '<button class="btn btn-sm btn-ghost" onclick="openStudentModal(' + qid(s.id) + ')">✏️</button> <button class="btn btn-sm btn-danger" onclick="deleteStudent(' + qid(s.id) + ')">🗑</button> ';
       if (isTA) actBtns += '<button class="btn btn-sm btn-ghost" onclick="openStudentComments(' + qid(s.id) + ')" title="Nhận xét học viên">💬</button>';
-      var actions = isTA ? '<td style="white-space:nowrap;">' + actBtns + '</td>' : (editMode ? '<td></td>' : '');
+      var actions = isTA ? '<td data-label="Thao tác" style="white-space:nowrap;">' + actBtns + '</td>' : (editMode ? '<td></td>' : '');
       var nameHtml = isTA
         ? '<span onclick="openStudentComments(' + qid(s.id) + ')" style="cursor:pointer;" title="Xem/thêm nhận xét">' + escHtml(s.name) + '</span>'
         : escHtml(s.name);
       return '<tr>' +
-        '<td><div class="student-row">' +
+        '<td data-label="Học sinh"><div class="student-row">' +
         '<div class="avatar" style="background:' + COLORS[colorIdx % 12] + '">' + getInitials(s.name) + '</div>' +
         '<div><div style="font-weight:600;font-size:14px">' + nameHtml + '</div><div style="color:var(--text-muted);font-size:12px">ID: STU-' + String(s.id).padStart(3, '0') + '</div></div>' +
         '</div></td>' +
-        '<td><span class="badge badge-info">' + escHtml(s.class) + '</span></td>' +
-        '<td>' + s.attendance + '%</td>' +
-        '<td>' + avg2 + '</td>' +
-        '<td><span class="' + gradeClass(g) + '">' + g + '</span></td>' +
-        '<td>' + status + '</td>' +
+        '<td data-label="Lớp"><span class="badge badge-info">' + escHtml(s.class) + '</span></td>' +
+        '<td data-label="Điểm danh">' + s.attendance + '%</td>' +
+        '<td data-label="TB điểm">' + avg2 + '</td>' +
+        '<td data-label="Xếp loại"><span class="' + gradeClass(g) + '">' + g + '</span></td>' +
+        '<td data-label="Trạng thái">' + status + '</td>' +
         actions +
         '</tr>';
     }
@@ -88,7 +88,7 @@
         var cta = canAdd
           ? '<div style="margin-top:12px;"><button class="btn btn-primary" onclick="openStudentModal()">＋ Thêm học sinh đầu tiên</button></div>'
           : '';
-        return '<tr><td colspan="7" style="padding:36px 16px;text-align:center;color:var(--text-muted);">' +
+        return '<tr><td colspan="7" class="state-cell" style="padding:36px 16px;text-align:center;color:var(--text-muted);">' +
           '<div style="font-size:34px;margin-bottom:8px;">👨‍🎓</div>' +
           '<div style="font-weight:600;color:var(--text);margin-bottom:4px;">Chưa có học sinh nào</div>' +
           '<div style="font-size:13px;">Thêm học sinh để bắt đầu quản lý lớp học của bạn.</div>' +
@@ -109,6 +109,10 @@
       });
       var tbody = document.getElementById('studentTableBody');
       if (!tbody) return;
+      if (_dbError && _dbError.students && !students.length) {
+        tbody.innerHTML = '<tr><td colspan="7" class="state-cell">' + errorBlock(_dbError.students, 'retryLoad()') + '</td></tr>';
+        return;
+      }
       if (_dbLoading && !students.length) { tbody.innerHTML = skelTableRows(6, 7); return; }
 
       // When a specific class is selected, show flat list; otherwise group by class
@@ -131,7 +135,7 @@
       var html = '';
       var globalIdx = 0;
       groupOrder.forEach(function (className) {
-        html += '<tr style="background:var(--bg);">' +
+        html += '<tr class="group-row" style="background:var(--bg);">' +
           '<td colspan="7" style="padding:8px 16px;font-weight:700;font-size:12px;color:var(--text-muted);letter-spacing:0.04em;border-bottom:1px solid var(--border);">' +
           '🏫 ' + escHtml(className) + ' &nbsp;·&nbsp; ' + groups[className].length + ' học sinh' +
           '</td></tr>';
@@ -264,14 +268,15 @@
     }
 
     function deleteStudent(id) {
-      if (!confirm('Xóa học sinh này?')) return;
-      students = students.filter(function (s) { return s.id !== id; });
-      showToast('Đã xóa học sinh.', 'success');
-      renderStudents();
-      document.getElementById('kpiStudents').textContent = students.length;
-      if (_db && /-/.test(String(id))) {
-        _db.from('students').delete().eq('id', String(id))
-          .then(function (r) { if (r.error) showToast('Lỗi xóa HS: ' + r.error.message, 'error'); });
-      }
+      uiConfirm('Xóa học sinh này?', function () {
+        students = students.filter(function (s) { return s.id !== id; });
+        showToast('Đã xóa học sinh.', 'success');
+        renderStudents();
+        document.getElementById('kpiStudents').textContent = students.length;
+        if (_db && /-/.test(String(id))) {
+          _db.from('students').delete().eq('id', String(id))
+            .then(function (r) { if (r.error) showToast('Lỗi xóa HS: ' + r.error.message, 'error'); });
+        }
+      });
     }
 

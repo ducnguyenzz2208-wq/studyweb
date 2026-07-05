@@ -56,7 +56,8 @@
       --nav-hover-bg: rgba(255, 255, 255, 0.06);
       --card-bg: #1a2235;
       --text: #e2e8f0;
-      --text-muted: #8899aa;
+      /* Bơm tương phản chữ phụ trên nền tối cho đạt WCAG AA (~4.5:1 trên --card-bg). */
+      --text-muted: #9fb2c7;
       --border: #2a3a50;
       --shadow: 0 1px 3px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.05);
       --modal-bg: rgba(26, 34, 53, 0.88);
@@ -1103,6 +1104,70 @@
         min-width: 560px;
       }
 
+      /* ── Bảng lớn → thẻ xếp dọc trên mobile (Học sinh, Thanh toán) ──
+         Mỗi hàng thành 1 thẻ; ô có data-label hiện nhãn cột bên trái. */
+      .stack-table {
+        min-width: 0;
+        width: 100%;
+        border-collapse: separate;
+      }
+      .stack-table thead { display: none; }
+      .stack-table tbody,
+      .stack-table tr,
+      .stack-table td { display: block; width: 100%; }
+      .stack-table tr {
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 6px 14px;
+        margin-bottom: 12px;
+        box-shadow: var(--shadow);
+      }
+      .stack-table td {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 8px 0;
+        border: none;
+        border-bottom: 1px solid var(--border);
+        text-align: right;
+      }
+      .stack-table td:last-child { border-bottom: none; }
+      .stack-table td[data-label]::before {
+        content: attr(data-label);
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+        color: var(--text-muted);
+        text-align: left;
+        flex: 0 0 auto;
+      }
+      /* Hàng tiêu đề nhóm lớp (colspan) vẫn full-width, không thành thẻ */
+      .stack-table tr.group-row {
+        background: transparent;
+        border: none;
+        box-shadow: none;
+        padding: 0;
+        margin: 8px 0 4px;
+      }
+      .stack-table tr.group-row td {
+        display: block;
+        text-align: left;
+        border: none;
+        padding: 4px 2px;
+      }
+      .stack-table tr.group-row td::before { content: none; }
+      /* Hàng trạng thái rỗng/skeleton/lỗi cũng full-width, căn giữa */
+      .stack-table td.empty,
+      .stack-table td.state-cell {
+        display: block;
+        text-align: center;
+      }
+      .stack-table td.empty::before,
+      .stack-table td.state-cell::before { content: none; }
+
       /* Vùng chạm dễ hơn cho ngón tay */
       .nav-item {
         padding-top: 12px;
@@ -1338,6 +1403,72 @@
     .skel-row { height: 20px; margin: 14px 0; }
     .skel-card { height: 132px; border-radius: var(--radius); }
     .skel-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
+
+    /* ── Help tooltip (giải thích thuật ngữ) ─────────────────────── */
+    .help-tip {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      vertical-align: middle;
+      margin-left: 5px;
+      padding: 0;
+      width: 18px;
+      height: 18px;
+      border: none;
+      border-radius: 50%;
+      background: transparent;
+      color: var(--text-muted);
+      cursor: help;
+      line-height: 0;
+    }
+    .help-tip:hover { color: var(--accent); }
+    .help-tip-pop {
+      position: absolute;
+      bottom: calc(100% + 8px);
+      left: 50%;
+      transform: translateX(-50%) translateY(4px);
+      width: max-content;
+      max-width: 260px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: var(--card-bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      box-shadow: 0 10px 30px rgba(16, 24, 40, 0.18);
+      font-size: 12.5px;
+      font-weight: 400;
+      line-height: 1.5;
+      text-align: left;
+      white-space: normal;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.14s ease, transform 0.14s ease;
+      z-index: 50;
+      pointer-events: none;
+    }
+    .help-tip-pop strong { display: block; margin-bottom: 3px; color: var(--accent); }
+    .help-tip:hover .help-tip-pop,
+    .help-tip:focus-visible .help-tip-pop {
+      opacity: 1;
+      visibility: visible;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* ── Trạng thái lỗi (RLS/500/mạng) ───────────────────────────── */
+    .error-state .btn { margin-top: 0; }
+
+    /* ── Truy cập bàn phím: viền focus rõ ràng ───────────────────── */
+    a:focus-visible,
+    button:focus-visible,
+    input:focus-visible,
+    select:focus-visible,
+    textarea:focus-visible,
+    [tabindex]:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+      border-radius: 6px;
+    }
 
     .two-col {
       display: grid;
@@ -3521,7 +3652,7 @@
     <div class="section content" id="section-students">
       <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between;">
         <div>
-          <h2>Học sinh</h2>
+          <h2>Học sinh <span class="hdr-help" data-help="avg-score"></span></h2>
           <p>Quản lý và xem danh sách học sinh theo lớp.</p>
         </div>
         <div style="display:flex;gap:8px;">
@@ -3531,13 +3662,13 @@
       </div>
       <div class="filter-bar">
         <div class="search-box">
-          <span>🔍</span>
-          <input type="text" id="studentSearch" placeholder="Tìm theo tên..." oninput="renderStudents()">
+          <span aria-hidden="true">🔍</span>
+          <input type="text" id="studentSearch" placeholder="Tìm theo tên..." aria-label="Tìm học sinh theo tên" oninput="renderStudents()">
         </div>
-        <select class="filter-select" id="classFilter" onchange="renderStudents()">
+        <select class="filter-select" id="classFilter" aria-label="Lọc theo lớp" onchange="renderStudents()">
           <option value="">Tất cả lớp</option>
         </select>
-        <select class="filter-select" id="gradeFilter" onchange="renderStudents()">
+        <select class="filter-select" id="gradeFilter" aria-label="Lọc theo xếp loại" onchange="renderStudents()">
           <option value="">Tất cả xếp loại</option>
           <option value="A">Loại A</option>
           <option value="B">Loại B</option>
@@ -3546,7 +3677,7 @@
         </select>
       </div>
       <div class="card">
-        <table>
+        <table class="stack-table">
           <thead>
             <tr>
               <th>Học sinh</th>
@@ -3567,7 +3698,7 @@
     <div class="section content" id="section-classes">
       <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between;">
         <div>
-          <h2>Classes</h2>
+          <h2>Classes <span class="hdr-help" data-help="enrollment-request"></span></h2>
           <p>View and manage all tutoring classes.</p>
         </div>
         <button class="btn btn-primary edit-only" onclick="openClassModal()">+ Add Class</button>
@@ -3636,7 +3767,7 @@
       <div id="flashcards-list-view">
         <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between;">
           <div>
-            <h2>Flashcards</h2>
+            <h2>Flashcards <span class="hdr-help" data-help="deck"></span></h2>
             <p>Study sets and flashcard decks for all subjects.</p>
           </div>
           <button class="btn btn-primary edit-only" onclick="openDeckModal()">+ New Deck</button>
@@ -3667,13 +3798,13 @@
       </div>
       <div class="filter-bar">
         <div class="search-box">
-          <span>🔍</span>
-          <input type="text" id="matSearch" placeholder="Search materials..." oninput="renderMaterials()">
+          <span aria-hidden="true">🔍</span>
+          <input type="text" id="matSearch" placeholder="Search materials..." aria-label="Tìm tài liệu" oninput="renderMaterials()">
         </div>
         <div class="tab-bar" id="matTabBar">
           <button class="tab active" onclick="filterMat('All', this)">All</button>
         </div>
-        <select class="filter-select" id="matTypeFilter" onchange="renderMaterials()">
+        <select class="filter-select" id="matTypeFilter" aria-label="Lọc theo loại tệp" onchange="renderMaterials()">
           <option value="">All Types</option>
           <option value="PDF">PDF</option>
           <option value="PPT">PPT</option>
@@ -3695,7 +3826,7 @@
       </div>
       <!-- Session selector — shown to admin/teacher -->
       <div class="filter-bar" id="attendMarkBar">
-        <select class="filter-select" id="attendClassFilter" onchange="renderAttendance()">
+        <select class="filter-select" id="attendClassFilter" aria-label="Lọc điểm danh theo lớp" onchange="renderAttendance()">
           <option value="">Tất cả lớp</option>
         </select>
         <input type="date" class="filter-select" id="attendDateInput" onchange="renderAttendance()" style="width:auto;">
@@ -3791,7 +3922,7 @@
     <div class="section content" id="section-payments">
       <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between;">
         <div>
-          <h2>Payments</h2>
+          <h2>Payments <span class="hdr-help" data-help="overdue"></span></h2>
           <p>Track tuition fees and payment status.</p>
         </div>
         <button class="btn btn-primary" id="payAddBtn" style="display:none;" onclick="openPaymentModal()">+ Tạo khoản thu</button>
@@ -3825,7 +3956,7 @@
         </div>
       </div>
       <div class="filter-bar" id="payFilterBar">
-        <select class="filter-select" id="paymentFilter" onchange="renderPayments()">
+        <select class="filter-select" id="paymentFilter" aria-label="Lọc theo trạng thái thanh toán" onchange="renderPayments()">
           <option value="">All Status</option>
           <option value="Paid">Paid</option>
           <option value="Pending">Pending</option>
@@ -3833,7 +3964,7 @@
         </select>
       </div>
       <div class="card" id="payTableCard">
-        <table>
+        <table class="stack-table">
           <thead>
             <tr>
               <th>Student</th>
@@ -3944,6 +4075,17 @@
               onclick="setLang('vi');this.className='lang-btn active';document.getElementById('settingLangEn').className='lang-btn'">VI
               — Tiếng Việt</button>
           </div>
+        </div>
+      </div>
+
+      <div class="settings-group" id="sampleDataGroup" style="display:none;">
+        <h3>Dữ liệu mẫu</h3>
+        <div class="setting-row" style="flex-direction:column;align-items:stretch;gap:10px;">
+          <div>
+            <div class="setting-label">Trải nghiệm nhanh với dữ liệu mẫu</div>
+            <div class="setting-desc">Nạp vài lớp &amp; học sinh mẫu để xem giao diện hoạt động; xoá sạch chỉ với một nút bấm.</div>
+          </div>
+          <div id="sampleDataControls" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:4px;"></div>
         </div>
       </div>
 
@@ -4148,7 +4290,7 @@
     <div class="section content" id="section-assignments">
       <div class="page-header">
         <div>
-          <h2>Lớp học</h2>
+          <h2>Lớp học <span class="hdr-help" data-help="submission"></span></h2>
           <p>Bảng tin bài tập theo lớp — đăng bài, nộp bài, chấm điểm.</p>
         </div>
       </div>

@@ -24,6 +24,10 @@
           (!typeF || m.fileType === typeF);
       });
       var grid = document.getElementById('materialGrid');
+      if (_dbError && _dbError.materials && !materials.length) {
+        grid.innerHTML = '<div style="grid-column:1/-1;">' + errorBlock(_dbError.materials, 'retryLoad()') + '</div>';
+        return;
+      }
       if (_dbLoading && !materials.length) { grid.innerHTML = skelCards(6); return; }
       if (!list.length) {
         var isTA = currentUser && (currentUser.role === 'Teacher' || currentUser.role === 'Admin');
@@ -171,13 +175,14 @@
     }
 
     function deleteMaterial(id) {
-      if (!confirm('Xóa tài liệu này?')) return;
-      materials = materials.filter(function (m) { return m.id !== id; });
-      showToast('Đã xóa tài liệu.', 'success');
-      renderMaterials();
-      if (_db) {
-        _db.from('materials').delete().eq('id', String(id))
-          .then(function (r) { if (r.error) showToast('Lỗi xóa: ' + r.error.message, 'error'); });
-      }
+      uiConfirm('Xóa tài liệu này?', function () {
+        materials = materials.filter(function (m) { return m.id !== id; });
+        showToast('Đã xóa tài liệu.', 'success');
+        renderMaterials();
+        if (_db) {
+          _db.from('materials').delete().eq('id', String(id))
+            .then(function (r) { if (r.error) showToast('Lỗi xóa: ' + r.error.message, 'error'); });
+        }
+      });
     }
 

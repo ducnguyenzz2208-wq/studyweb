@@ -130,21 +130,22 @@
       var list = cls ? students.filter(function (s) { return s.class === cls; }) : students;
       if (!list.length) { showToast('Không có học sinh để điểm danh.', 'error'); return; }
       var labels = { present: 'có mặt', late: 'đi muộn', absent: 'vắng' };
-      if (!confirm('Đánh dấu ' + list.length + ' học sinh ' + (labels[status] || status) + ' cho buổi ' + selDate + '?')) return;
-      list.forEach(function (s) { _upsertLocalAttend(s, cls || s.class, selDate, status); });
-      renderAttendance();
-      if (_db && _dbUserId) {
-        var rows = list.map(function (s) {
-          return {
-            teacher_id: _dbUserId, student_ref: String(s.id), student_name: s.name,
-            class_name: cls || s.class, session_date: selDate, status: status,
-          };
-        });
-        _db.from('attendance_records').upsert(rows, { onConflict: 'teacher_id,student_ref,session_date' })
-          .then(function (r) {
-            if (r.error) { showToast('Lỗi lưu điểm danh cả lớp: ' + r.error.message, 'error'); return; }
-            showToast('Đã điểm danh ' + list.length + ' học sinh.', 'success');
+      uiConfirm('Đánh dấu ' + list.length + ' học sinh ' + (labels[status] || status) + ' cho buổi ' + selDate + '?', function () {
+        list.forEach(function (s) { _upsertLocalAttend(s, cls || s.class, selDate, status); });
+        renderAttendance();
+        if (_db && _dbUserId) {
+          var rows = list.map(function (s) {
+            return {
+              teacher_id: _dbUserId, student_ref: String(s.id), student_name: s.name,
+              class_name: cls || s.class, session_date: selDate, status: status,
+            };
           });
-      }
+          _db.from('attendance_records').upsert(rows, { onConflict: 'teacher_id,student_ref,session_date' })
+            .then(function (r) {
+              if (r.error) { showToast('Lỗi lưu điểm danh cả lớp: ' + r.error.message, 'error'); return; }
+              showToast('Đã điểm danh ' + list.length + ' học sinh.', 'success');
+            });
+        }
+      }, { danger: false, okText: 'Điểm danh' });
     }
 

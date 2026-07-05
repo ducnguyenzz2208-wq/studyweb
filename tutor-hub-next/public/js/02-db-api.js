@@ -1,4 +1,22 @@
     var _dbLoading = false;   // true trong lúc loadDbData() đang tải → hiện skeleton
+    var _dbError = {};        // lỗi tải theo section (RLS/500/mạng) → hiện errorBlock thay bảng trắng
+
+    // Tải lại toàn bộ dữ liệu khi người dùng bấm "Thử lại" ở trạng thái lỗi.
+    function retryLoad() {
+      _dbError = {};
+      _rerenderAfterLoad();
+      loadDbData();
+    }
+
+    // Gói thông báo lỗi tải dữ liệu thành câu tiếng Việt dễ hiểu (RLS/500/mạng).
+    function _dbErrMsg(err) {
+      var m = (err && (err.message || err.msg) || '').toLowerCase();
+      if (m.indexOf('row-level security') !== -1 || m.indexOf('permission') !== -1 || m.indexOf('rls') !== -1 || (err && (err.code === '42501' || err.code === 'PGRST301')))
+        return 'Bạn không có quyền xem mục này, hoặc phiên đăng nhập đã hết hạn. Hãy thử đăng nhập lại.';
+      if (m.indexOf('fetch') !== -1 || m.indexOf('network') !== -1 || m.indexOf('failed to') !== -1)
+        return 'Lỗi kết nối mạng. Kiểm tra Internet rồi thử lại.';
+      return (err && (err.message || err.msg)) || 'Đã xảy ra lỗi khi tải dữ liệu.';
+    }
 
     // ── DATA PERSISTENCE HELPERS ─────────────────────────────────
     function dbSave(table, payload, matchCol) {
@@ -19,7 +37,13 @@
       if (!_db) return;
       _db.from('materials').select('*').order('created_at', { ascending: false })
         .then(function (r) {
-          if (r.error) { console.error('loadMaterials error:', r.error); return; }
+          if (r.error) {
+            console.error('loadMaterials error:', r.error);
+            _dbError.materials = _dbErrMsg(r.error);
+            if (currentSection === 'materials') renderMaterials();
+            return;
+          }
+          delete _dbError.materials;
           materials = (r.data || []).map(function (m) {
             return {
               id: m.id, title: m.title, subject: m.subject || '',
@@ -59,6 +83,7 @@
 
       // Hiện skeleton trong lúc tải; tự tắt sau 1.4s (các loader xong sớm sẽ render đè trước đó).
       _dbLoading = true;
+      _dbError = {};   // xoá lỗi cũ trước mỗi lần tải lại
       _rerenderAfterLoad();
       setTimeout(function () { _dbLoading = false; _rerenderAfterLoad(); }, 1400);
 
@@ -143,7 +168,13 @@
 
         _db.from('students').select('*').eq('owner_id', _dbUserId)
           .then(function (r) {
-            if (!r.error && r.data) {
+            if (r.error) {
+              _dbError.students = _dbErrMsg(r.error);
+              if (currentSection === 'students') renderStudents();
+              return;
+            }
+            if (r.data) {
+              delete _dbError.students;
               students = r.data.map(_mapStudentRow);
               if (currentSection === 'students') renderStudents();
               if (currentSection === 'dashboard') { try { renderDashboard(); } catch (e) { } }
@@ -381,16 +412,117 @@
 
     function deleteSubject(idx) {
       var name = SUBJECTS[idx];
-      if (!confirm('Xóa môn học "' + name + '"?')) return;
-      SUBJECTS.splice(idx, 1);
-      renderSubjects();
-      populateSubjectDropdowns();
-      if (_db && _dbUserId) {
-        _db.from('subjects').delete().eq('owner_id', _dbUserId).eq('name', name)
-          .then(function (r) { if (r.error) console.warn('delete subject', r.error.message); });
-      }
-      showToast('Đã xóa môn học: ' + name, 'success');
+      uiConfirm('Xóa môn học "' + name + '"?', function () {
+        SUBJECTS.splice(idx, 1);
+        renderSubjects();
+        populateSubjectDropdowns();
+        if (_db && _dbUserId) {
+          _db.from('subjects').delete().eq('owner_id', _dbUserId).eq('name', name)
+            .then(function (r) { if (r.error) console.warn('delete subject', r.error.message); });
+        }
+        showToast('Đã xóa môn học: ' + name, 'success');
+      });
     }
+    // ── DỮ LIỆU MẪU 1 CHẠM (Load / Clear sample data) ─────────────
+    // Chèn vài lớp + học sinh THẬT vào Supabase (owned by current user, tuân RLS)
+    // để người mới nghịch thử. Lưu id đã chèn vào localStorage để "Xoá" gỡ đúng
+    // những gì đã nạp — không đụng dữ liệu thật của người dùng.
+    var SAMPLE_KEY = 'th_sample_ids';
+    function _sampleIds() {
+      try { return JSON.parse(localStorage.getItem(SAMPLE_KEY) || 'null') || { classes: [], students: [] }; }
+      catch (e) { return { classes: [], students: [] }; }
+    }
+    function _saveSampleIds(v) { try { localStorage.setItem(SAMPLE_KEY, JSON.stringify(v)); } catch (e) { } }
+    function hasSampleData() { var s = _sampleIds(); return (s.classes.length + s.students.length) > 0; }
+
+    function loadSampleData() {
+      if (!_db || !_dbUserId) { showToast('Cần đăng nhập để nạp dữ liệu mẫu.', 'error'); return; }
+      if (!currentUser || (currentUser.role !== 'Teacher' && currentUser.role !== 'Admin')) {
+        showToast('Chỉ Giáo viên/Quản trị mới nạp được dữ liệu mẫu.', 'error'); return;
+      }
+      if (hasSampleData()) { showToast('Dữ liệu mẫu đã được nạp rồi. Bạn có thể "Xoá dữ liệu mẫu" trước.', 'info'); return; }
+
+      var sampleClasses = [
+        { name: 'Toán 9A (mẫu)', subject: 'Math', schedule: 'T2/T4 18:00', room: 'A1', max_students: 12 },
+        { name: 'Anh Văn 8B (mẫu)', subject: 'English', schedule: 'T3/T6 19:30', room: 'B2', max_students: 12 },
+      ];
+      var sampleStudents = [
+        { name: 'Nguyễn Minh An', email: null, class_name: 'Toán 9A (mẫu)', math_score: 88, eng_score: 79, attendance: 96 },
+        { name: 'Trần Bảo Châu', email: null, class_name: 'Toán 9A (mẫu)', math_score: 72, eng_score: 68, attendance: 84 },
+        { name: 'Lê Gia Huy', email: null, class_name: 'Toán 9A (mẫu)', math_score: 61, eng_score: 74, attendance: 71 },
+        { name: 'Phạm Thảo My', email: null, class_name: 'Anh Văn 8B (mẫu)', math_score: 80, eng_score: 92, attendance: 93 },
+        { name: 'Vũ Khánh Ngân', email: null, class_name: 'Anh Văn 8B (mẫu)', math_score: 76, eng_score: 85, attendance: 88 },
+        { name: 'Đỗ Quốc Bảo', email: null, class_name: 'Anh Văn 8B (mẫu)', math_score: 90, eng_score: 81, attendance: 97 },
+      ];
+
+      showBusy('Đang nạp dữ liệu mẫu…');
+      var ids = { classes: [], students: [] };
+      var clsPayload = sampleClasses.map(function (c) { var o = {}; for (var k in c) o[k] = c[k]; o.owner_id = _dbUserId; return o; });
+      _db.from('classes').insert(clsPayload).select().then(function (rc) {
+        if (rc.error) { hideBusy(); showToast('Lỗi nạp lớp mẫu: ' + rc.error.message, 'error'); return; }
+        (rc.data || []).forEach(function (c) { ids.classes.push(c.id); });
+        var stuPayload = sampleStudents.map(function (s) {
+          return { owner_id: _dbUserId, name: s.name, email: s.email, class_name: s.class_name, math_score: s.math_score, eng_score: s.eng_score, attendance: s.attendance };
+        });
+        _db.from('students').insert(stuPayload).select().then(function (rs) {
+          hideBusy();
+          if (rs.error) { showToast('Lỗi nạp học sinh mẫu: ' + rs.error.message, 'error'); return; }
+          (rs.data || []).forEach(function (s) { ids.students.push(s.id); students.push(_mapStudentRow(s)); });
+          (rc.data || []).forEach(function (c) {
+            classes.push({ id: c.id, name: c.name, subject: c.subject || '', teacher: '', schedule: c.schedule || '', day: c.schedule || '', time: '', room: c.room || '', capacity: c.max_students || 12, maxStudents: c.max_students || 12, color: (c.subject || '').toLowerCase() });
+          });
+          _saveSampleIds(ids);
+          populateClassDropdowns();
+          _rerenderAfterLoad();
+          try { renderClasses(); } catch (e) { }
+          try { renderWelcome(); } catch (e) { }
+          var kpi = document.getElementById('kpiStudents'); if (kpi) kpi.textContent = students.length;
+          try { renderSampleDataControls(); } catch (e) { }
+          showToast('Đã nạp ' + ids.classes.length + ' lớp và ' + ids.students.length + ' học sinh mẫu.', 'success');
+        });
+      });
+    }
+
+    function clearSampleData() {
+      var ids = _sampleIds();
+      if (!hasSampleData()) { showToast('Không có dữ liệu mẫu để xoá.', 'info'); return; }
+      uiConfirm('Xoá toàn bộ dữ liệu mẫu đã nạp (' + ids.classes.length + ' lớp, ' + ids.students.length + ' học sinh)?', function () {
+        if (!_db) return;
+        showBusy('Đang xoá dữ liệu mẫu…');
+        var jobs = [];
+        if (ids.students.length) jobs.push(_db.from('students').delete().in('id', ids.students));
+        if (ids.classes.length) jobs.push(_db.from('classes').delete().in('id', ids.classes));
+        Promise.all(jobs).then(function () {
+          hideBusy();
+          var sSet = {}; ids.students.forEach(function (i) { sSet[i] = 1; });
+          var cSet = {}; ids.classes.forEach(function (i) { cSet[i] = 1; });
+          students = students.filter(function (s) { return !sSet[s.id]; });
+          classes = classes.filter(function (c) { return !cSet[c.id]; });
+          _saveSampleIds({ classes: [], students: [] });
+          populateClassDropdowns();
+          _rerenderAfterLoad();
+          try { renderClasses(); } catch (e) { }
+          try { renderWelcome(); } catch (e) { }
+          var kpi = document.getElementById('kpiStudents'); if (kpi) kpi.textContent = students.length;
+          try { renderSampleDataControls(); } catch (e) { }
+          showToast('Đã xoá dữ liệu mẫu.', 'success');
+        }).catch(function (e) { hideBusy(); showToast('Lỗi xoá dữ liệu mẫu.', 'error'); });
+      });
+    }
+
+    // Vẽ cụm nút "Nạp/Xoá dữ liệu mẫu" (dùng ở Cài đặt). Đổi nhãn theo trạng thái.
+    function renderSampleDataControls() {
+      var box = document.getElementById('sampleDataControls');
+      if (!box) return;
+      if (!currentUser || (currentUser.role !== 'Teacher' && currentUser.role !== 'Admin')) { box.innerHTML = ''; return; }
+      var loaded = hasSampleData();
+      box.innerHTML = loaded
+        ? '<button class="btn btn-danger" onclick="clearSampleData()">Xoá dữ liệu mẫu</button>' +
+          '<span style="font-size:12.5px;color:var(--text-muted);align-self:center;">Đã nạp dữ liệu mẫu — xoá khi bạn đã xem xong.</span>'
+        : '<button class="btn btn-primary" onclick="loadSampleData()">Nạp dữ liệu mẫu</button>' +
+          '<span style="font-size:12.5px;color:var(--text-muted);align-self:center;">Thêm vài lớp &amp; học sinh mẫu để trải nghiệm nhanh.</span>';
+    }
+
     // ── END SUPABASE INTEGRATION ──────────────────────────────────
     var currentSchedFilter = 'All';
     var nextSchedId = 9;

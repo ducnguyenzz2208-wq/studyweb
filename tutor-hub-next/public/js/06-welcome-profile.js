@@ -64,7 +64,20 @@
         '<div style="height:6px;background:var(--bg,#eef2f7);border-radius:999px;overflow:hidden;margin-bottom:12px;">' +
         '<div style="height:100%;width:' + pct + '%;background:linear-gradient(135deg,#3b82f6,#2563eb);border-radius:999px;"></div></div>' +
         items +
+        _onboardSampleRow() +
         '</div>';
+    }
+
+    // Gợi ý "nạp/xoá dữ liệu mẫu" ngay trong checklist — chỉ khi đã kết nối DB.
+    function _onboardSampleRow() {
+      if (typeof _db === 'undefined' || !_db) return '';
+      var loaded = (typeof hasSampleData === 'function') && hasSampleData();
+      var action = loaded
+        ? '<a href="#" onclick="clearSampleData();return false;" style="color:var(--danger);text-decoration:none;font-weight:600;">Xoá dữ liệu mẫu</a>'
+        : '<a href="#" onclick="loadSampleData();return false;" style="color:var(--accent);text-decoration:none;font-weight:600;">Nạp dữ liệu mẫu →</a>';
+      var hint = loaded ? 'Đã nạp dữ liệu mẫu để xem thử.' : 'Chưa muốn nhập tay? ';
+      return '<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);font-size:13px;color:var(--text-muted);">' +
+        hint + action + '</div>';
     }
 
     function dismissOnboard() {

@@ -102,9 +102,10 @@
     }
 
     function deleteHomework(id) {
-      if (!confirm('Xóa bài tập về nhà này?')) return;
-      homework = homework.filter(function (h) { return h.id !== id; });
-      showToast('Homework deleted.', 'error');
-      renderHomework();
+      uiConfirm('Xóa bài tập về nhà này?', function () {
+        homework = homework.filter(function (h) { return h.id !== id; });
+        showToast('Homework deleted.', 'error');
+        renderHomework();
+      });
     }
 

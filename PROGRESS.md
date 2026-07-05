@@ -63,6 +63,24 @@ enrollment_requests, notifications`.
       `color`; sau khi đổi emoji→SVG (`stroke=currentColor`) icon bị tối trên nền tối. Thêm
       `color: var(--text)` → bám theme. Đã test light+dark (icon = #e2e8f0 dark / #1e2437 light).
 
+## Đợt patch UX (production-grade, KHÔNG rebuild) ✅ ĐÃ LÀM
+Patch trên app hiện có, diff nhỏ + an toàn, giữ nguyên route/auth/data-flow, song ngữ.
+- [x] **Tooltip thuật ngữ** — `GLOSSARY` (vi/en) + `helpTip()`/`injectHelpTips()` + icon `info`/
+      `alert-triangle` trong `SVG_ICONS`. Placeholder `data-help` ở tiêu đề Students/Classes/
+      Flashcards/Payments/Assignments; re-render theo `showSection` + `setLang` (đổi ngôn ngữ).
+- [x] **Bảng → thẻ trên mobile** — `.stack-table` + `data-label` (Students, Payments). Đã test 375px:
+      `<thead>` ẩn, mỗi hàng 1 thẻ, nhãn cột qua `::before`. Skeleton cũng thêm cho Payments.
+- [x] **A11y** — `:focus-visible`, `aria-label` ô lọc/tìm, tương phản dark `--text-muted` cao hơn.
+- [x] **Dữ liệu mẫu 1 chạm** — `loadSampleData()`/`clearSampleData()` (02-db-api.js), theo dõi id
+      qua `localStorage` (`th_sample_ids`). Nút ở Cài đặt (GV/Admin) + link trong checklist.
+- [x] **`uiConfirm()`** thay 12 chỗ `confirm()` native (không còn native confirm/alert).
+- [x] **Trạng thái lỗi** — Next `app/error.tsx` + `app/dashboard/error.tsx`; trong app `_dbError`
+      theo section + `errorBlock()` + `retryLoad()`, wire vào loader Students/Materials/Payments.
+- [x] **Test tự động (Vitest)** — 19 test pass (`npm test`): viError (auth) + getGrade/avgScore
+      (trích từ mã thật, không nhân bản). Build Next + `node --check` mọi module JS: pass.
+- **Verify**: mock-login trong preview → Students render thẻ + tooltip + uiConfirm mở/đóng đúng,
+      0 lỗi console. (App thật vào qua `/dashboard` cần Supabase session như cũ.)
+
 ---
 
 ## GỢI Ý: làm web thân thiện hơn cho người mới
@@ -93,17 +111,17 @@ Sắp theo mức ưu tiên. P0 = rào cản lớn nhất khiến người mới 
       gợi ý theo role, trỏ tới nút ❓.
 - [x] **Checklist "Bắt đầu nhanh"** trên Dashboard cho GV/Admin — `renderOnboardChecklist()`:
       tạo lớp → thêm học sinh → giao bài → tải tài liệu, có thanh tiến độ, tự ẩn khi xong hoặc bấm "Bỏ qua".
-- [ ] **Nút "Xem thử dữ liệu mẫu"** (seed) — CHƯA làm, chuyển sang "Làm tiếp".
+- [x] **Nút "Xem thử dữ liệu mẫu"** (seed) — ĐÃ LÀM: "Nạp/Xoá dữ liệu mẫu" (xem "Đợt patch UX").
 
 ### P2 — Đánh bóng trải nghiệm ✅ PHẦN LỚN ĐÃ LÀM
 - [x] **Trang Help/FAQ** — nút ❓ trên thanh trên → `openHelp()` mở modal FAQ (5 câu hỏi thường gặp).
 - [x] **Thông báo lỗi thân thiện** — `lib/auth-messages.ts` cho luồng auth (đã làm ở P0).
 - [x] **Xác nhận trước khi xoá** — đã có sẵn `confirm()` cho mọi thao tác xoá; Việt hoá 4 hộp thoại
       còn tiếng Anh (học sinh, lớp, BTVN, buổi học) + nhãn quick-action của Student/Parent.
-- [ ] **Tooltip/help icon** cạnh thuật ngữ (enrollment request, flashcard deck…) — CHƯA, để "Làm tiếp".
-- [ ] **Kiểm tra responsive/mobile** cho bảng lớn (Students, Payments) — CHƯA, để "Làm tiếp".
-- [ ] **Loading skeleton** thay bảng trống chớp nháy khi tải DB — CHƯA, để "Làm tiếp".
-- [ ] **Accessibility cơ bản** (nhãn input, focus, tương phản dark mode) — CHƯA, để "Làm tiếp".
+- [x] **Tooltip/help icon** cạnh thuật ngữ (enrollment request, deck, submission…) — ĐÃ LÀM (xem "Đợt patch UX").
+- [x] **Kiểm tra responsive/mobile** cho bảng lớn (Students, Payments) — ĐÃ LÀM (bảng → thẻ xếp dọc).
+- [x] **Loading skeleton** thay bảng trống chớp nháy khi tải DB — ĐÃ LÀM (thêm cả Payments đợt này).
+- [x] **Accessibility cơ bản** (nhãn input, focus, tương phản dark mode) — ĐÃ LÀM (đợt patch UX).
 
 ---
 
@@ -170,8 +188,11 @@ Sắp theo mức ưu tiên. P0 = rào cản lớn nhất khiến người mới 
 - [x] **Empty-state có hướng dẫn cho Classes, Materials, Flashcards (+ deck cards)** — helper
       `emptyBlock()` (05-navigation.js) + CSS `.empty-state`; icon SVG + tiêu đề VN + nút hành động
       cho GV/Admin; phân biệt chưa-có vs không-khớp-lọc. (Assignments vốn đã có gợi ý dạng chữ.)
-- [ ] **Dữ liệu mẫu 1 chạm**: nút "Nạp dữ liệu mẫu" + "Xoá dữ liệu mẫu" để người mới nghịch thử.
-- [ ] **Tooltip giải thích thuật ngữ** (enrollment request, deck, submission…).
+- [x] **Dữ liệu mẫu 1 chạm**: nút "Nạp dữ liệu mẫu" + "Xoá dữ liệu mẫu" — chèn lớp/HS THẬT vào
+      Supabase (owned by user, tuân RLS), lưu id đã chèn vào `localStorage` (`th_sample_ids`) để
+      xoá đúng phần đã nạp. Đặt ở Cài đặt (chỉ GV/Admin) + link trong checklist "Bắt đầu nhanh".
+- [x] **Tooltip giải thích thuật ngữ** (enrollment request, deck, submission, overdue, avg-score…) —
+      `GLOSSARY` song ngữ + `helpTip()`/`injectHelpTips()` (05-navigation.js); icon ⓘ hover/focus.
 - [x] **Loading skeleton** — flag `_dbLoading` + `skelTableRows()`/`skelCards()` + CSS `.skel`;
       guard trong render Students/Materials/Flashcards/Classes; tự tắt sau 1.4s. Đã test 4 section.
 
@@ -180,17 +201,26 @@ Sắp theo mức ưu tiên. P0 = rào cản lớn nhất khiến người mới 
       giữ global scope). HTML còn ~4000 dòng. Đã test app nạp không lỗi + build pass.
       Nhân tiện lộ ra & cần dọn: 2 hàm `deleteMaterial` trùng tên (giờ ở `02-db-api.js` dòng
       ~4 và `24-materials.js` — bản trong 02 là code chết, bị đè).
-- [ ] **Kiểm thử tự động**: thêm test cho luồng auth + vài hàm thuần (avgScore, getGrade…).
-- [ ] **Thay `confirm()`/`alert()` native** bằng modal xác nhận trong app cho đồng nhất giao diện.
-- [ ] **Error boundary + trạng thái rỗng khi RLS/500** thay vì bảng trắng im lặng.
+- [x] **Kiểm thử tự động**: Vitest — `__tests__/auth-messages.test.ts` (viError) +
+      `__tests__/helpers.test.ts` (trích getGrade/avgScore TỪ mã thật 12-ui-core.js, không nhân bản).
+      `npm test` → 19 test pass. Thêm devDep `vitest`, script `test`/`test:watch`.
+- [x] **Thay `confirm()` native** bằng `uiConfirm()` (12-ui-core.js) — modal song ngữ, bẫy focus/Esc,
+      nút nguy hiểm đỏ. Đã đổi cả 12 chỗ gọi `confirm()` (không còn `confirm()`/`alert()` native).
+- [x] **Error boundary + trạng thái lỗi khi RLS/500** — Next: `app/error.tsx` + `app/dashboard/error.tsx`.
+      Trong app iframe: `_dbError` theo section + `errorBlock()` + nút "Thử lại" (`retryLoad()`),
+      wire vào loader Students/Materials/Payments (thay bảng trắng im lặng).
 
 ### Di động & khả năng tiếp cận
 - [x] **Responsive cho bảng lớn** — đã cho cuộn ngang mượt trên mobile (đợt gần nhất).
-- [ ] **Dạng thẻ thay bảng trên mobile** cho Students/Payments (cuộn ngang tạm ổn, thẻ sẽ đẹp hơn).
+- [x] **Dạng thẻ thay bảng trên mobile** cho Students/Payments — class `.stack-table` + `data-label`
+      trên từng `<td>`; ≤640px `<thead>` ẩn, mỗi hàng thành 1 thẻ, nhãn cột hiện qua `td::before`.
+      Hàng nhóm lớp (`.group-row`) và hàng trạng thái (`.state-cell`) vẫn full-width.
 - [x] **A11y (một phần)**: đã thêm `aria-label` cho nút icon topbar (help/theme/notif/hamburger).
 - [x] **A11y modal**: `role="dialog"` + `aria-modal`, bẫy focus (Tab/Shift+Tab), Esc đóng,
       focus vào ô đầu + khôi phục focus cũ khi đóng (`openModal`/`closeModal` trong 12-ui-core).
-- [ ] **A11y (còn lại)**: kiểm tra tương phản dark mode toàn bộ, nhãn cho input rời rạc.
+- [x] **A11y (còn lại)**: bơm tương phản `--text-muted` dark (#8899aa→#9fb2c7, đạt ~AA trên card),
+      `:focus-visible` viền rõ toàn cục, `aria-label` cho các ô tìm kiếm/lọc (Students/Materials/
+      Payments/Attendance), `aria-hidden` cho icon 🔍 trang trí.
 
 ### Tính năng nâng cao (khi cần)
 - [ ] **Thông báo realtime** (Supabase Realtime) thay vì phải bấm 🔔 tải lại.

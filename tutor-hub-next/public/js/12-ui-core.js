@@ -75,6 +75,36 @@
       _modalPrevFocus = null;
     }
 
+    // ── IN-APP CONFIRM (thay confirm() gốc trình duyệt) ───────────
+    // Hộp thoại xác nhận đồng bộ giao diện app: song ngữ, bẫy focus/Esc
+    // (dùng chung openModal/closeModal). onConfirm chỉ chạy khi bấm nút chính.
+    // opts: { danger, okText, cancelText, title }.
+    function uiConfirm(message, onConfirm, opts) {
+      opts = opts || {};
+      var en = (typeof currentLang !== 'undefined' && currentLang === 'en');
+      var title = opts.title || (en ? 'Please confirm' : 'Xác nhận');
+      var okText = opts.okText || (en ? 'Confirm' : 'Xác nhận');
+      var cancelText = opts.cancelText || (en ? 'Cancel' : 'Hủy');
+      var okClass = opts.danger === false ? 'btn-primary' : 'btn-danger';
+      window._uiConfirmCb = function () {
+        var cb = onConfirm; closeModal();
+        if (typeof cb === 'function') { try { cb(); } catch (e) { console.error(e); } }
+      };
+      var icon = opts.danger === false ? svgIcon('info', 20) : svgIcon('alert-triangle', 20);
+      var iconColor = opts.danger === false ? 'var(--accent)' : 'var(--danger)';
+      openModal(
+        '<div class="modal-header"><h3 style="display:flex;align-items:center;gap:9px;">' +
+        '<span style="color:' + iconColor + ';display:inline-flex;">' + icon + '</span>' + escHtml(title) +
+        '</h3><button class="modal-close" onclick="closeModal()" aria-label="' + (en ? 'Close' : 'Đóng') + '">✕</button></div>' +
+        '<div class="modal-body"><p style="line-height:1.55;color:var(--text);">' + escHtml(message) + '</p></div>' +
+        '<div class="modal-footer">' +
+        '<button class="btn btn-ghost" onclick="closeModal()">' + escHtml(cancelText) + '</button>' +
+        '<button class="btn ' + okClass + '" onclick="_uiConfirmCb()">' + escHtml(okText) + '</button>' +
+        '</div>',
+        'modal-sm'
+      );
+    }
+
     // ── BUSY OVERLAY (phản hồi khi tải lên / lưu) ─────────────────
     // Dùng chung cho cả modal lẫn thao tác inline. Có timeout an toàn 30s
     // để overlay không bao giờ kẹt nếu lỡ thiếu một nhánh hideBusy().
@@ -380,6 +410,7 @@
       if (id === 'settings') { renderSettings(); }
       if (id === 'dashboard') { try { renderDashboard(); } catch (e) { } }
       if (id === 'dashboard') { renderWelcome(); renderDashLists(); renderStudents(); }
+      try { injectHelpTips(secEl || document); } catch (e) { }
     }
 
     function toggleSidebar() {
@@ -448,6 +479,10 @@
       var r = document.getElementById('settingRole'); if (r) r.value = currentUser.role || '';
       // Ẩn "Demo Account Switcher" khi đã đăng nhập thật (có Supabase)
       var demo = document.getElementById('settingsDemoGroup'); if (demo) demo.style.display = _db ? 'none' : '';
+      // Dữ liệu mẫu: chỉ hiện cho GV/Admin đã kết nối DB
+      var isTA = currentUser && (currentUser.role === 'Teacher' || currentUser.role === 'Admin');
+      var sdg = document.getElementById('sampleDataGroup'); if (sdg) sdg.style.display = (_db && isTA) ? '' : 'none';
+      try { renderSampleDataControls(); } catch (e) { }
       // Đồng bộ ô chọn cỡ chữ + trạng thái dark mode với giá trị đã lưu
       var fs = document.getElementById('settingFontSize');
       if (fs) { try { fs.value = localStorage.getItem('th_fontsize') || 'normal'; } catch (e) { fs.value = 'normal'; } }

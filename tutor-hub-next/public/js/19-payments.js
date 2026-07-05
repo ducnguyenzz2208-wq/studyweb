@@ -68,6 +68,11 @@
       var list = payments.filter(function (p) { return !filter || p.status === filter; });
       var badge = { 'Paid': 'badge-success', 'Pending': 'badge-warning', 'Overdue': 'badge-danger' };
       var body = document.getElementById('paymentTableBody');
+      if (_dbError && _dbError.payments && !payments.length) {
+        body.innerHTML = '<tr><td colspan="6" class="state-cell">' + errorBlock(_dbError.payments, 'retryLoad()') + '</td></tr>';
+        return;
+      }
+      if (_dbLoading && !payments.length) { body.innerHTML = skelTableRows(5, 6); return; }
       if (!list.length) { body.innerHTML = '<tr><td colspan="6" class="empty">Chưa có khoản thu.</td></tr>'; return; }
       body.innerHTML = list.map(function (p) {
         var act = '';
@@ -82,12 +87,12 @@
         }
 
         return '<tr>' +
-          '<td>' + escHtml(p.student) + (p.note ? '<div style="font-size:11px;color:var(--text-muted);">' + escHtml(p.note) + '</div>' : '') + '</td>' +
-          '<td><strong>$' + p.amount + '</strong></td>' +
-          '<td>' + escHtml(p.due) + '</td>' +
-          '<td>' + (p.paid || '—') + '</td>' +
-          '<td><span class="badge ' + (badge[p.status] || '') + '">' + escHtml(p.status) + '</span></td>' +
-          '<td>' + act + '</td>' +
+          '<td data-label="Student">' + escHtml(p.student) + (p.note ? '<div style="font-size:11px;color:var(--text-muted);">' + escHtml(p.note) + '</div>' : '') + '</td>' +
+          '<td data-label="Amount"><strong>$' + p.amount + '</strong></td>' +
+          '<td data-label="Due Date">' + escHtml(p.due) + '</td>' +
+          '<td data-label="Paid On">' + (p.paid || '—') + '</td>' +
+          '<td data-label="Status"><span class="badge ' + (badge[p.status] || '') + '">' + escHtml(p.status) + '</span></td>' +
+          '<td data-label="Actions">' + act + '</td>' +
           '</tr>';
       }).join('');
     }
@@ -276,7 +281,13 @@
     function loadPayments() {
       if (!_db) return;
       _db.from('payments').select('*').order('due_date', { ascending: true }).then(function (r) {
-        if (r.error) { console.warn('load payments', r.error.message); return; }
+        if (r.error) {
+          console.warn('load payments', r.error.message);
+          _dbError.payments = _dbErrMsg(r.error);
+          if (currentSection === 'payments') renderPayments();
+          return;
+        }
+        delete _dbError.payments;
         var today = new Date().toISOString().split('T')[0];
         if (r.data && r.data.length) {
           payments = r.data.map(function (p) {
