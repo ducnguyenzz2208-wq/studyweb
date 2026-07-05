@@ -56,7 +56,49 @@ enrollment_requests, notifications`.
       báo lỗi khi mở, các thao tác vẫn chạy bình thường (ghi log là best-effort, không chặn).
 - [ ] Chạy migration `021_reminders.sql` — RPC nhắc học phí/bài tập. Chưa chạy: nút "Nhắc…" báo lỗi
       RPC; mọi thứ khác không ảnh hưởng. (Tuỳ chọn: bật pg_cron theo comment trong file để tự động.)
+- [ ] **Chạy migration `022_secure_notifications_insert.sql`** (BẢO MẬT — nên chạy sớm): siết RLS
+      INSERT của `notifications` + RPC `send_payment_reminder`. Chưa chạy: học sinh vẫn có thể spam/giả
+      mạo thông báo, VÀ nút "🔔 Nhắc đóng" (từng khoản) sẽ báo lỗi RPC. Chạy SAU `017` và `021`.
 - [ ] Sau khi push: chờ Vercel build xong rồi test lại reset password.
+
+## Ổn định cho người dùng THẬT (roadmap — làm tiếp)
+> Mục tiêu: đủ tin cậy cho học sinh + giáo viên thật dùng. Trọng tâm là BỊT CHỖ DỄ VỠ,
+> không phải thêm tính năng. Sắp theo mức ưu tiên.
+
+### P0 — Đang chặn người dùng thật (cấu hình + lỗ hổng, phần lớn KHÔNG cần code)
+- [ ] **Chạy hết migration + Auth URL config** (xem mục "Việc thủ công" ở trên): `017`→`021` +
+      Site URL/Redirect URLs đúng domain prod. Thiếu → reset MK hỏng, không có realtime, nút Nhắc/Nhật ký lỗi.
+- [ ] **Email deliverability**: cắm **Custom SMTP** (Resend/SendGrid free) trong Auth → SMTP. SMTP mặc
+      định Supabase giới hạn rate → đăng ký đông thì email xác nhận rớt âm thầm. (Tuỳ chọn: tạm tắt
+      "Confirm email" lúc đầu để giảm ma sát, bật lại khi có SMTP.)
+- [x] **Bịt lỗ hổng chèn notifications** ✅ CODE XONG (cần chạy migration `022`): migration
+      `022_secure_notifications_insert.sql` bỏ policy INSERT rộng + thêm RPC `send_payment_reminder`
+      (SECURITY DEFINER, chỉ Admin, dựng message server-side). Client `sendPaymentReminder`
+      (19-payments.js) đã chuyển từ `.from('notifications').insert` sang `_db.rpc(...)`. Đã rà: KHÔNG
+      còn chỗ client nào insert trực tiếp vào notifications (mọi thông báo qua trigger #017 / RPC #021,#022).
+      ⚠️ Nếu chạy lại `017` sau này (nó tạo lại policy rộng) thì phải chạy lại `022`.
+
+### P1 — Độ tin cậy khi dùng lâu (cần code)
+- [ ] **Token iframe hết hạn giữa phiên**: access token nhận qua `postMessage` hết hạn ~1h → query
+      401 âm thầm, bảng trống dần. Bắt lỗi 401 → tự `refreshSession()` hoặc hiện "Phiên hết hạn, đăng
+      nhập lại". Đây là nguyên nhân điển hình "dùng một lúc thì tự hỏng".
+- [ ] **Dứt điểm ranh giới demo ↔ DB thật** (memory `demo-to-db-pattern`): vài mục còn lưu local-only
+      → bấm lưu tưởng xong, reload mất → mất niềm tin. Hoặc DB-hoá nốt, hoặc ẩn/khoá nút lưu ở mục chưa nối DB.
+- [ ] **Error/empty/loading states cho MỌI mục DB**: mới có ở Students/Materials/Payments. Nhân rộng
+      `errorBlock()`/`retryLoad()`/skeleton sang Schedule, Attendance, Assignments, Flashcards (tránh bảng trắng im lặng khi RLS/500).
+
+### P2 — Hạ tầng vận hành
+- [ ] **Error monitoring**: `window.onerror` → log (hoặc Sentry free) để BIẾT người dùng gặp lỗi gì.
+- [ ] **Smoke test e2e thật** (Playwright): login → dashboard → thêm học sinh → giao bài. (Unit test
+      hiện chỉ phủ helper thuần + viError.)
+- [ ] **Backup dữ liệu** Supabase (PITR/định kỳ) trước khi có dữ liệu thật của học sinh.
+
+### Nghiệm thu nhanh (chạy với tài khoản thật, mọi vai trò)
+- [ ] Đăng ký mới → email xác nhận → đăng nhập → màn "chờ duyệt".
+- [ ] Admin cấp quyền → học sinh reload thấy đúng cổng.
+- [ ] Reset mật khẩu end-to-end được.
+- [ ] Học sinh A KHÔNG thấy dữ liệu học sinh B (kiểm RLS thực tế).
+- [ ] GV tạo lớp/giao bài → học sinh trong lớp thấy bài.
 
 ## Fix lỗi (đợt gần nhất)
 - [x] **Flashcard bulk-import không lưu** (400 `invalid uuid: "6"`): `bulkImport` gọi `persistDeck`

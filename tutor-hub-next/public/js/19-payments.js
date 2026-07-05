@@ -264,19 +264,15 @@
       if (!p) { showToast('Không tìm thấy khoản thu.', 'error'); return; }
       if (!p.userId) { showToast('Khoản thu này không có tài khoản liên kết.', 'error'); return; }
       if (!_db) return;
-
-      var msg = 'Nhắc đóng học phí: Khoản phí $' + p.amount + ' cho "' + (p.note || 'Học phí') + '" của bạn đến hạn đóng vào ngày ' + (p.due || '—') + '. Vui lòng hoàn thành thanh toán.';
-      _db.from('notifications').insert({
-        user_id: p.userId,
-        icon: '💳',
-        message: msg,
-        is_read: false
-      }).then(function (r) {
-        if (r.error) {
-          showToast('Gửi nhắc nhở thất bại: ' + r.error.message, 'error');
-        } else {
-          showToast('Đã gửi thông báo nhắc nhở đến học viên/phụ huynh.', 'success');
-        }
+      // Gửi qua RPC SECURITY DEFINER (migration 022) — client không còn insert
+      // trực tiếp vào notifications; nội dung dựng server-side, chỉ Admin gửi được.
+      _db.rpc('send_payment_reminder', { _payment_id: String(paymentId) }).then(function (r) {
+        if (r.error) { showToast('Gửi nhắc nhở thất bại: ' + r.error.message, 'error'); return; }
+        if (r.data === 'not_admin') { showToast('Chỉ admin gửi được nhắc nhở.', 'error'); return; }
+        if (r.data === 'no_payment') { showToast('Không tìm thấy khoản thu.', 'error'); return; }
+        if (r.data === 'no_user') { showToast('Khoản thu này không có tài khoản liên kết.', 'error'); return; }
+        try { logAudit('remind_payments', 'payment', 'Nhắc học phí ' + (p.student || '') + ' ($' + p.amount + ')'); } catch (e) { }
+        showToast('Đã gửi thông báo nhắc nhở đến học viên/phụ huynh.', 'success');
       });
     }
 
