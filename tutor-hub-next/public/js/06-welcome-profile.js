@@ -150,7 +150,7 @@
       if (role === 'Teacher' || role === 'Admin') {
         actions = [
           { icon: 'user-plus', label: t('qa.addStudent'), fn: "openStudentModal()" },
-          { icon: 'file-plus', label: t('qa.addHomework'), fn: "openHomeworkModal()" },
+          { icon: 'file-plus', label: t('qa.addHomework'), fn: "showSection('assignments')" },
           { icon: 'plus-square', label: t('qa.addClass'), fn: "openClassModal()" },
           { icon: 'reports', label: t('qa.viewReports'), fn: "showSection('reports')" },
           { icon: 'folder-plus', label: t('qa.addMaterial'), fn: "openMaterialModal()" },

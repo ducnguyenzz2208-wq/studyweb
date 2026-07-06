@@ -7,7 +7,13 @@
       if (!_db) return;
       _db.from('attendance_records').select('*').order('session_date', { ascending: false }).limit(2000)
         .then(function (r) {
-          if (r.error) { console.warn('load attendance', r.error.message); return; }
+          if (r.error) {
+            console.warn('load attendance', r.error.message);
+            if (typeof _dbError !== 'undefined') _dbError.attendance = _dbErrMsg(r.error);
+            if (currentSection === 'attendance') renderAttendance();
+            return;
+          }
+          if (typeof _dbError !== 'undefined') delete _dbError.attendance;
           attendanceRecords = (r.data || []).map(function (a) {
             return { studentRef: String(a.student_ref), studentName: a.student_name || '', className: a.class_name || '', date: a.session_date, status: a.status };
           });
@@ -36,6 +42,11 @@
     }
 
     function renderAttendance() {
+      var _atb = document.getElementById('attendanceTableBody');
+      if (_atb && typeof _dbError !== 'undefined' && _dbError.attendance && !attendanceRecords.length && !students.length) {
+        _atb.innerHTML = '<tr><td colspan="8" class="state-cell">' + errorBlock(_dbError.attendance, 'retryLoad()') + '</td></tr>';
+        return;
+      }
       var cls = (document.getElementById('attendClassFilter') || {}).value || '';
       var selDate = _attendSelDate();
       var canMark = currentUser && (currentUser.role === 'Admin' || currentUser.role === 'Teacher');

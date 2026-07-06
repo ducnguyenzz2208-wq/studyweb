@@ -145,6 +145,8 @@
         else if (currentSection === 'classes') renderClasses();
         else if (currentSection === 'payments') renderPayments();
         else if (currentSection === 'schedule') renderSchedule();
+        else if (currentSection === 'attendance') renderAttendance();
+        else if (currentSection === 'assignments') renderAssignments();
       } catch (e) { }
     }
 
@@ -320,7 +322,9 @@
       var asnQ = _db.from('assignments').select('*').order('created_at', { ascending: false });
       if (currentUser.role === 'Teacher') asnQ = asnQ.eq('owner_id', _dbUserId);
       asnQ.then(function (r) {
-        if (!r.error && r.data) {
+        if (r.error) { _dbError.assignments = _dbErrMsg(r.error); if (currentSection === 'assignments') renderAssignments(); return; }
+        delete _dbError.assignments;
+        if (r.data) {
           assignments = r.data.map(function (a) {
             return {
               id: a.id, title: a.title, subject: a.subject || '',

@@ -6,6 +6,11 @@
       var hwBtn = document.getElementById('hwRemindBtn');
       if (hwBtn) hwBtn.style.display = isTA ? '' : 'none';
       renderClassSidebar();
+      var feed = document.getElementById('classFeed');
+      if (feed && typeof _dbError !== 'undefined' && _dbError.assignments && !assignments.length) {
+        feed.innerHTML = errorBlock(_dbError.assignments, 'retryLoad()');
+        return;
+      }
       renderClassFeed();
     }
 

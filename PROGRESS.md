@@ -88,10 +88,14 @@ enrollment_requests, notifications`.
       `refreshSession()` mỗi 15' + khi quay lại tab; `_isAuthError()` bắt lỗi JWT/401/PGRST301 →
       `_onDbAuthError()` thử làm mới token 1 lần, không được thì hiện lớp phủ "Phiên hết hạn — Đăng
       nhập lại" (`reloginNow()` postMessage TUTOR_HUB_LOGOUT). Verify: phân loại lỗi đúng.
-- [ ] **Dứt điểm ranh giới demo ↔ DB thật** (memory `demo-to-db-pattern`): vài mục còn lưu local-only
-      → bấm lưu tưởng xong, reload mất → mất niềm tin. Hoặc DB-hoá nốt, hoặc ẩn/khoá nút lưu ở mục chưa nối DB. (CHƯA)
-- [~] **Error/empty/loading states cho các mục DB**: có ở Students/Materials/Payments; đợt này thêm
-      **Flashcards + Schedule** (`_dbError.<sec>` + `errorBlock`/`retryLoad`). CÒN LẠI: Attendance, Assignments.
+- [x] **Dứt điểm ranh giới demo ↔ DB thật** — ĐÃ LÀM. Rà soát: mọi mục nav-reachable đều đã DB-hoá
+      (Students/Classes/Assignments/Attendance/Payments/Schedule/Materials/Flashcards/Subjects/Comments).
+      Chỗ DUY NHẤT còn local-only reachable: Quick Action "Thêm bài tập" trỏ `openHomeworkModal()`
+      (mục Homework cũ, lưu RAM → reload mất). Đã đổi → `showSection('assignments')` (hệ thống bài tập
+      THẬT, có DB). Mục Homework cũ giờ không còn lối vào từ UI. Pomodoro dùng localStorage là CHỦ Ý.
+- [x] **Error/empty/loading states cho các mục DB** — ĐÃ XONG cho tất cả: Students/Materials/Payments/
+      Flashcards/Schedule + đợt này **Attendance + Assignments** (`_dbError.<sec>` + `errorBlock`/`retryLoad`,
+      wire cả loader lẫn `_rerenderAfterLoad`). Verify: bơm lỗi giả → hiện khối lỗi + nút Thử lại.
 
 ### P2 — Hạ tầng vận hành
 - [x] **Error monitoring nhẹ** — ĐÃ LÀM (25-init.js): bắt `window.onerror` + `unhandledrejection`,
