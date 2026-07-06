@@ -101,9 +101,12 @@ enrollment_requests, notifications`.
 - [x] **Error monitoring nhẹ** — ĐÃ LÀM (25-init.js): bắt `window.onerror` + `unhandledrejection`,
       lưu 30 lỗi gần nhất vào `localStorage` (`th_errlog`). Xem bằng `thErrors()` / xoá `thClearErrors()`
       trong console. (Có thể nâng lên Sentry sau.)
-- [ ] **Smoke test e2e thật** (Playwright): login → dashboard → thêm học sinh → giao bài. (Unit test
-      hiện chỉ phủ helper thuần + viError.) — CHƯA (cần môi trường test Supabase riêng).
-- [ ] **Backup dữ liệu** Supabase (PITR/định kỳ) trước khi có dữ liệu thật của học sinh. — thao tác Dashboard.
+- [x] **Smoke test e2e (Playwright)** — ĐÃ LÀM, **6 test PASS** (17s). `playwright.config.ts`
+      (webServer `next dev`) + `e2e/smoke.spec.ts` chạy trên CHẾ ĐỘ MOCK (mở thẳng `tutor-hub-app.html`
+      → quickLogin, KHÔNG cần Supabase). Phủ: đăng nhập demo, điều hướng, bảng Học sinh có dữ liệu,
+      thêm học sinh, Pomodoro 25:00 + start, phân quyền (HS không thấy Quản lý ND), trang `/login` render.
+      Chạy: `npm run test:e2e`. (devDep `@playwright/test`; artifacts đã ignore trong `.gitignore`.)
+- [ ] **Backup dữ liệu** Supabase (PITR/định kỳ) trước khi có dữ liệu thật — thao tác Dashboard (của bạn).
 
 ### Đã sửa thêm đợt này
 - [x] **Nhạc/ghi chú/Pomodoro theo TỪNG tài khoản**: khoá localStorage gắn `_dbUserId`
@@ -124,6 +127,8 @@ enrollment_requests, notifications`.
       profile → vô hình với admin. Fix: migration `024` (RPC `admin_list_users` join `auth.users` → thấy
       cả user chưa có profile; `admin_set_role` duyệt = tạo profile) + client `loadUsersFromDb`/
       `changeUserRole` gọi RPC (fallback đọc profiles nếu chưa chạy 024). ⏳ Cần chạy `024`.
+> **Đã tự động hoá phần UI** bằng e2e (mock mode): đăng nhập theo vai trò, điều hướng, thêm học sinh,
+> phân quyền HS↔Admin. Các mục phụ thuộc SUPABASE thật (đăng ký/email/duyệt/RLS) vẫn cần bạn chạy tay.
 - [ ] ⏳ Đăng ký mới → email xác nhận → đăng nhập → màn "chờ duyệt". (cần chạy `023` + SMTP; màn
       pending + gate Pending đã có sẵn trong `dashboard/page.tsx`.)
 - [ ] ⏳ Admin cấp quyền → học sinh reload thấy đúng cổng. (code: `changeUserRole` + RLS "Admin updates
