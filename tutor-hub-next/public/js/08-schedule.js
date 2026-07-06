@@ -69,7 +69,12 @@
 
     // Dispatcher: thanh công cụ chung + lịch Tháng (mặc định) hoặc Tuần.
     function renderSchedule() {
-      if (!document.getElementById('schedList')) return;
+      var _sl = document.getElementById('schedList');
+      if (!_sl) return;
+      if (typeof _dbError !== 'undefined' && _dbError.schedule && !scheduleItems.length) {
+        _sl.innerHTML = errorBlock(_dbError.schedule, 'retryLoad()');
+        return;
+      }
       var items = _schedItemsForUser();
       var isTA = currentUser && (currentUser.role === 'Teacher' || currentUser.role === 'Admin');
 
@@ -319,7 +324,13 @@
       }
       q.order('date', { ascending: true })
         .then(function (r) {
-          if (r.error) { console.warn('load schedule', r.error.message); return; }
+          if (r.error) {
+            console.warn('load schedule', r.error.message);
+            if (typeof _dbError !== 'undefined') _dbError.schedule = _dbErrMsg(r.error);
+            if (currentSection === 'schedule') renderSchedule();
+            return;
+          }
+          if (typeof _dbError !== 'undefined') delete _dbError.schedule;
           scheduleItems = (r.data || []).map(function (e) {
             return {
               id: nextSchedId++, dbId: e.id,

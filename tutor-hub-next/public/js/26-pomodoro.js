@@ -6,6 +6,9 @@
     // ============================================================
     function _lsGet(k, def) { try { var v = localStorage.getItem(k); return v == null ? def : JSON.parse(v); } catch (e) { return def; } }
     function _lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { } }
+    // Khoá localStorage theo TỪNG tài khoản → nhạc/ghi chú/pomodoro/streak riêng
+    // của mỗi người (không dùng chung dù đăng nhập trên cùng trình duyệt).
+    function _pk(base) { return base + ((typeof _dbUserId !== 'undefined' && _dbUserId) ? ('_' + _dbUserId) : ''); }
 
     // ── Helpers ngày/giờ ─────────────────────────────────────────
     function _pad2(n) { return String(n).padStart(2, '0'); }
@@ -17,9 +20,9 @@
     // ── State + settings ─────────────────────────────────────────
     var POMO_DEFAULTS = { focusMinutes: 25, shortBreakMinutes: 5, longBreakMinutes: 15, sessionsBeforeLongBreak: 4 };
     var POMO_PHASE_LABEL = { focus: 'Tập trung', shortBreak: 'Nghỉ ngắn', longBreak: 'Nghỉ dài' };
-    function _pomoSettings() { var s = _lsGet('th_pomo_settings', {}); return { focusMinutes: +s.focusMinutes || POMO_DEFAULTS.focusMinutes, shortBreakMinutes: +s.shortBreakMinutes || POMO_DEFAULTS.shortBreakMinutes, longBreakMinutes: +s.longBreakMinutes || POMO_DEFAULTS.longBreakMinutes, sessionsBeforeLongBreak: +s.sessionsBeforeLongBreak || POMO_DEFAULTS.sessionsBeforeLongBreak }; }
-    function _pomoState() { return _lsGet('th_pomo_state', { phase: 'focus', isRunning: false, phaseEndAt: null, remainingMs: POMO_DEFAULTS.focusMinutes * 60000, loggedMinutes: 0, completedFocusSessions: 0 }); }
-    function _pomoSaveState(st) { _lsSet('th_pomo_state', st); }
+    function _pomoSettings() { var s = _lsGet(_pk('th_pomo_settings'), {}); return { focusMinutes: +s.focusMinutes || POMO_DEFAULTS.focusMinutes, shortBreakMinutes: +s.shortBreakMinutes || POMO_DEFAULTS.shortBreakMinutes, longBreakMinutes: +s.longBreakMinutes || POMO_DEFAULTS.longBreakMinutes, sessionsBeforeLongBreak: +s.sessionsBeforeLongBreak || POMO_DEFAULTS.sessionsBeforeLongBreak }; }
+    function _pomoState() { return _lsGet(_pk('th_pomo_state'), { phase: 'focus', isRunning: false, phaseEndAt: null, remainingMs: POMO_DEFAULTS.focusMinutes * 60000, loggedMinutes: 0, completedFocusSessions: 0 }); }
+    function _pomoSaveState(st) { _lsSet(_pk('th_pomo_state'), st); }
     function _pomoPhaseDur(phase, s) { s = s || _pomoSettings(); return (phase === 'focus' ? s.focusMinutes : phase === 'shortBreak' ? s.shortBreakMinutes : s.longBreakMinutes) * 60000; }
     function _pomoAdvance(st, s) {
       if (st.phase === 'focus') { var c = st.completedFocusSessions + 1; var isLong = c % s.sessionsBeforeLongBreak === 0; return { phase: isLong ? 'longBreak' : 'shortBreak', completedFocusSessions: c }; }
@@ -27,8 +30,8 @@
     }
 
     // ── Nhật ký tập trung (theo ngày, phút) ──────────────────────
-    function _focusLog() { return _lsGet('th_focus_log', {}); }
-    function _focusAdd(key, mins) { if (mins <= 0) return; var l = _focusLog(); l[key] = (l[key] || 0) + mins; _lsSet('th_focus_log', l); }
+    function _focusLog() { return _lsGet(_pk('th_focus_log'), {}); }
+    function _focusAdd(key, mins) { if (mins <= 0) return; var l = _focusLog(); l[key] = (l[key] || 0) + mins; _lsSet(_pk('th_focus_log'), l); }
     function _focusMinutesFor(key) { return _focusLog()[key] || 0; }
 
     function _pomoActive() { var el = document.getElementById('section-pomodoro'); return !!(el && el.classList.contains('active')); }
@@ -115,7 +118,7 @@
     function savePomoSettings() {
       var g = function (id, d) { var v = parseInt((document.getElementById(id) || {}).value, 10); return (isNaN(v) || v < 1) ? d : v; };
       var ns = { focusMinutes: g('pomoSetFocus', 25), shortBreakMinutes: g('pomoSetShort', 5), longBreakMinutes: g('pomoSetLong', 15), sessionsBeforeLongBreak: g('pomoSetCycle', 4) };
-      _lsSet('th_pomo_settings', ns);
+      _lsSet(_pk('th_pomo_settings'), ns);
       var st = _pomoState();
       if (!st.isRunning) { st.remainingMs = _pomoPhaseDur(st.phase, ns); _pomoSaveState(st); }
       closeModal(); showToast('Đã lưu cài đặt Pomodoro.', 'success'); _renderPomoTimer();
@@ -185,8 +188,8 @@
     // ── Ghi chú (sticky notes, tối đa 8) ─────────────────────────
     var POMO_MAX_NOTES = 8;
     var POMO_NOTE_COLORS = ['#fef9c3', '#fee2e2', '#dcfce7', '#dbeafe', '#f3e8ff', '#ffedd5', '#ccfbf1', '#fce7f3'];
-    function _pomoNotes() { return _lsGet('th_notes', []); }
-    function _pomoSaveNotes(n) { _lsSet('th_notes', n); }
+    function _pomoNotes() { return _lsGet(_pk('th_notes'), []); }
+    function _pomoSaveNotes(n) { _lsSet(_pk('th_notes'), n); }
     function addPomoNote() {
       var n = _pomoNotes(); if (n.length >= POMO_MAX_NOTES) { showToast('Tối đa ' + POMO_MAX_NOTES + ' ghi chú.', 'info'); return; }
       n.push({ id: 'note-' + Date.now() + '-' + Math.floor(Math.random() * 1e6), text: '', color: n.length % POMO_NOTE_COLORS.length, completed: false, createdAt: Date.now() });
@@ -223,15 +226,15 @@
     var POMO_PROV_NAME = { youtube: 'YouTube', spotify: 'Spotify', soundcloud: 'SoundCloud' };
     // Chuẩn hoá track cũ (chỉ có videoId) → có provider.
     function _pomoTracks() {
-      var t = _lsGet('th_music_queue', []);
+      var t = _lsGet(_pk('th_music_queue'), []);
       var changed = false;
       t.forEach(function (x) { if (!x.provider) { x.provider = 'youtube'; x.ref = x.ref || x.videoId; changed = true; } });
-      if (changed) _lsSet('th_music_queue', t);
+      if (changed) _lsSet(_pk('th_music_queue'), t);
       return t;
     }
-    function _pomoSaveTracks(t) { _lsSet('th_music_queue', t); }
-    function _pomoIdx() { var i = _lsGet('th_music_index', 0); return (typeof i === 'number' && i >= 0) ? i : 0; }
-    function _pomoSaveIdx(i) { _lsSet('th_music_index', i); }
+    function _pomoSaveTracks(t) { _lsSet(_pk('th_music_queue'), t); }
+    function _pomoIdx() { var i = _lsGet(_pk('th_music_index'), 0); return (typeof i === 'number' && i >= 0) ? i : 0; }
+    function _pomoSaveIdx(i) { _lsSet(_pk('th_music_index'), i); }
     function _parseYtId(url) {
       var pats = [/youtube\.com\/watch\?v=([\w-]{11})/, /youtu\.be\/([\w-]{11})/, /youtube\.com\/embed\/([\w-]{11})/, /youtube\.com\/shorts\/([\w-]{11})/];
       var t = (url || '').trim();

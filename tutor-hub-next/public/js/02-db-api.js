@@ -10,12 +10,64 @@
 
     // Gói thông báo lỗi tải dữ liệu thành câu tiếng Việt dễ hiểu (RLS/500/mạng).
     function _dbErrMsg(err) {
+      if (_isAuthError(err)) { _onDbAuthError(); return 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.'; }
       var m = (err && (err.message || err.msg) || '').toLowerCase();
-      if (m.indexOf('row-level security') !== -1 || m.indexOf('permission') !== -1 || m.indexOf('rls') !== -1 || (err && (err.code === '42501' || err.code === 'PGRST301')))
+      if (m.indexOf('row-level security') !== -1 || m.indexOf('permission') !== -1 || m.indexOf('rls') !== -1 || (err && err.code === '42501'))
         return 'Bạn không có quyền xem mục này, hoặc phiên đăng nhập đã hết hạn. Hãy thử đăng nhập lại.';
       if (m.indexOf('fetch') !== -1 || m.indexOf('network') !== -1 || m.indexOf('failed to') !== -1)
         return 'Lỗi kết nối mạng. Kiểm tra Internet rồi thử lại.';
       return (err && (err.message || err.msg)) || 'Đã xảy ra lỗi khi tải dữ liệu.';
+    }
+
+    // ── PHIÊN HẾT HẠN (token iframe hết hạn ~1h) ─────────────────
+    // Chủ động làm mới token định kỳ để tránh 401 âm thầm; nếu không làm mới
+    // được nữa → hiện lớp phủ mời đăng nhập lại thay vì bảng trắng im lặng.
+    var _sessionGuardStarted = false, _sessionExpiredShown = false, _authRefreshInFlight = false;
+    function _isAuthError(err) {
+      if (!err) return false;
+      var m = (err.message || err.msg || '').toLowerCase();
+      return err.status === 401 || err.code === 'PGRST301' ||
+        m.indexOf('jwt') !== -1 || m.indexOf('token is expired') !== -1 ||
+        m.indexOf('invalid token') !== -1 || m.indexOf('not authenticated') !== -1;
+    }
+    function reloginNow() {
+      try { if (window.parent !== window) { window.parent.postMessage({ type: 'TUTOR_HUB_LOGOUT' }, window.location.origin); return; } } catch (e) { }
+      location.reload();
+    }
+    function _showSessionExpired() {
+      if (_sessionExpiredShown) return; _sessionExpiredShown = true;
+      var el = document.createElement('div');
+      el.id = 'sessionExpiredOverlay';
+      el.style.cssText = 'position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:rgba(15,22,35,0.72);';
+      el.innerHTML = '<div style="background:var(--card-bg,#fff);color:var(--text,#1e2437);max-width:380px;width:90%;border-radius:16px;padding:28px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.4);">' +
+        '<div style="font-size:38px;margin-bottom:8px;">🔒</div>' +
+        '<div style="font-weight:700;font-size:18px;margin-bottom:6px;">Phiên đăng nhập đã hết hạn</div>' +
+        '<div style="font-size:14px;color:var(--text-muted,#64748b);line-height:1.55;margin-bottom:20px;">Vì lý do bảo mật, bạn cần đăng nhập lại để tiếp tục.</div>' +
+        '<button onclick="reloginNow()" style="width:100%;padding:12px;border:none;border-radius:10px;background:linear-gradient(135deg,#4f46e5,#6d28d9);color:#fff;font-weight:700;font-size:15px;cursor:pointer;">Đăng nhập lại</button>' +
+        '</div>';
+      document.body.appendChild(el);
+    }
+    function _onDbAuthError() {
+      if (_authRefreshInFlight || _sessionExpiredShown) return;
+      if (!_db || !_db.auth || !_db.auth.refreshSession) { _showSessionExpired(); return; }
+      _authRefreshInFlight = true;
+      _db.auth.refreshSession().then(function (r) {
+        _authRefreshInFlight = false;
+        if (r && !r.error && r.data && r.data.session) { _dbError = {}; loadDbData(); }
+        else _showSessionExpired();
+      }).catch(function () { _authRefreshInFlight = false; _showSessionExpired(); });
+    }
+    function startSessionGuard() {
+      if (_sessionGuardStarted || !_db || !_db.auth || !_db.auth.refreshSession) return;
+      _sessionGuardStarted = true;
+      // Làm mới token định kỳ (token sống ~1h) để tránh 401 âm thầm khi dùng lâu.
+      setInterval(function () {
+        _db.auth.refreshSession().then(function (r) { if (r && r.error) _showSessionExpired(); }).catch(function () { });
+      }, 15 * 60 * 1000);
+      // Quay lại tab sau khi để lâu → làm mới ngay.
+      document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'visible') _db.auth.refreshSession().catch(function () { });
+      });
     }
 
     // ── DATA PERSISTENCE HELPERS ─────────────────────────────────
@@ -35,11 +87,17 @@
     // Ghi nhật ký hoạt động (best-effort). Server (RPC log_audit) tự lấy actor =
     // auth.uid() và chỉ ghi nếu là Teacher/Admin — client không cần kiểm quyền.
     // Không bao giờ chặn luồng chính nếu ghi log lỗi.
+    var _auditOff = false;   // tắt ghi log nếu hàm log_audit chưa có (migration 020 chưa chạy) → hết spam 404
     function logAudit(action, entity, detail) {
-      if (!_db || !_dbUserId) return;
+      if (!_db || !_dbUserId || _auditOff) return;
       try {
         _db.rpc('log_audit', { _action: action, _entity: entity || null, _detail: detail || null })
-          .then(function (r) { if (r && r.error) console.warn('audit log', r.error.message); });
+          .then(function (r) {
+            if (r && r.error) {
+              if (/not find|does not exist|schema cache|404/i.test(r.error.message || '')) _auditOff = true; // hàm chưa có → ngừng gọi
+              else console.warn('audit log', r.error.message);
+            }
+          });
       } catch (e) { }
     }
 
@@ -86,6 +144,7 @@
         else if (currentSection === 'flashcards') renderDecks();
         else if (currentSection === 'classes') renderClasses();
         else if (currentSection === 'payments') renderPayments();
+        else if (currentSection === 'schedule') renderSchedule();
       } catch (e) { }
     }
 
@@ -95,6 +154,7 @@
       // Hiện skeleton trong lúc tải; tự tắt sau 1.4s (các loader xong sớm sẽ render đè trước đó).
       _dbLoading = true;
       _dbError = {};   // xoá lỗi cũ trước mỗi lần tải lại
+      startSessionGuard();   // chủ động làm mới token, tránh 401 âm thầm khi dùng lâu
       _rerenderAfterLoad();
       setTimeout(function () { _dbLoading = false; _rerenderAfterLoad(); }, 1400);
 
@@ -142,7 +202,9 @@
       // Flashcard decks + cards
       _db.from('flashcard_decks').select('*, flashcards(*)').eq('owner_id', _dbUserId)
         .then(function (r) {
-          if (!r.error && r.data && r.data.length) {
+          if (r.error) { _dbError.flashcards = _dbErrMsg(r.error); if (currentSection === 'flashcards') renderDecks(); return; }
+          delete _dbError.flashcards;
+          if (r.data && r.data.length) {
             // Giữ id số nguyên cho UI (onclick an toàn), lưu dbId=UUID cho thao tác DB
             flashcardDecks = r.data.map(function (d) {
               return {

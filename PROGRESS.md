@@ -84,19 +84,30 @@ enrollment_requests, notifications`.
       ⚠️ Nếu chạy lại `017` sau này (nó tạo lại policy rộng) thì phải chạy lại `022`.
 
 ### P1 — Độ tin cậy khi dùng lâu (cần code)
-- [ ] **Token iframe hết hạn giữa phiên**: access token nhận qua `postMessage` hết hạn ~1h → query
-      401 âm thầm, bảng trống dần. Bắt lỗi 401 → tự `refreshSession()` hoặc hiện "Phiên hết hạn, đăng
-      nhập lại". Đây là nguyên nhân điển hình "dùng một lúc thì tự hỏng".
+- [x] **Token iframe hết hạn giữa phiên** — ĐÃ LÀM (02-db-api.js): `startSessionGuard()` chủ động
+      `refreshSession()` mỗi 15' + khi quay lại tab; `_isAuthError()` bắt lỗi JWT/401/PGRST301 →
+      `_onDbAuthError()` thử làm mới token 1 lần, không được thì hiện lớp phủ "Phiên hết hạn — Đăng
+      nhập lại" (`reloginNow()` postMessage TUTOR_HUB_LOGOUT). Verify: phân loại lỗi đúng.
 - [ ] **Dứt điểm ranh giới demo ↔ DB thật** (memory `demo-to-db-pattern`): vài mục còn lưu local-only
-      → bấm lưu tưởng xong, reload mất → mất niềm tin. Hoặc DB-hoá nốt, hoặc ẩn/khoá nút lưu ở mục chưa nối DB.
-- [ ] **Error/empty/loading states cho MỌI mục DB**: mới có ở Students/Materials/Payments. Nhân rộng
-      `errorBlock()`/`retryLoad()`/skeleton sang Schedule, Attendance, Assignments, Flashcards (tránh bảng trắng im lặng khi RLS/500).
+      → bấm lưu tưởng xong, reload mất → mất niềm tin. Hoặc DB-hoá nốt, hoặc ẩn/khoá nút lưu ở mục chưa nối DB. (CHƯA)
+- [~] **Error/empty/loading states cho các mục DB**: có ở Students/Materials/Payments; đợt này thêm
+      **Flashcards + Schedule** (`_dbError.<sec>` + `errorBlock`/`retryLoad`). CÒN LẠI: Attendance, Assignments.
 
 ### P2 — Hạ tầng vận hành
-- [ ] **Error monitoring**: `window.onerror` → log (hoặc Sentry free) để BIẾT người dùng gặp lỗi gì.
+- [x] **Error monitoring nhẹ** — ĐÃ LÀM (25-init.js): bắt `window.onerror` + `unhandledrejection`,
+      lưu 30 lỗi gần nhất vào `localStorage` (`th_errlog`). Xem bằng `thErrors()` / xoá `thClearErrors()`
+      trong console. (Có thể nâng lên Sentry sau.)
 - [ ] **Smoke test e2e thật** (Playwright): login → dashboard → thêm học sinh → giao bài. (Unit test
-      hiện chỉ phủ helper thuần + viError.)
-- [ ] **Backup dữ liệu** Supabase (PITR/định kỳ) trước khi có dữ liệu thật của học sinh.
+      hiện chỉ phủ helper thuần + viError.) — CHƯA (cần môi trường test Supabase riêng).
+- [ ] **Backup dữ liệu** Supabase (PITR/định kỳ) trước khi có dữ liệu thật của học sinh. — thao tác Dashboard.
+
+### Đã sửa thêm đợt này
+- [x] **Nhạc/ghi chú/Pomodoro theo TỪNG tài khoản**: khoá localStorage gắn `_dbUserId`
+      (`_pk()` trong 26-pomodoro.js) → mỗi người tự up nhạc, ghi chú, chuỗi tập trung riêng, không
+      dùng chung dù cùng trình duyệt. Verify: user A có note, user B thấy 0.
+- [x] **Dọn lỗi F12**: `log_audit` 404 spam → cờ `_auditOff` tắt gọi sau lần đầu thấy hàm thiếu
+      (migration 020 chưa chạy); thêm favicon (`app/icon.svg` + `<link rel=icon>` data-URI trong app HTML)
+      → hết `favicon.ico 404`.
 
 ### Nghiệm thu nhanh (chạy với tài khoản thật, mọi vai trò)
 > Code đã sẵn sàng; các bước cần MÔI TRƯỜNG THẬT của bạn (chạy migration `023`, cấu hình SMTP,

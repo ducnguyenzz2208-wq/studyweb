@@ -8,6 +8,10 @@
         return (!q || d.title.toLowerCase().includes(q)) && (!subj || d.subject === subj);
       });
       var grid = document.getElementById('deckGrid');
+      if (_dbError && _dbError.flashcards && !flashcardDecks.length) {
+        grid.innerHTML = '<div style="grid-column:1/-1;">' + errorBlock(_dbError.flashcards, 'retryLoad()') + '</div>';
+        return;
+      }
       if (_dbLoading && !flashcardDecks.length) { grid.innerHTML = skelCards(6); return; }
       if (!list.length) {
         var isTA = currentUser && (currentUser.role === 'Teacher' || currentUser.role === 'Admin');
