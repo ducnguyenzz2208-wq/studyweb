@@ -1,4 +1,124 @@
     // ============================================================
+    // NHẬP HỌC SINH TỪ EXCEL / CSV (nhanh: chỉ cần Tên, Email, Lớp)
+    // Dùng SheetJS (nạp lười từ jsDelivr — đã có trong CSP). Có ô dán text
+    // (dùng khi copy từ PDF/Word). Chèn vào bảng students (owner = current user).
+    // ============================================================
+    var _importRows = [];
+    function _loadXlsx(cb) {
+      if (window.XLSX) { cb(); return; }
+      var s = document.getElementById('xlsx-lib');
+      if (s) { s.addEventListener('load', cb); return; }
+      s = document.createElement('script');
+      s.id = 'xlsx-lib';
+      s.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+      s.onload = cb;
+      s.onerror = function () { showToast('Không tải được thư viện đọc Excel. Hãy dùng ô dán text.', 'error'); };
+      document.head.appendChild(s);
+    }
+    // Nhận diện cột Tên/Email/Lớp theo tiêu đề; nếu không có tiêu đề thì theo thứ tự Tên,Email,Lớp.
+    function _parseSheetAoa(aoa) {
+      if (!aoa || !aoa.length) return [];
+      var head = aoa[0].map(function (h) { return String(h == null ? '' : h).trim().toLowerCase(); });
+      var iName = -1, iEmail = -1, iClass = -1;
+      head.forEach(function (h, i) {
+        if (iName < 0 && /(tên|ten|name|họ|ho ten|full ?name)/.test(h)) iName = i;
+        else if (iEmail < 0 && /(e-?mail|thư)/.test(h)) iEmail = i;
+        else if (iClass < 0 && /(lớp|lop|class|khối|khoi)/.test(h)) iClass = i;
+      });
+      var hasHeader = (iName >= 0 || iEmail >= 0 || iClass >= 0);
+      var start = hasHeader ? 1 : 0;
+      if (!hasHeader) { iName = 0; iEmail = 1; iClass = 2; }
+      var out = [];
+      for (var r = start; r < aoa.length; r++) {
+        var row = aoa[r]; if (!row) continue;
+        var name = String((iName >= 0 ? row[iName] : '') || '').trim();
+        var email = String((iEmail >= 0 ? row[iEmail] : '') || '').trim();
+        var cls = String((iClass >= 0 ? row[iClass] : '') || '').trim();
+        if (!email) { for (var c = 0; c < row.length; c++) { if (String(row[c] || '').indexOf('@') !== -1) { email = String(row[c]).trim(); break; } } }
+        if (!name) continue;
+        out.push({ name: name, email: email, class: cls });
+      }
+      return out;
+    }
+    function openStudentImportModal() {
+      if (!(currentUser && (currentUser.role === 'Teacher' || currentUser.role === 'Admin'))) { showToast('Chỉ GV/Admin nhập được học sinh.', 'error'); return; }
+      _importRows = [];
+      openModal('<div class="modal-header"><h3 style="display:flex;align-items:center;gap:8px;">' + svgIcon('user-plus', 18) + 'Nhập học sinh từ Excel / CSV</h3><button class="modal-close" onclick="closeModal()" aria-label="Đóng">✕</button></div>' +
+        '<div class="modal-body">' +
+        '<div class="hint">Cần 3 cột: <strong>Tên, Email, Lớp</strong> (có tiêu đề càng tốt). Hỗ trợ <strong>.xlsx / .xls / .csv</strong>. ' +
+        '<a href="#" onclick="downloadImportTemplate();return false;">Tải tệp mẫu CSV</a></div>' +
+        '<div class="form-group"><label for="impFile">Chọn tệp Excel/CSV</label>' +
+        '<input class="form-input" type="file" id="impFile" accept=".xlsx,.xls,.csv" onchange="onImportFile(this)"></div>' +
+        '<div class="form-group"><label for="impPasteBox">Hoặc dán danh sách (khi copy từ PDF/Word) — mỗi dòng: Tên, Email, Lớp</label>' +
+        '<textarea class="form-textarea" id="impPasteBox" rows="4" placeholder="Nguyễn An, an@gmail.com, Toán 9A&#10;Trần Bình, binh@gmail.com, Anh 8B" oninput="onImportPaste()"></textarea></div>' +
+        '<div class="form-group"><label for="impDefClass2">Lớp mặc định (khi dòng thiếu lớp)</label>' +
+        '<input class="form-input" id="impDefClass2" placeholder="VD: Toán 9A"></div>' +
+        '<div id="impPreview2" style="font-size:13px;"></div>' +
+        '</div><div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal()">Hủy</button>' +
+        '<button class="btn btn-primary" id="impDoBtn" onclick="doStudentImport()" disabled>Nhập</button></div>');
+    }
+    function _setImportRows(rows) {
+      _importRows = rows || [];
+      var pv = document.getElementById('impPreview2');
+      var btn = document.getElementById('impDoBtn');
+      if (btn) btn.disabled = !_importRows.length;
+      if (!pv) return;
+      if (!_importRows.length) { pv.innerHTML = '<span style="color:var(--text-muted);">Chưa có dòng hợp lệ (cần ít nhất Tên).</span>'; return; }
+      var sample = _importRows.slice(0, 5).map(function (r) {
+        return '<tr><td>' + escHtml(r.name) + '</td><td>' + escHtml(r.email || '—') + '</td><td>' + escHtml(r.class || '—') + '</td></tr>';
+      }).join('');
+      pv.innerHTML = '<div style="margin:6px 0;color:var(--success);font-weight:600;">Sẽ nhập ' + _importRows.length + ' học sinh:</div>' +
+        '<div style="overflow-x:auto;"><table><thead><tr><th>Tên</th><th>Email</th><th>Lớp</th></tr></thead><tbody>' + sample +
+        (_importRows.length > 5 ? '<tr><td colspan="3" style="color:var(--text-muted);">… và ' + (_importRows.length - 5) + ' dòng nữa</td></tr>' : '') +
+        '</tbody></table></div>';
+    }
+    function onImportFile(input) {
+      var f = input.files && input.files[0]; if (!f) return;
+      _loadXlsx(function () {
+        var reader = new FileReader();
+        reader.onload = function (e) {
+          try {
+            var wb = window.XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+            var ws = wb.Sheets[wb.SheetNames[0]];
+            var aoa = window.XLSX.utils.sheet_to_json(ws, { header: 1, blankrows: false });
+            _setImportRows(_parseSheetAoa(aoa));
+          } catch (err) { showToast('Không đọc được tệp: ' + err.message, 'error'); }
+        };
+        reader.readAsArrayBuffer(f);
+      });
+    }
+    function onImportPaste() {
+      var raw = (document.getElementById('impPasteBox') || {}).value || '';
+      var aoa = raw.split(/\r?\n/).map(function (line) { return line.split(/[,\t;]/).map(function (c) { return c.trim(); }); }).filter(function (r) { return r.some(function (c) { return c; }); });
+      // Không có tiêu đề khi dán → coi như Tên,Email,Lớp theo thứ tự
+      _setImportRows(_parseSheetAoa([['tên', 'email', 'lớp']].concat(aoa)));
+    }
+    function downloadImportTemplate() {
+      var csv = '﻿' + 'Tên,Email,Lớp\r\nNguyễn An,an@gmail.com,Toán 9A\r\nTrần Bình,binh@gmail.com,Anh 8B\r\n';
+      if (typeof _downloadText === 'function') _downloadText('mau-nhap-hoc-sinh.csv', csv, 'text/csv');
+    }
+    function doStudentImport() {
+      if (!_db || !_dbUserId) { showToast('Chưa kết nối tài khoản.', 'error'); return; }
+      if (!_importRows.length) { showToast('Chưa có dữ liệu để nhập.', 'error'); return; }
+      var def = ((document.getElementById('impDefClass2') || {}).value || '').trim();
+      var payload = _importRows.map(function (r) {
+        return { owner_id: _dbUserId, name: r.name, email: r.email || null, class_name: r.class || def || '', math_score: 0, eng_score: 0, attendance: 0 };
+      });
+      showBusy('Đang nhập ' + payload.length + ' học sinh…');
+      _db.from('students').insert(payload).select().then(function (res) {
+        hideBusy();
+        if (res.error) { showToast('Lỗi nhập: ' + res.error.message, 'error'); return; }
+        var n = (res.data || []).length;
+        if (typeof students !== 'undefined') (res.data || []).forEach(function (s) { try { students.push(_mapStudentRow(s)); } catch (e) { } });
+        closeModal();
+        showToast('Đã nhập ' + n + ' học sinh.', 'success');
+        try { logAudit('import_students', 'student', 'Nhập ' + n + ' học sinh từ tệp'); } catch (e) { }
+        try { if (currentSection === 'students') renderStudents(); } catch (e) { }
+        var kpi = document.getElementById('kpiStudents'); if (kpi && typeof students !== 'undefined') kpi.textContent = students.length;
+      });
+    }
+
+    // ============================================================
     // USER MANAGEMENT (Admin + Teacher)
     // ============================================================
     function openAddMemberToClass() {

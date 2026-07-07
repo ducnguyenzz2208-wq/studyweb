@@ -2,6 +2,19 @@
 
 > App quản lý trung tâm gia sư. Live: https://studyweb-swart.vercel.app
 
+## Nhập học sinh từ Excel/CSV (User Management) ✅ ĐÃ LÀM
+- [x] Nút **"📥 Nhập Excel/CSV"** ở Quản lý người dùng → `openStudentImportModal()` (11-user-management.js).
+      Hỗ trợ **.xlsx/.xls/.csv** (SheetJS nạp lười từ jsDelivr — đã trong CSP) + ô **dán text** (copy từ
+      PDF/Word). Tự nhận cột **Tên/Email/Lớp** theo tiêu đề (mọi thứ tự) hoặc theo vị trí; tự dò email
+      theo dấu "@". Có preview + lớp mặc định + tải tệp mẫu CSV. Chèn vào `students` (owner=current user).
+      Verify: modal + parser (đổi thứ tự cột, thiếu email) + SheetJS round-trip dưới CSP OK, 0 lỗi console.
+- [ ] **[LÀM TIẾP — feature lớn] Classes kiểu Moodle (weeks + feed nộp bài giống Facebook)**:
+      Click Lớp → xem theo **tuần** (GV/Admin nhập khoảng thời gian học: từ tuần…đến tuần / ngày bắt đầu),
+      có mục **General** + các mục theo ngày; **Homework Announcement** = feed bài giao theo ngày, HS nộp
+      bài inline (giống Facebook). App đã có class-feed DB-backed (10-assignments.js) làm nền — cần: (1)
+      migration thêm `term_start`/`term_weeks` vào `classes`; (2) gom assignment theo tuần (theo due_date)
+      + section General; (3) UI accordion tuần. Nên làm ở phiên riêng (không phá feed đang chạy).
+
 ## Kiến trúc tổng quan
 - **Next.js** (`tutor-hub-next/`) lo phần auth thật + khung ngoài:
   - `/login`, `/signup`, `/reset-password`, `/auth/callback` (OAuth + PKCE), middleware bảo vệ route.
