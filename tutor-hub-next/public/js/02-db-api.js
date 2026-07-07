@@ -232,7 +232,7 @@
         clsQ.then(function (r) {
             if (!r.error && r.data && r.data.length) {
               classes = r.data.map(function (c) {
-                return { id: c.id, name: c.name, subject: c.subject || '', teacher: c.teacher || '', schedule: c.schedule || '', day: c.schedule || '', time: '', room: c.room || '', capacity: c.max_students || 30, maxStudents: c.max_students || 30, color: (c.subject || '').toLowerCase() };
+                return { id: c.id, name: c.name, subject: c.subject || '', teacher: c.teacher || '', schedule: c.schedule || '', day: c.schedule || '', time: '', room: c.room || '', capacity: c.max_students || 30, maxStudents: c.max_students || 30, color: (c.subject || '').toLowerCase(), termStart: c.term_start || '', termWeeks: c.term_weeks || 0 };
               });
               populateClassDropdowns();
               if (currentSection === 'classes') renderClasses();
@@ -290,7 +290,7 @@
             _db.from('classes').select('*').in('id', ids).then(function (rc) {
               if (!rc.error && rc.data) {
                 classes = rc.data.map(function (c) {
-                  return { id: c.id, name: c.name, subject: c.subject || '', schedule: c.schedule || '', room: c.room || '', maxStudents: c.max_students || 30 };
+                  return { id: c.id, name: c.name, subject: c.subject || '', schedule: c.schedule || '', room: c.room || '', maxStudents: c.max_students || 30, termStart: c.term_start || '', termWeeks: c.term_weeks || 0 };
                 });
                 populateClassDropdowns();
                 if (currentSection === 'assignments') renderAssignments();

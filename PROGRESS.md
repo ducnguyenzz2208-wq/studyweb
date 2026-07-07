@@ -8,12 +8,14 @@
       PDF/Word). Tự nhận cột **Tên/Email/Lớp** theo tiêu đề (mọi thứ tự) hoặc theo vị trí; tự dò email
       theo dấu "@". Có preview + lớp mặc định + tải tệp mẫu CSV. Chèn vào `students` (owner=current user).
       Verify: modal + parser (đổi thứ tự cột, thiếu email) + SheetJS round-trip dưới CSP OK, 0 lỗi console.
-- [ ] **[LÀM TIẾP — feature lớn] Classes kiểu Moodle (weeks + feed nộp bài giống Facebook)**:
-      Click Lớp → xem theo **tuần** (GV/Admin nhập khoảng thời gian học: từ tuần…đến tuần / ngày bắt đầu),
-      có mục **General** + các mục theo ngày; **Homework Announcement** = feed bài giao theo ngày, HS nộp
-      bài inline (giống Facebook). App đã có class-feed DB-backed (10-assignments.js) làm nền — cần: (1)
-      migration thêm `term_start`/`term_weeks` vào `classes`; (2) gom assignment theo tuần (theo due_date)
-      + section General; (3) UI accordion tuần. Nên làm ở phiên riêng (không phá feed đang chạy).
+- [x] **Classes kiểu Moodle (weeks + feed nộp bài giống Facebook)** ✅ ĐÃ LÀM (cần chạy migration `025`):
+      Mục **Bài tập** (class-feed) giờ chia thành **📌 General + Tuần 1..N + Ngoài kỳ học** (accordion
+      `<details>`). GV/Admin bấm **"🗓 Kỳ học"** đặt *Tuần 1 bắt đầu ngày… / số tuần* (`openClassTermModal`
+      → lưu `classes.term_start`/`term_weeks`). Bài tự xếp vào tuần theo **hạn nộp** (`_classWeeks`/`_weekOf`
+      trong 10-assignments.js); HS **nộp bài inline** như cũ (không đổi luồng submit). Tuần hiện tại tự mở.
+      Chưa đặt kỳ → feed phẳng + nhắc GV đặt. migration `025_class_term_weeks.sql` (+ policy admin update
+      class). Verify: gom tuần đúng (General/Tuần1/Tuần2/Ngoài-kỳ), student thấy section + composer nhưng
+      không thấy nút GV, term modal mở đúng, 0 lỗi console, build pass.
 
 ## Kiến trúc tổng quan
 - **Next.js** (`tutor-hub-next/`) lo phần auth thật + khung ngoài:
@@ -77,6 +79,8 @@ enrollment_requests, notifications`.
 - [ ] **Chạy migration `024_admin_list_all_users.sql`** (GẤP — admin không thấy tài khoản chờ duyệt):
       RPC `admin_list_users()` (thấy cả user chưa có profile) + `admin_set_role()` (duyệt = tạo profile).
       Chưa chạy: app tự fallback đọc bảng profiles (chỉ thấy user ĐÃ có profile).
+- [ ] **Chạy migration `025_class_term_weeks.sql`**: thêm `term_start`/`term_weeks` vào `classes` cho
+      tính năng "Kỳ học theo tuần". Chưa chạy: nút "🗓 Kỳ học" lưu sẽ báo lỗi cột; feed vẫn hiện phẳng.
 - [ ] Sau khi push: chờ Vercel build xong rồi test lại reset password.
 
 ## Ổn định cho người dùng THẬT (roadmap — làm tiếp)

@@ -49,6 +49,33 @@
 
     function selectClass(id) { currentClassId = id; renderAssignments(); }
 
+    // ── Kỳ học theo TUẦN (Moodle-style) ──────────────────────────
+    function _pd2(n) { return String(n).padStart(2, '0'); }
+    function _parseYMD(s) { if (!s) return null; var m = String(s).split('T')[0].split('-'); if (m.length !== 3) return null; var d = new Date(+m[0], +m[1] - 1, +m[2]); return isNaN(d.getTime()) ? null : d; }
+    function _ymdStr(d) { return d.getFullYear() + '-' + _pd2(d.getMonth() + 1) + '-' + _pd2(d.getDate()); }
+    function _fmtDM(d) { return _pd2(d.getDate()) + '/' + _pd2(d.getMonth() + 1); }
+    function _classWeeks(cur) {
+      var start = _parseYMD(cur && cur.termStart); var n = parseInt(cur && cur.termWeeks, 10);
+      if (!start || !n || n < 1) return null;
+      var weeks = [];
+      for (var i = 0; i < Math.min(n, 53); i++) {
+        var s = new Date(start); s.setDate(start.getDate() + i * 7);
+        var e = new Date(s); e.setDate(s.getDate() + 6);
+        weeks.push({ idx: i + 1, start: s, end: e });
+      }
+      return weeks;
+    }
+    function _weekOf(weeks, due) { var d = _parseYMD(due); if (!d) return null; for (var i = 0; i < weeks.length; i++) { if (d >= weeks[i].start && d <= weeks[i].end) return weeks[i].idx; } return null; }
+    function _termLabel(cur) { var d = _parseYMD(cur && cur.termStart); return (d && cur.termWeeks) ? (' · 🗓 ' + cur.termWeeks + ' tuần từ ' + _fmtDM(d)) : ''; }
+    function _wkSection(title, subtitle, posts, open) {
+      return '<details class="wk-sec"' + (open ? ' open' : '') + '>' +
+        '<summary class="wk-sum"><span class="wk-caret">▸</span><span class="wk-title">' + escHtml(title) + '</span>' +
+        (subtitle ? '<span class="wk-sub">' + escHtml(subtitle) + '</span>' : '') +
+        '<span class="wk-count">' + posts.length + '</span></summary>' +
+        '<div class="wk-body">' + (posts.length ? posts.map(renderPostCard).join('') : '<div class="wk-empty">Chưa có bài trong mục này.</div>') + '</div>' +
+        '</details>';
+    }
+
     function renderClassFeed() {
       var el = document.getElementById('classFeed');
       if (!el) return;
@@ -57,14 +84,71 @@
       var cur = cls.find(function (c) { return c.id === currentClassId; });
       if (!cur) { el.innerHTML = '<div class="card" style="padding:24px;text-align:center;color:var(--text-muted);">Chọn một lớp ở bên trái để xem bài tập.</div>'; return; }
       var posts = assignments.filter(function (a) { return a.classId === currentClassId; });
-      var header = '<div class="card" style="margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;gap:8px;">' +
+      var actions = isTeacher
+        ? '<button class="btn btn-ghost btn-sm" onclick="openClassTermModal()">🗓 Kỳ học</button> <button class="btn btn-primary" onclick="openAssignmentModal()">+ Đăng bài</button>'
+        : '';
+      var header = '<div class="card" style="margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">' +
         '<div><div style="font-weight:700;font-size:18px;">🏫 ' + escHtml(cur.name) + '</div>' +
-        '<div style="font-size:13px;color:var(--text-muted);">' + escHtml(cur.subject || '') + '</div></div>' +
-        (isTeacher ? '<button class="btn btn-primary" onclick="openAssignmentModal()">+ Đăng bài</button>' : '') +
-        '</div>';
-      var feed = posts.length ? posts.map(renderPostCard).join('') :
-        '<div class="card" style="padding:24px;text-align:center;color:var(--text-muted);">Chưa có bài tập nào trong lớp này.</div>';
-      el.innerHTML = header + feed;
+        '<div style="font-size:13px;color:var(--text-muted);">' + escHtml(cur.subject || '') + _termLabel(cur) + '</div></div>' +
+        '<div style="display:flex;gap:8px;">' + actions + '</div></div>';
+
+      var weeks = _classWeeks(cur);
+      if (!weeks) {
+        // Chưa đặt kỳ học → feed phẳng như cũ (+ nhắc GV đặt kỳ học).
+        var prompt = isTeacher
+          ? '<div class="card wk-prompt">🗓 <strong>Chưa đặt kỳ học theo tuần.</strong> Bấm <a href="#" onclick="openClassTermModal();return false;">Kỳ học</a> để đặt ngày bắt đầu Tuần 1 &amp; số tuần — bài tập sẽ tự xếp vào từng tuần.</div>'
+          : '';
+        el.innerHTML = header + prompt + (posts.length ? posts.map(renderPostCard).join('')
+          : '<div class="card" style="padding:24px;text-align:center;color:var(--text-muted);">Chưa có bài tập nào trong lớp này.</div>');
+        return;
+      }
+
+      // Gom bài theo tuần (dựa hạn nộp); không có hạn → General; ngoài kỳ → "Ngoài kỳ học".
+      var general = [], outside = [], buckets = {};
+      posts.forEach(function (p) {
+        if (!_parseYMD(p.dueDate)) { general.push(p); return; }
+        var w = _weekOf(weeks, p.dueDate);
+        if (w) (buckets[w] = buckets[w] || []).push(p); else outside.push(p);
+      });
+      var openIdx = _weekOf(weeks, _ymdStr(new Date())) || 1;
+      var body = _wkSection('📌 General', 'Thông báo & bài chung (không đặt hạn)', general, true);
+      weeks.forEach(function (w) {
+        body += _wkSection('Tuần ' + w.idx, _fmtDM(w.start) + ' – ' + _fmtDM(w.end), buckets[w.idx] || [], w.idx === openIdx);
+      });
+      if (outside.length) body += _wkSection('Ngoài kỳ học', 'Bài có hạn nộp ngoài các tuần trên', outside, false);
+      el.innerHTML = header + body;
+    }
+
+    // GV/Admin đặt "Tuần 1 bắt đầu ngày… / số tuần" cho lớp đang chọn.
+    function openClassTermModal() {
+      var cur = _classesForFeed().find(function (c) { return c.id === currentClassId; });
+      if (!cur) { showToast('Chọn lớp trước.', 'error'); return; }
+      if (!(currentUser && (currentUser.role === 'Teacher' || currentUser.role === 'Admin'))) { showToast('Chỉ GV/Admin đặt kỳ học.', 'error'); return; }
+      openModal('<div class="modal-header"><h3>🗓 Kỳ học theo tuần — ' + escHtml(cur.name) + '</h3><button class="modal-close" onclick="closeModal()" aria-label="Đóng">✕</button></div>' +
+        '<div class="modal-body">' +
+        '<div class="hint">Đặt ngày bắt đầu <strong>Tuần 1</strong> và tổng số tuần. Bài tập tự xếp vào tuần theo <strong>hạn nộp</strong>.</div>' +
+        '<div class="form-row">' +
+        '<div class="form-group"><label for="mTermStart">Tuần 1 bắt đầu ngày</label><input class="form-input" type="date" id="mTermStart" value="' + escAttr((cur.termStart || '').split('T')[0]) + '"></div>' +
+        '<div class="form-group"><label for="mTermWeeks">Số tuần</label><input class="form-input" type="number" min="1" max="53" id="mTermWeeks" value="' + (cur.termWeeks || 16) + '"></div>' +
+        '</div></div>' +
+        '<div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal()">Hủy</button>' +
+        (cur.termStart ? '<button class="btn btn-danger" onclick="saveClassTerm(true)">Xoá kỳ học</button>' : '') +
+        '<button class="btn btn-primary" onclick="saveClassTerm(false)">Lưu</button></div>');
+    }
+    function saveClassTerm(clear) {
+      var cur = _classesForFeed().find(function (c) { return c.id === currentClassId; });
+      if (!cur || !_db) return;
+      var ts = clear ? null : (((document.getElementById('mTermStart') || {}).value) || null);
+      var tw = clear ? null : (parseInt((document.getElementById('mTermWeeks') || {}).value, 10) || null);
+      if (!clear && (!ts || !tw)) { showToast('Nhập ngày bắt đầu và số tuần.', 'error'); return; }
+      _db.from('classes').update({ term_start: ts, term_weeks: tw }).eq('id', String(cur.id)).then(function (r) {
+        if (r.error) { showToast('Lỗi lưu kỳ học: ' + r.error.message, 'error'); return; }
+        cur.termStart = ts || ''; cur.termWeeks = tw || 0;
+        closeModal();
+        showToast(clear ? 'Đã xoá kỳ học.' : 'Đã lưu kỳ học theo tuần.', 'success');
+        try { logAudit('class_term', 'class', 'Đặt kỳ học lớp ' + cur.name); } catch (e) { }
+        renderAssignments();
+      });
     }
 
     function renderPostCard(a) {
