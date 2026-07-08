@@ -152,6 +152,58 @@
     }
 
     // ============================================================
+    // CONFETTI ĂN MỪNG (tự chứa, KHÔNG cần CDN → an toàn với CSP + offline)
+    // Dùng khi HS nộp bài thành công. Tôn trọng prefers-reduced-motion.
+    // ============================================================
+    function celebrate() {
+      try { if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return; } catch (e) { }
+      try {
+        var cv = document.createElement('canvas');
+        cv.setAttribute('aria-hidden', 'true');
+        cv.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:99998;';
+        document.body.appendChild(cv);
+        var ctx = cv.getContext('2d');
+        var dpr = Math.min(window.devicePixelRatio || 1, 2);
+        function resize() { cv.width = window.innerWidth * dpr; cv.height = window.innerHeight * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); }
+        resize();
+        var W = window.innerWidth, H = window.innerHeight;
+        var colors = ['#4f46e5', '#22c55e', '#f59e0b', '#ef4444', '#06b6d4', '#8b5cf6', '#ec4899'];
+        var N = Math.max(70, Math.min(160, Math.floor(W / 7)));
+        var parts = [];
+        for (var i = 0; i < N; i++) {
+          parts.push({
+            x: W / 2 + (Math.random() - 0.5) * W * 0.5,
+            y: H * 0.3 + (Math.random() - 0.5) * 60,
+            vx: (Math.random() - 0.5) * 11,
+            vy: Math.random() * -9 - 3,
+            g: 0.26 + Math.random() * 0.12,
+            size: 5 + Math.random() * 7,
+            rot: Math.random() * 6.28, vr: (Math.random() - 0.5) * 0.34,
+            color: colors[i % colors.length],
+            rect: Math.random() < 0.55
+          });
+        }
+        var start = performance.now(), DUR = 2200;
+        function frame(now) {
+          var t = now - start;
+          ctx.clearRect(0, 0, W, H);
+          ctx.globalAlpha = t > DUR - 500 ? Math.max(0, (DUR - t) / 500) : 1;
+          for (var i = 0; i < parts.length; i++) {
+            var p = parts[i];
+            p.vy += p.g; p.vx *= 0.99; p.x += p.vx; p.y += p.vy; p.rot += p.vr;
+            ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot); ctx.fillStyle = p.color;
+            if (p.rect) ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6);
+            else { ctx.beginPath(); ctx.arc(0, 0, p.size / 2, 0, 6.283); ctx.fill(); }
+            ctx.restore();
+          }
+          if (t < DUR) requestAnimationFrame(frame);
+          else if (cv.parentNode) cv.parentNode.removeChild(cv);
+        }
+        requestAnimationFrame(frame);
+      } catch (e) { }
+    }
+
+    // ============================================================
     // MOCK DATA
     // ============================================================
     var COLORS = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#06b6d4', '#ec4899', '#84cc16', '#f97316', '#6366f1', '#14b8a6', '#e879f9'];

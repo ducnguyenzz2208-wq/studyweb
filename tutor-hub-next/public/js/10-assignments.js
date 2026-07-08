@@ -171,12 +171,16 @@
       var mySub = isStudent ? subs.find(function (s) { return s.studentId === _dbUserId; }) : null;
       var composer = '';
       if (isStudent && a.status === 'open') {
-        composer = '<div style="display:flex;gap:6px;margin-top:10px;align-items:center;">' +
-          '<input class="form-input" id="subInput_' + a.id + '" placeholder="' + (mySub ? 'Cập nhật bài nộp...' : 'Viết bài nộp...') + '" style="flex:1;" value="' + escAttr(mySub ? mySub.content : '') + '">' +
-          '<input type="file" id="subFile_' + a.id + '" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" style="display:none;" onchange="_subFilePicked(' + qid(a.id) + ')">' +
-          '<button class="btn btn-sm btn-ghost" onclick="document.getElementById(\'subFile_' + a.id + '\').click()" title="Đính kèm tệp">📎</button>' +
+        composer = '<div style="display:flex;gap:6px;margin-top:10px;align-items:center;flex-wrap:wrap;">' +
+          '<input class="form-input" id="subInput_' + a.id + '" placeholder="' + (mySub ? 'Cập nhật bài nộp...' : 'Viết bài nộp...') + '" style="flex:1;min-width:140px;" value="' + escAttr(mySub ? mySub.content : '') + '">' +
+          // Camera: capture="environment" mở thẳng camera sau trên điện thoại (chụp bài viết tay)
+          '<input type="file" id="subCam_' + a.id + '" accept="image/*" capture="environment" style="display:none;" onchange="_subFilePicked(' + qid(a.id) + ', \'cam\')">' +
+          // Tệp/thư viện: ảnh hoặc PDF
+          '<input type="file" id="subFile_' + a.id + '" accept="image/*,application/pdf" style="display:none;" onchange="_subFilePicked(' + qid(a.id) + ')">' +
+          '<button class="btn btn-sm btn-ghost" onclick="document.getElementById(\'subCam_' + a.id + '\').click()" title="Chụp bài làm" aria-label="Chụp bài làm bằng camera">📸</button>' +
+          '<button class="btn btn-sm btn-ghost" onclick="document.getElementById(\'subFile_' + a.id + '\').click()" title="Chọn ảnh/PDF" aria-label="Chọn ảnh hoặc PDF">📎</button>' +
           '<span id="subFileName_' + a.id + '" style="font-size:11px;color:var(--text-muted);max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>' +
-          '<button class="btn btn-sm btn-primary" onclick="submitWork(' + qid(a.id) + ')">' + (mySub ? 'Cập nhật' : 'Nộp') + '</button>' +
+          '<button class="btn btn-sm btn-primary" onclick="submitWork(' + qid(a.id) + ', this)">' + (mySub ? 'Cập nhật' : 'Nộp') + '</button>' +
           '</div>';
       }
       return '<div class="card" style="margin-bottom:14px;">' +
@@ -253,19 +257,29 @@
       });
     }
 
-    function _subFilePicked(assignmentId) {
+    // Chọn tệp: composer có 2 input (📸 camera + 📎 tệp). Giữ 1 nguồn duy nhất —
+    // vừa chọn cái này thì xoá cái kia để submitWork/tên tệp không bị lẫn.
+    function _subFilePicked(assignmentId, which) {
       var fi = document.getElementById('subFile_' + assignmentId);
+      var fc = document.getElementById('subCam_' + assignmentId);
+      if (which === 'cam') { if (fi) fi.value = ''; }
+      else { if (fc) fc.value = ''; }
       var span = document.getElementById('subFileName_' + assignmentId);
-      if (fi && span) span.textContent = (fi.files && fi.files[0]) ? fi.files[0].name : '';
+      var f = (fc && fc.files && fc.files[0]) || (fi && fi.files && fi.files[0]) || null;
+      if (span) span.textContent = f ? f.name : '';
     }
 
-    function submitWork(assignmentId) {
-      var inp = document.getElementById('subInput_' + assignmentId);
-      var text = inp ? inp.value.trim() : '';
-      var fi = document.getElementById('subFile_' + assignmentId);
-      var file = fi && fi.files && fi.files[0] ? fi.files[0] : null;
-      if (!text && !file) { showToast('Nhập nội dung hoặc đính kèm tệp.', 'error'); return; }
+    // Lõi nộp bài dùng CHUNG cho composer trong feed và modal "Nộp ngay".
+    // Xử lý: kiểm tra, khoá nút (⏳), upload tệp (nếu có), upsert DB, mở lại nút
+    // khi lỗi. `btn` (tuỳ chọn) = nút vừa bấm để hiện trạng thái loading.
+    // done(err): err=null khi thành công; gọi sau khi DB trả về.
+    function _persistSubmission(assignmentId, text, file, btn, done) {
+      if (!text && !file) { showToast('Nhập nội dung hoặc chụp/đính kèm ảnh.', 'error'); return; }
       if (!_db || !_dbUserId) { showToast('Chưa kết nối tài khoản.', 'error'); return; }
+      var origHtml = btn ? btn.innerHTML : '';
+      if (btn) { btn.disabled = true; btn.innerHTML = '⏳ Đang tải bài lên...'; }
+      function _restore() { if (btn) { btn.disabled = false; btn.innerHTML = origHtml; } }
+      function _fail(err) { hideBusy(); _restore(); if (done) done(err || new Error('submit failed')); }
       function _save(fileUrl) {
         var payload = {
           assignment_id: String(assignmentId), student_id: _dbUserId,
@@ -275,32 +289,90 @@
         _db.from('assignment_submissions').upsert(payload, { onConflict: 'assignment_id,student_id' }).select()
           .then(function (r) {
             hideBusy();
-            if (r.error) { showToast('Lỗi nộp bài: ' + r.error.message, 'error'); return; }
-            showToast('Đã nộp bài.', 'success');
-            // Nộp xong: xoá nội dung trong ô soạn — nếu không, renderAssignments()
-            // (gọi trong reloadSubmissions) sẽ nạp lại đúng chữ vừa gửi vào input
-            // (composer pre-fill từ mySub.content để hỗ trợ "sửa"), khiến chữ có
-            // cảm giác "kẹt cứng" không biến mất sau khi bấm Nộp/Cập nhật.
-            reloadSubmissions(function () {
-              var inpEl = document.getElementById('subInput_' + assignmentId);
-              if (inpEl) inpEl.value = '';
-              var fiEl = document.getElementById('subFile_' + assignmentId);
-              if (fiEl) fiEl.value = '';
-              var fnEl = document.getElementById('subFileName_' + assignmentId);
-              if (fnEl) fnEl.textContent = '';
-            });
-          });
+            if (r.error) { showToast('Lỗi nộp bài: ' + r.error.message, 'error'); _restore(); if (done) done(r.error); return; }
+            showToast('Đã nộp bài. Làm tốt lắm! 🎉', 'success');
+            if (done) done(null);   // KHÔNG _restore ở đây: bên gọi tự render lại
+          })
+          .catch(function (e) { showToast('Lỗi mạng khi nộp bài. Thử lại.', 'error'); _fail(e); });
       }
-      showBusy(file ? 'Đang nộp bài…' : 'Đang nộp…');
+      showBusy(file ? 'Đang tải bài lên…' : 'Đang nộp…');
       if (file) {
         var safe = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
         var path = 'assignments/' + assignmentId + '/' + _dbUserId + '_' + Date.now() + '_' + safe;
         _db.storage.from('materials').upload(path, file, { upsert: true }).then(function (r) {
-          if (r.error) { hideBusy(); showToast('Lỗi tải tệp: ' + r.error.message, 'error'); return; }
+          if (r.error) { showToast('Lỗi tải tệp: ' + r.error.message, 'error'); _fail(r.error); return; }
           var url = _db.storage.from('materials').getPublicUrl(path).data.publicUrl;
           _save(url);
-        }).catch(function (e) { hideBusy(); showToast('Lỗi mạng khi tải tệp. Thử lại.', 'error'); });
+        }).catch(function (e) { showToast('Lỗi mạng khi tải tệp. Thử lại.', 'error'); _fail(e); });
       } else { _save(null); }
+    }
+
+    function submitWork(assignmentId, btn) {
+      var inp = document.getElementById('subInput_' + assignmentId);
+      var text = inp ? inp.value.trim() : '';
+      var fc = document.getElementById('subCam_' + assignmentId);
+      var fi = document.getElementById('subFile_' + assignmentId);
+      var file = (fc && fc.files && fc.files[0]) || (fi && fi.files && fi.files[0]) || null;
+      _persistSubmission(assignmentId, text, file, btn, function (err) {
+        if (err) return;   // _persistSubmission đã mở lại nút + báo lỗi
+        celebrate();       // 🎉 ăn mừng nộp thành công
+        // Nộp xong: xoá ô soạn (composer pre-fill từ mySub.content để hỗ trợ "sửa",
+        // nếu không dọn thì chữ vừa gửi bị nạp lại trông như "kẹt").
+        reloadSubmissions(function () {
+          var inpEl = document.getElementById('subInput_' + assignmentId); if (inpEl) inpEl.value = '';
+          var fiEl = document.getElementById('subFile_' + assignmentId); if (fiEl) fiEl.value = '';
+          var fcEl = document.getElementById('subCam_' + assignmentId); if (fcEl) fcEl.value = '';
+          var fnEl = document.getElementById('subFileName_' + assignmentId); if (fnEl) fnEl.textContent = '';
+          try { renderStudentPortal(); } catch (e) { }   // cập nhật danh sách "Việc cần làm"
+        });
+      });
+    }
+
+    // ── "Nộp ngay" từ Cổng học sinh: mở modal nộp trực tiếp (không phải vào xem
+    // chi tiết lớp). Dùng chung _persistSubmission → cùng luồng DB + camera 1 chạm.
+    function quickSubmit(assignmentId) {
+      var a = assignments.find(function (x) { return String(x.id) === String(assignmentId); });
+      if (!a) { showToast('Không tìm thấy bài tập.', 'error'); return; }
+      var idAttr = qid(a.id);
+      var html = '<div class="modal-header"><h3>📤 Nộp bài: ' + escHtml(a.title) + '</h3><button class="modal-close" onclick="closeModal()" aria-label="Đóng">✕</button></div>' +
+        '<div class="modal-body">' +
+        '<div style="font-size:13px;color:var(--text-muted);margin-bottom:8px;">' + escHtml(a.subject || '') + (a.dueDate ? ' · Hạn nộp: ' + escHtml(a.dueDate) : '') + '</div>' +
+        '<textarea class="form-textarea" id="qsText" rows="4" placeholder="Viết vài dòng cho bài nộp (không bắt buộc nếu đã chụp/đính kèm ảnh)…"></textarea>' +
+        '<input type="file" id="qsCam" accept="image/*" capture="environment" style="display:none;" onchange="_qsFilePicked(\'cam\')">' +
+        '<input type="file" id="qsFile" accept="image/*,application/pdf" style="display:none;" onchange="_qsFilePicked()">' +
+        '<div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap;align-items:center;">' +
+        '<button type="button" class="btn btn-ghost" onclick="document.getElementById(\'qsCam\').click()">📸 Chụp bài làm</button>' +
+        '<button type="button" class="btn btn-ghost" onclick="document.getElementById(\'qsFile\').click()">📎 Chọn ảnh/PDF</button>' +
+        '<span id="qsFileName" style="font-size:12.5px;color:var(--text-muted);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>' +
+        '</div>' +
+        '</div>' +
+        '<div class="modal-footer">' +
+        '<button class="btn btn-ghost" onclick="closeModal()">Hủy</button>' +
+        '<button class="btn btn-primary" id="qsSubmitBtn" onclick="quickSubmitSave(' + idAttr + ', this)">📤 Nộp bài</button>' +
+        '</div>';
+      openModal(html);
+    }
+
+    function _qsFilePicked(which) {
+      var fc = document.getElementById('qsCam'), fi = document.getElementById('qsFile');
+      if (which === 'cam') { if (fi) fi.value = ''; } else { if (fc) fc.value = ''; }
+      var span = document.getElementById('qsFileName');
+      var f = (fc && fc.files && fc.files[0]) || (fi && fi.files && fi.files[0]) || null;
+      if (span) span.textContent = f ? f.name : '';
+    }
+
+    function quickSubmitSave(assignmentId, btn) {
+      var ta = document.getElementById('qsText');
+      var text = ta ? ta.value.trim() : '';
+      var fc = document.getElementById('qsCam'), fi = document.getElementById('qsFile');
+      var file = (fc && fc.files && fc.files[0]) || (fi && fi.files && fi.files[0]) || null;
+      _persistSubmission(assignmentId, text, file, btn, function (err) {
+        if (err) return;
+        closeModal();
+        celebrate();
+        reloadSubmissions();
+        try { renderStudentPortal(); } catch (e) { }
+      });
     }
 
     // onDone: gọi SAU khi renderAssignments() đã vẽ xong (dùng để dọn ô input

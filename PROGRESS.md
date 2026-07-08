@@ -2,6 +2,36 @@
 
 > App quản lý trung tâm gia sư. Live: https://studyweb-swart.vercel.app
 
+## UX cho Học sinh cấp 2 (11–15 tuổi): camera + to-do + nav gọn + confetti ✅ ĐÃ LÀM
+Tối ưu trải nghiệm HS trên điện thoại/PC. Giữ classic-JS scope, không đụng auth/RLS.
+- [x] **Nộp bài 1 chạm bằng camera** (10-assignments.js): composer trong feed có thêm nút **📸 Chụp
+      bài làm** (`<input capture="environment" accept="image/*">` → mở thẳng camera sau trên ĐT) bên
+      cạnh **📎 Chọn ảnh/PDF** (`accept="image/*,application/pdf"`). `_subFilePicked(id, which)` giữ 1
+      nguồn (chọn cái này xoá cái kia). Nút "Nộp/Cập nhật" khi bấm → **disabled + "⏳ Đang tải bài
+      lên..."** (chống bấm lặp), mở lại nút khi lỗi; thành công thì feed tự render lại.
+- [x] **Dashboard HS = danh sách To-do** (22-student-portal.js + HTML): thẻ **"📋 Việc cần làm"** đẩy
+      lên TRÊN CÙNG (full-width), kèm badge số bài chưa nộp. Mỗi bài có badge **đèn giao thông**
+      (`_hwStatus`): 🔴 Quá hạn (badge-danger) · 🟠 Sắp hết hạn <48h (badge-warning) · ⚪ Chưa nộp ·
+      🟢 Đã nộp (badge-success); danh sách **tự sắp** khẩn cấp lên trước. Nút **"Nộp ngay"** cạnh mỗi
+      bài chưa nộp → mở thẳng modal nộp (`quickSubmit`), không phải vào xem chi tiết lớp. Việt hoá
+      nhãn KPI/Focus (Điểm của em, Chuyên cần, Lớp học, Cần cải thiện, Bảng điểm, Toán/Tiếng Anh).
+- [x] **Modal "Nộp ngay"** (10-assignments.js): `quickSubmit`/`quickSubmitSave` dùng CHUNG lõi
+      `_persistSubmission` (upload→upsert `assignment_submissions`, cùng luồng camera 1 chạm + loading
+      button) với composer trong feed → không nhân đôi logic DB.
+- [x] **Sidebar gọn cho HS** (05-navigation.js + 03-i18n-data.js): khi role=Student dùng `STUDENT_NAV`
+      (nhãn tiếng Việt gần gũi, không lệ thuộc i18n): **Việc cần làm** / Học tập(**Bài tập về nhà**,
+      **Bài giảng & Tài liệu**) / Lịch(**Lịch học**) / Công cụ tự học(**Tập trung (Pomodoro)**, **Thẻ
+      ghi nhớ**) / **Cài đặt**. Bỏ **payments** khỏi `ROLE_SECTIONS.Student` (học phí vẫn xem trong
+      Cổng học sinh). Teacher/Admin nav GIỮ NGUYÊN (14 mục) — chỉ HS được rút gọn.
+- [x] **Confetti ăn mừng** (12-ui-core.js `celebrate()`): pháo giấy **canvas tự chứa** (KHÔNG cần CDN →
+      an toàn CSP + offline), z-index 99998, `pointer-events:none`, tự xoá sau 2.2s, **tôn trọng
+      `prefers-reduced-motion`**. Gọi khi nộp bài thành công (cả composer & modal).
+- **Verify (preview mock)**: nav HS đúng 7 mục + 4 nhóm (bỏ Payments); to-do sắp đúng thứ tự
+      🔴→🟠→⚪→🟢 + "Nộp ngay" đúng chỗ; composer/modal có `capture=environment` + accept ảnh/PDF;
+      submitWork khoá nút "⏳", nộp xong ô trống + badge "Cập nhật"; `celebrate()` tạo canvas ngay,
+      reduced-motion off thì chạy; mobile 375px nút "Nộp ngay" full-width 44px; Teacher nav nguyên vẹn;
+      0 lỗi console; `node --check` 5 module pass.
+
 ## Fix: hết spam 404 log_audit khi cấp quyền ✅ ĐÃ LÀM
 - [x] **404 `rpc/log_audit` khi đổi vai trò / xuất báo cáo** (02-db-api.js `logAudit`): việc cấp
       quyền THỰC RA vẫn thành công (`admin_set_role` + fallback update `profiles`); chỉ có bước ghi

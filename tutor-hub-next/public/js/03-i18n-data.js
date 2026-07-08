@@ -110,7 +110,9 @@
       Teacher: ['dashboard', 'students', 'classes', 'assignments', 'attendance', 'scores', 'payments', 'schedule', 'materials', 'flashcards', 'pomodoro', 'reports', 'users', 'settings'],
       Admin: ['dashboard', 'students', 'classes', 'assignments', 'attendance', 'scores', 'payments', 'schedule', 'materials', 'flashcards', 'pomodoro', 'reports', 'users', 'subjects', 'settings'],
       Parent: ['parent-portal', 'materials', 'flashcards', 'schedule', 'payments', 'settings'],
-      Student: ['student-portal', 'assignments', 'materials', 'flashcards', 'pomodoro', 'schedule', 'payments', 'settings'],
+      // HS: rút gọn còn các mục cốt lõi (bỏ 'payments' khỏi sidebar — học phí vẫn
+      // xem được trong Cổng học sinh). Nav hiển thị theo STUDENT_NAV (05-navigation.js).
+      Student: ['student-portal', 'assignments', 'materials', 'flashcards', 'pomodoro', 'schedule', 'settings'],
       Pending: ['settings'],
     };
 

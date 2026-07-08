@@ -197,20 +197,52 @@
       },
     ];
 
+    // Sidebar RÚT GỌN cho Học sinh (11–15 tuổi): chỉ 4 nhóm cốt lõi, nhãn tiếng
+    // Việt gần gũi (không dùng key i18n để tránh lệ thuộc đổi ngôn ngữ). Icon vẫn
+    // dùng SVG dùng chung. Access-control vẫn qua ROLE_SECTIONS như thường.
+    var STUDENT_NAV = [
+      { group: '', items: [{ id: 'student-portal', label: 'Việc cần làm' }] },
+      {
+        group: 'Học tập', items: [
+          { id: 'assignments', label: 'Bài tập về nhà' },
+          { id: 'materials', label: 'Bài giảng & Tài liệu' },
+        ]
+      },
+      { group: 'Lịch', items: [{ id: 'schedule', label: 'Lịch học' }] },
+      {
+        group: 'Công cụ tự học', items: [
+          { id: 'pomodoro', label: 'Tập trung (Pomodoro)' },
+          { id: 'flashcards', label: 'Thẻ ghi nhớ' },
+        ]
+      },
+      { group: 'Khác', items: [{ id: 'settings', label: 'Cài đặt' }] },
+    ];
+
+    function _navItemHtml(id, label) {
+      return '<a class="nav-item' + (currentSection === id ? ' active' : '') + '" onclick="showSection(\'' + id + '\')" href="#">' +
+        '<span class="nav-icon">' + svgIcon(id) + '</span><span class="nav-label">' + escHtml(label) + '</span></a>';
+    }
+
     function renderNavigation() {
       if (!currentUser) return;
       var allowed = ROLE_SECTIONS[currentUser.role] || [];
       var html = '';
-      NAV_STRUCTURE.forEach(function (grp) {
-        var visible = grp.items.filter(function (it) { return allowed.indexOf(it.id) !== -1; });
-        if (!visible.length) return;
-        html += '<div class="sidebar-section">' + grp.group + '</div>';
-        visible.forEach(function (it) {
-          html += '<a class="nav-item' + (currentSection === it.id ? ' active' : '') + '" onclick="showSection(\'' + it.id + '\')" href="#">';
-          html += '<span class="nav-icon">' + svgIcon(it.id) + '</span><span class="nav-label">' + t(it.key) + '</span>';
-          html += '</a>';
+      if (currentUser.role === 'Student') {
+        // Menu đơn giản hoá cho học sinh
+        STUDENT_NAV.forEach(function (grp) {
+          var visible = grp.items.filter(function (it) { return allowed.indexOf(it.id) !== -1; });
+          if (!visible.length) return;
+          if (grp.group) html += '<div class="sidebar-section">' + grp.group + '</div>';
+          visible.forEach(function (it) { html += _navItemHtml(it.id, it.label); });
         });
-      });
+      } else {
+        NAV_STRUCTURE.forEach(function (grp) {
+          var visible = grp.items.filter(function (it) { return allowed.indexOf(it.id) !== -1; });
+          if (!visible.length) return;
+          html += '<div class="sidebar-section">' + grp.group + '</div>';
+          visible.forEach(function (it) { html += _navItemHtml(it.id, t(it.key)); });
+        });
+      }
       document.getElementById('navItems').innerHTML = html;
       _setAvatarEl(document.getElementById('sidebarAvatar'), currentUser);
       document.getElementById('sidebarName').textContent = currentUser.name;

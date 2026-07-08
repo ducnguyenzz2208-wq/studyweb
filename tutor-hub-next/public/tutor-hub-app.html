@@ -964,6 +964,48 @@
       margin-top: 2px;
     }
 
+    /* To-do list (Cổng học sinh) — hàng bài tập + nút "Nộp ngay" */
+    .todo-card .card-title {
+      display: flex;
+      align-items: center;
+    }
+
+    .todo-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 14px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .todo-item:last-child {
+      border-bottom: none;
+    }
+
+    .todo-main {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .todo-submit {
+      flex-shrink: 0;
+      align-self: center;
+      min-height: 40px;
+      white-space: nowrap;
+    }
+
+    @media (max-width: 640px) {
+      .todo-item {
+        flex-wrap: wrap;
+      }
+
+      .todo-submit {
+        width: 100%;
+        margin-top: 4px;
+        min-height: 44px;
+      }
+    }
+
     /* RESPONSIVE */
     .hamburger {
       display: flex;
@@ -4204,24 +4246,25 @@
     <!-- STUDENT PORTAL -->
     <div class="section content" id="section-student-portal">
       <div class="page-header">
-        <h2>Student Portal</h2>
-        <p>Your personal dashboard — homework, scores, and focus areas.</p>
+        <h2>Chào em! 👋</h2>
+        <p>Đây là những việc cần làm và kết quả học tập của em.</p>
       </div>
       <div class="portal-select-bar">
-        <label>Student:</label>
+        <label>Học sinh:</label>
         <select class="filter-select" id="studentPortalSelect" onchange="renderStudentPortal()">
         </select>
       </div>
-      <div class="portal-grid" id="studentKPI"></div>
-      <div class="two-col">
-        <div class="card" id="studentHwCard"></div>
+      <!-- To-do BÀI TẬP đẩy lên trên cùng, full-width -->
+      <div class="card todo-card" id="studentHwCard"></div>
+      <div class="portal-grid" style="margin-top:16px;" id="studentKPI"></div>
+      <div class="two-col" style="margin-top:16px;">
         <div class="card" id="studentFocusCard"></div>
+        <div class="card" id="studentScheduleCard"></div>
       </div>
       <div class="two-col" style="margin-top:16px;">
-        <div class="card" id="studentScheduleCard"></div>
         <div class="card" id="studentAttendCard"></div>
+        <div class="card" id="studentCommentCard"></div>
       </div>
-      <div class="card" style="margin-top:16px;" id="studentCommentCard"></div>
       <div style="margin-top:16px;" id="studentPayCard"></div>
     </div>
 
