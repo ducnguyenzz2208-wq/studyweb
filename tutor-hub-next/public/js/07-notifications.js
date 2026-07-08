@@ -11,6 +11,31 @@
       }
     }
 
+    // ── CÔNG TẮC THÔNG BÁO (Cài đặt) — lưu vào localStorage ──────────
+    // Trước đây các nút chỉ toggle class 'on' (mất khi tải lại / reset session).
+    // Lưu vào localStorage để lựa chọn KHÔNG phụ thuộc phiên đăng nhập → khi
+    // token hết hạn phải relogin, trạng thái công tắc vẫn giữ đúng.
+    var NOTIF_PREF_KEY = 'th_notif_prefs';
+    var _NOTIF_TOGGLES = [ // [id nút, khoá lưu, mặc định bật?]
+      ['notifPrefFee', 'fee', true],
+      ['notifPrefAttend', 'attend', true],
+      ['notifPrefHw', 'hw', false]
+    ];
+    function _notifPrefs() { try { return JSON.parse(localStorage.getItem(NOTIF_PREF_KEY) || '{}'); } catch (e) { return {}; } }
+    function toggleNotifPref(btn, key) {
+      var on = btn.classList.toggle('on');
+      var p = _notifPrefs(); p[key] = on;
+      try { localStorage.setItem(NOTIF_PREF_KEY, JSON.stringify(p)); } catch (e) { }
+    }
+    function restoreNotifPrefs() {
+      var p = _notifPrefs();
+      _NOTIF_TOGGLES.forEach(function (r) {
+        var el = document.getElementById(r[0]); if (!el) return;
+        var on = (r[1] in p) ? !!p[r[1]] : r[2]; // chưa lưu → theo mặc định markup
+        el.classList.toggle('on', on);
+      });
+    }
+
     var _notifAutoReadTimer = null;
 
     function toggleNotifications() {

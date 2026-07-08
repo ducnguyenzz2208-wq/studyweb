@@ -2,6 +2,36 @@
 
 > App quản lý trung tâm gia sư. Live: https://studyweb-swart.vercel.app
 
+## UI: Sidebar thu gọn thông minh + Portal cho HS + fix loop refresh 400 ✅ ĐÃ LÀM
+- [x] **Student Portal lên đầu sidebar** (05-navigation.js): nhóm `Portals` (student-portal +
+      parent-portal) chuyển lên ĐẦU `NAV_STRUCTURE` (trên Main/Academic). Với HS → "Cổng học sinh"
+      là mục đầu tiên; với PH → "Cổng phụ huynh"; Teacher/Admin không có mục Portal trong
+      `ROLE_SECTIONS` nên nhóm rỗng tự ẩn (Main/Dashboard vẫn đứng đầu như cũ). Verify (mock HS):
+      `navOrder[0]='Cổng học sinh'`, group đầu = `Portals`.
+- [x] **HS tự mở Cổng học sinh khi khởi tạo** (04-auth.js `showApp`): nếu `currentUser.role==='Student'`
+      thì ép `first='student-portal'`, BỎ QUA tab đã lưu (`th_section`) — tránh HS rơi vào Cài đặt/Bài
+      tập sau khi tải lại. Verify: dù set `th_section='settings'`, HS vẫn land ở `student-portal`.
+      (Luồng init thật chạy qua `TUTOR_HUB_INIT` → `showApp()`; DEFAULT_SECTION.Student vốn đã là portal.)
+- [x] **Smart collapsible sidebar (CSS-only)** (tutor-hub-app.html): thêm `@media (min-width:769px)`
+      (khớp breakpoint desktop có sẵn — drawer mobile là ≤768px nên KHÔNG dùng 641px để tránh vùng
+      641–768 xung đột với drawer). Mặc định `#sidebar` rộng **68px** (chỉ icon), rê chuột `:hover`
+      → **216px** hiện nhãn; nhãn/tiêu đề (`.logo-text/.sidebar-section/.nav-label/.user-info`)
+      `opacity:0→1` + `white-space:nowrap` + `transition:.2s`. `#main` (phần tử thật giữ offset, KHÔNG
+      phải `.content`) `margin-left` co giãn 68↔216 mượt (`#sidebar:hover ~ #main`, `transition .3s`).
+      Bọc nhãn nav trong `<span class="nav-label">` để fade sạch. Giữ nguyên `body.sidebar-hidden`
+      (nút ☰). Verify: desktop collapsed=68px/label opacity 0, hover rule có trong CSSOM; mobile 375px
+      vẫn là drawer translateX(-216), không bị ép 68px.
+- [x] **Fix loop lỗi 400 refresh_token (F12)** (02-db-api.js): supabase-js tự refresh token nền;
+      refresh token của iframe & Next.js dùng chung nên bị **xoay vòng** → 400 (Bad Request) lặp vô hạn.
+      Thêm `_isRefresh400()` (bắt status 400 / "refresh token"/"already used"…) + `_breakAndRelogin()`
+      (`stopAutoRefresh()` để tắt loop NGAY + `reloginNow()` phát `TUTOR_HUB_LOGOUT` → parent signOut →
+      `/login`, reset session sạch). Wire: `onAuthStateChange('SIGNED_OUT')`, `refreshSession` định kỳ,
+      và `_onDbAuthError` — gặp 400 thì ngắt loop + relogin thay vì spam/overlay.
+- [x] **Toggle thông báo (Cài đặt) lưu đúng** (07-notifications.js + HTML): 3 nút trước chỉ toggle class
+      `on` (mất khi reload/relogin). Nay `toggleNotifPref(btn,key)` lưu `th_notif_prefs` (localStorage,
+      không phụ thuộc phiên) + `restoreNotifPrefs()` gọi trong `showApp`. Verify: tắt/bật → lưu đúng,
+      restore khôi phục đúng trạng thái. 0 lỗi console; `node --check` 4 module pass.
+
 ## Nhập học sinh từ Excel/CSV (User Management) ✅ ĐÃ LÀM
 - [x] Nút **"📥 Nhập Excel/CSV"** ở Quản lý người dùng → `openStudentImportModal()` (11-user-management.js).
       Hỗ trợ **.xlsx/.xls/.csv** (SheetJS nạp lười từ jsDelivr — đã trong CSP) + ô **dán text** (copy từ

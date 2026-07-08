@@ -155,6 +155,15 @@
     // NAVIGATION
     // ============================================================
     var NAV_STRUCTURE = [
+      // Portals ở ĐẦU sidebar (ngay dưới logo/hồ sơ, trên nhóm ACADEMIC).
+      // Với HS chỉ có Student Portal → nó là mục đầu tiên; với PH là Parent Portal.
+      // Teacher/Admin không có mục Portal trong ROLE_SECTIONS → nhóm rỗng, tự ẩn.
+      {
+        group: 'Portals', items: [
+          { id: 'student-portal', icon: '🎒', key: 'nav.student-portal' },
+          { id: 'parent-portal', icon: '👨‍👩‍👧', key: 'nav.parent-portal' },
+        ]
+      },
       {
         group: 'Main', items: [
           { id: 'dashboard', icon: '🏠', key: 'nav.dashboard' },
@@ -180,12 +189,6 @@
         ]
       },
       {
-        group: 'Portals', items: [
-          { id: 'parent-portal', icon: '👨‍👩‍👧', key: 'nav.parent-portal' },
-          { id: 'student-portal', icon: '🎒', key: 'nav.student-portal' },
-        ]
-      },
-      {
         group: 'System', items: [
           { id: 'users', icon: '👥', key: 'nav.users' },
           { id: 'subjects', icon: '📚', key: 'nav.subjects' },
@@ -204,7 +207,7 @@
         html += '<div class="sidebar-section">' + grp.group + '</div>';
         visible.forEach(function (it) {
           html += '<a class="nav-item' + (currentSection === it.id ? ' active' : '') + '" onclick="showSection(\'' + it.id + '\')" href="#">';
-          html += '<span class="nav-icon">' + svgIcon(it.id) + '</span> ' + t(it.key);
+          html += '<span class="nav-icon">' + svgIcon(it.id) + '</span><span class="nav-label">' + t(it.key) + '</span>';
           html += '</a>';
         });
       });

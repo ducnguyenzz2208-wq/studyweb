@@ -22,7 +22,7 @@
     // ── PHIÊN HẾT HẠN (token iframe hết hạn ~1h) ─────────────────
     // Chủ động làm mới token định kỳ để tránh 401 âm thầm; nếu không làm mới
     // được nữa → hiện lớp phủ mời đăng nhập lại thay vì bảng trắng im lặng.
-    var _sessionGuardStarted = false, _sessionExpiredShown = false, _authRefreshInFlight = false;
+    var _sessionGuardStarted = false, _sessionExpiredShown = false, _authRefreshInFlight = false, _relogging = false;
     function _isAuthError(err) {
       if (!err) return false;
       var m = (err.message || err.msg || '').toLowerCase();
@@ -30,9 +30,26 @@
         m.indexOf('jwt') !== -1 || m.indexOf('token is expired') !== -1 ||
         m.indexOf('invalid token') !== -1 || m.indexOf('not authenticated') !== -1;
     }
+    // Lỗi làm mới token KHÔNG thể phục hồi (HTTP 400): refresh token đã hết hạn,
+    // hoặc bị xoay vòng (iframe & Next.js dùng chung 1 token — khi bên này refresh,
+    // token bên kia thành "đã dùng"). Cứ retry thì spam 400 vô hạn (xem F12).
+    function _isRefresh400(err) {
+      if (!err) return false;
+      if (err.status === 400) return true;
+      var m = (err.message || err.msg || '').toLowerCase();
+      return m.indexOf('refresh token') !== -1 || m.indexOf('invalid refresh') !== -1 ||
+        m.indexOf('already used') !== -1 || m.indexOf('refresh_token_not_found') !== -1;
+    }
     function reloginNow() {
       try { if (window.parent !== window) { window.parent.postMessage({ type: 'TUTOR_HUB_LOGOUT' }, window.location.origin); return; } } catch (e) { }
       location.reload();
+    }
+    // Ngắt DỨT vòng lặp refresh 400 rồi reset session sạch qua Next.js.
+    // Gọi 1 lần duy nhất; dừng auto-refresh của supabase-js để hết spam ngay.
+    function _breakAndRelogin() {
+      if (_relogging) return; _relogging = true;
+      try { if (_db && _db.auth && _db.auth.stopAutoRefresh) _db.auth.stopAutoRefresh(); } catch (e) { }
+      reloginNow();  // phát TUTOR_HUB_LOGOUT → parent signOut + về /login
     }
     function _showSessionExpired() {
       if (_sessionExpiredShown) return; _sessionExpiredShown = true;
@@ -48,21 +65,36 @@
       document.body.appendChild(el);
     }
     function _onDbAuthError() {
-      if (_authRefreshInFlight || _sessionExpiredShown) return;
+      if (_authRefreshInFlight || _sessionExpiredShown || _relogging) return;
       if (!_db || !_db.auth || !_db.auth.refreshSession) { _showSessionExpired(); return; }
       _authRefreshInFlight = true;
       _db.auth.refreshSession().then(function (r) {
         _authRefreshInFlight = false;
         if (r && !r.error && r.data && r.data.session) { _dbError = {}; loadDbData(); }
+        else if (r && r.error && _isRefresh400(r.error)) _breakAndRelogin(); // 400 → ngắt loop + relogin
         else _showSessionExpired();
-      }).catch(function () { _authRefreshInFlight = false; _showSessionExpired(); });
+      }).catch(function (e) {
+        _authRefreshInFlight = false;
+        if (_isRefresh400(e)) _breakAndRelogin(); else _showSessionExpired();
+      });
     }
     function startSessionGuard() {
       if (_sessionGuardStarted || !_db || !_db.auth || !_db.auth.refreshSession) return;
       _sessionGuardStarted = true;
+      // supabase-js tự refresh token nền; khi refresh token hỏng/xoay vòng nó phát
+      // 'SIGNED_OUT'. Bắt sự kiện này để NGẮT vòng lặp 400 và reset session sạch.
+      try {
+        if (_db.auth.onAuthStateChange) {
+          _db.auth.onAuthStateChange(function (event) {
+            if (event === 'SIGNED_OUT') _breakAndRelogin();
+          });
+        }
+      } catch (e) { }
       // Làm mới token định kỳ (token sống ~1h) để tránh 401 âm thầm khi dùng lâu.
       setInterval(function () {
-        _db.auth.refreshSession().then(function (r) { if (r && r.error) _showSessionExpired(); }).catch(function () { });
+        _db.auth.refreshSession().then(function (r) {
+          if (r && r.error) { if (_isRefresh400(r.error)) _breakAndRelogin(); else _showSessionExpired(); }
+        }).catch(function () { });
       }, 15 * 60 * 1000);
       // Quay lại tab sau khi để lâu → làm mới ngay.
       document.addEventListener('visibilitychange', function () {

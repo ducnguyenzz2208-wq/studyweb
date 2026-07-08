@@ -986,6 +986,52 @@
       }
     }
 
+    /* ── Smart collapsible sidebar (chỉ desktop ≥769px để KHÔNG đụng drawer mobile) ──
+       Mặc định thanh bên thu gọn 68px (chỉ hiện icon); rê chuột vào → mở rộng
+       216px và hiện nhãn. Nội dung (#main) co giãn margin-left mượt theo. */
+    @media (min-width: 769px) {
+      #sidebar {
+        width: 68px;
+        overflow-x: hidden;
+        overflow-y: auto;
+      }
+      #sidebar:hover {
+        width: var(--sidebar-w);
+        box-shadow: 4px 0 24px rgba(15, 22, 35, 0.14);
+      }
+
+      #main {
+        margin-left: 68px;
+        transition: margin-left 0.3s;
+      }
+      #sidebar:hover ~ #main {
+        margin-left: var(--sidebar-w);
+      }
+
+      /* Ẩn nhãn/tiêu đề khi thu gọn; hiện lại (fade) khi hover */
+      .logo-text,
+      .sidebar-section,
+      .nav-label,
+      .user-info {
+        opacity: 0;
+        white-space: nowrap;
+        transition: opacity 0.2s;
+        pointer-events: none;
+      }
+      #sidebar:hover .logo-text,
+      #sidebar:hover .sidebar-section,
+      #sidebar:hover .nav-label,
+      #sidebar:hover .user-info {
+        opacity: 1;
+        pointer-events: auto;
+      }
+
+      /* Người dùng chủ động ẩn sidebar (nút ☰) vẫn thắng: nội dung sát mép trái */
+      body.sidebar-hidden #main {
+        margin-left: 0;
+      }
+    }
+
     @media (max-width: 1100px) {
       .kpi-grid {
         grid-template-columns: repeat(2, 1fr);
@@ -4340,21 +4386,21 @@
             <div class="setting-label">Cảnh báo học phí</div>
             <div class="setting-desc">Báo khi học phí quá hạn</div>
           </div>
-          <button class="toggle on" onclick="this.classList.toggle('on')"></button>
+          <button class="toggle on" id="notifPrefFee" onclick="toggleNotifPref(this,'fee')"></button>
         </div>
         <div class="setting-row">
           <div>
             <div class="setting-label">Cảnh báo điểm danh</div>
             <div class="setting-desc">Báo khi học sinh vắng mặt</div>
           </div>
-          <button class="toggle on" onclick="this.classList.toggle('on')"></button>
+          <button class="toggle on" id="notifPrefAttend" onclick="toggleNotifPref(this,'attend')"></button>
         </div>
         <div class="setting-row">
           <div>
             <div class="setting-label">Nhắc bài tập</div>
             <div class="setting-desc">Nhắc trước hạn nộp</div>
           </div>
-          <button class="toggle" onclick="this.classList.toggle('on')"></button>
+          <button class="toggle" id="notifPrefHw" onclick="toggleNotifPref(this,'hw')"></button>
         </div>
       </div>
 

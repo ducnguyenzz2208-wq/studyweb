@@ -87,7 +87,12 @@
       var pref = hashSection || savedSection;
       var defaultSection = DEFAULT_SECTION[currentUser.role] || 'dashboard';
       var first = (pref && canAccessSection(pref)) ? pref : defaultSection;
+      // Học sinh: luôn mở Cổng học sinh khi khởi tạo (bỏ qua tab đã lưu) — đây là
+      // màn hình chính của các em, tránh rơi vào Cài đặt/Bài tập sau khi tải lại.
+      if (currentUser.role === 'Student') first = 'student-portal';
       showSection(first);
+      // Khôi phục trạng thái công tắc thông báo (Cài đặt) đã lưu — không mất khi tải lại.
+      try { restoreNotifPrefs(); } catch (e) { }
       renderWelcome();
       if (currentUser.role === 'Teacher' || currentUser.role === 'Admin') {
         try { renderDashboard(); } catch (e) { }
