@@ -2,6 +2,21 @@
 
 > App quản lý trung tâm gia sư. Live: https://studyweb-swart.vercel.app
 
+## Fix: hết spam 404 log_audit khi cấp quyền ✅ ĐÃ LÀM
+- [x] **404 `rpc/log_audit` khi đổi vai trò / xuất báo cáo** (02-db-api.js `logAudit`): việc cấp
+      quyền THỰC RA vẫn thành công (`admin_set_role` + fallback update `profiles`); chỉ có bước ghi
+      nhật ký best-effort gọi RPC `log_audit` bị 404 vì **migration `020` chưa chạy**. 404 là lỗi
+      tầng mạng nên trình duyệt luôn in đỏ ở F12 dù đã try/catch — cách duy nhất để hết là NGỪNG gọi.
+      Cờ `_auditOff` cũ chỉ sống trong RAM nên mỗi lần tải lại lại 404 một lần. Fix: **lưu cờ vào
+      localStorage** (`th_audit_off`): sau lần đầu phát hiện thiếu hàm (khớp `PGRST202`/"not find"/
+      "schema cache"/404), mọi phiên sau KHÔNG gọi nữa → sạch console khi cấp quyền. Thêm `.catch()`
+      cho promise RPC + helper `thAuditReset()` (gõ trong console) để bật lại nhật ký sau khi đã chạy
+      `020`. Verify (mock `_db.rpc` trả PGRST202): lần 1 gọi → set cờ + persist; lần 2/3 skip (0 gọi);
+      sau reload cờ còn → skip luôn; `thAuditReset()` xoá cờ → gọi lại bình thường. `node --check` pass.
+- **Fix thật (tuỳ chọn, để CÓ nhật ký + hết luôn 404 ngay lần đầu)**: chạy migration
+      `020_audit_log.sql` trong Supabase SQL Editor rồi `thAuditReset()`. Không chạy cũng không sao —
+      nhật ký chỉ là phụ; cấp quyền/mọi thao tác khác vẫn chạy đúng.
+
 ## Fix: mất section khi F5 + kẹt chữ ô nộp bài ✅ ĐÃ LÀM
 - [x] **Mất trạng thái trang khi F5** (12-ui-core.js `showSection` + 04-auth.js `showApp`):
       thêm `sessionStorage.setItem('th_last_section', id)` song song với `localStorage` sẵn có.

@@ -119,17 +119,27 @@
     // Ghi nhật ký hoạt động (best-effort). Server (RPC log_audit) tự lấy actor =
     // auth.uid() và chỉ ghi nếu là Teacher/Admin — client không cần kiểm quyền.
     // Không bao giờ chặn luồng chính nếu ghi log lỗi.
-    var _auditOff = false;   // tắt ghi log nếu hàm log_audit chưa có (migration 020 chưa chạy) → hết spam 404
+    //
+    // Nếu migration 020 CHƯA chạy → RPC log_audit trả 404 (Not Found). 404 là lỗi
+    // ở tầng mạng nên trình duyệt LUÔN in ra F12 dù ta có try/catch — cách duy nhất
+    // để hết đỏ là NGỪNG gọi. Ta lưu cờ tắt vào localStorage: sau lần đầu phát hiện
+    // thiếu hàm, mọi phiên sau KHÔNG gọi nữa (không còn 404 khi cấp quyền/xuất báo
+    // cáo…). Đã chạy 020 và muốn bật lại nhật ký → gõ `thAuditReset()` trong console.
+    var _auditOff = (function () { try { return localStorage.getItem('th_audit_off') === '1'; } catch (e) { return false; } })();
+    function _disableAudit() { _auditOff = true; try { localStorage.setItem('th_audit_off', '1'); } catch (e) { } }
+    window.thAuditReset = function () { _auditOff = false; try { localStorage.removeItem('th_audit_off'); } catch (e) { } };
     function logAudit(action, entity, detail) {
       if (!_db || !_dbUserId || _auditOff) return;
       try {
         _db.rpc('log_audit', { _action: action, _entity: entity || null, _detail: detail || null })
           .then(function (r) {
             if (r && r.error) {
-              if (/not find|does not exist|schema cache|404/i.test(r.error.message || '')) _auditOff = true; // hàm chưa có → ngừng gọi
+              // PGRST202 / "Could not find the function" / 404 → hàm chưa có → tắt hẳn
+              if (/not find|does not exist|schema cache|404|PGRST202/i.test(r.error.message || r.error.code || '')) _disableAudit();
               else console.warn('audit log', r.error.message);
             }
-          });
+          })
+          .catch(function () { });
       } catch (e) { }
     }
 
