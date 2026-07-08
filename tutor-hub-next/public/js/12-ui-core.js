@@ -382,6 +382,10 @@
       // Persist across full reloads — the iframe reloads without its hash,
       // so localStorage is what actually restores the tab.
       try { localStorage.setItem('th_section', id); } catch (e) { }
+      // sessionStorage: nguồn ưu tiên khi khôi phục sau F5 trong CÙNG phiên tab
+      // (khác localStorage ở chỗ nó tự xoá khi đóng tab hẳn — không "kẹt" section
+      // cũ sang lần đăng nhập mới ở máy khác/tab khác).
+      try { sessionStorage.setItem('th_last_section', id); } catch (e) { }
       document.querySelectorAll('.section').forEach(function (s) { s.classList.remove('active'); });
       var secEl = document.getElementById('section-' + id);
       if (secEl) secEl.classList.add('active');

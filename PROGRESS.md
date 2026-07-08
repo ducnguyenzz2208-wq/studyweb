@@ -2,6 +2,31 @@
 
 > App quản lý trung tâm gia sư. Live: https://studyweb-swart.vercel.app
 
+## Fix: mất section khi F5 + kẹt chữ ô nộp bài ✅ ĐÃ LÀM
+- [x] **Mất trạng thái trang khi F5** (12-ui-core.js `showSection` + 04-auth.js `showApp`):
+      thêm `sessionStorage.setItem('th_last_section', id)` song song với `localStorage` sẵn có.
+      Khi khởi tạo, `showApp` giờ ưu tiên đọc `sessionStorage` (đúng phiên tab hiện tại, đáng tin
+      nhất ngay sau F5) → rồi mới tới `hash` → rồi `localStorage`; chỉ khi KHÔNG có gì lưu (lần
+      đăng nhập đầu tiên trong tab) mới rơi về mặc định theo vai trò (`DEFAULT_SECTION`, HS →
+      `student-portal`). Đồng thời BỎ đoạn ép cứng "HS luôn mở Portal, bỏ qua tab đã lưu" thêm ở
+      đợt patch trước — đoạn đó chính là nguyên nhân HS bị đá khỏi Assignments mỗi lần F5; giờ dùng
+      đúng cơ chế ưu tiên storage nên vừa giữ được auto-open Portal ở lần đăng nhập đầu, vừa giữ
+      đúng section sau F5. Lưu ý triển khai: luồng nhận `TUTOR_HUB_INIT` thực tế nằm ở
+      `01-core-state.js` (gọi `showApp()` trong `04-auth.js`), KHÔNG phải `25-init.js` như đề bài
+      giả định — `25-init.js` chỉ có phần init DOM/error-monitoring cho chế độ standalone.
+      Verify: quickLogin → showSection('assignments') → giả lập `location.reload()` → sessionStorage
+      còn 'assignments' → re-auth → land đúng lại 'assignments' (không về dashboard/portal mặc định).
+- [x] **Kẹt chữ ô nộp bài sau khi Nộp/Cập nhật** (10-assignments.js `submitWork`/`reloadSubmissions`):
+      nguyên nhân KHÔNG phải do thiếu reset — composer cố ý pre-fill `value` từ `mySub.content` để hỗ
+      trợ "Sửa" bài đã nộp, nên sau khi `renderAssignments()` vẽ lại nó tự điền lại đúng chữ vừa gửi,
+      trông như "kẹt". Fix: `reloadSubmissions(onDone)` nhận callback, gọi SAU khi
+      `renderAssignments()` xong; `submitWork` truyền callback xoá `subInput_<id>`, `subFile_<id>`
+      (input file) và `subFileName_<id>` (tên tệp hiển thị) về rỗng — chữ biến mất ngay sau khi nộp,
+      không ảnh hưởng nút "Cập nhật"/luồng sửa bài (mở lại `focusComposer` vẫn hoạt động bình thường
+      cho lần sửa kế tiếp). Verify: mock `_db` giả lập upsert+select → nộp "em nộp bài ạ" → bài hiện
+      đúng trong thread + nút đổi "Cập nhật" + input rỗng ngay sau đó.
+- `node --check` 3 module pass, 0 lỗi console khi test trong preview.
+
 ## UI: Sidebar thu gọn thông minh + Portal cho HS + fix loop refresh 400 ✅ ĐÃ LÀM
 - [x] **Student Portal lên đầu sidebar** (05-navigation.js): nhóm `Portals` (student-portal +
       parent-portal) chuyển lên ĐẦU `NAV_STRUCTURE` (trên Main/Academic). Với HS → "Cổng học sinh"

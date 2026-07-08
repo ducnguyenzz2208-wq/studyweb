@@ -78,18 +78,19 @@
       document.getElementById('main').style.display = 'block';
       renderNavigation();
       updateNotifBadge();
-      // init section: restore the last tab on reload.
-      // The iframe reloads without its hash, so localStorage is the real source;
-      // hash is only meaningful for in-session back/forward navigation.
+      // init section: restore the last tab on reload (F5).
+      // The iframe reloads without its hash, so storage is the real source.
+      // Ưu tiên sessionStorage (đúng phiên tab hiện tại, đáng tin hơn khi vừa
+      // F5) rồi mới tới localStorage (sống sót qua tab mới/đăng nhập lại) rồi
+      // mới tới hash. Chỉ khi KHÔNG có gì được lưu (lần đăng nhập đầu tiên
+      // trong tab này) mới rơi về mặc định theo vai trò (HS → student-portal).
       var hashSection = window.location.hash.replace(/^#/, '');
-      var savedSection = '';
+      var sessionSection = '', savedSection = '';
+      try { sessionSection = sessionStorage.getItem('th_last_section') || ''; } catch (e) { }
       try { savedSection = localStorage.getItem('th_section') || ''; } catch (e) { }
-      var pref = hashSection || savedSection;
+      var pref = sessionSection || hashSection || savedSection;
       var defaultSection = DEFAULT_SECTION[currentUser.role] || 'dashboard';
       var first = (pref && canAccessSection(pref)) ? pref : defaultSection;
-      // Học sinh: luôn mở Cổng học sinh khi khởi tạo (bỏ qua tab đã lưu) — đây là
-      // màn hình chính của các em, tránh rơi vào Cài đặt/Bài tập sau khi tải lại.
-      if (currentUser.role === 'Student') first = 'student-portal';
       showSection(first);
       // Khôi phục trạng thái công tắc thông báo (Cài đặt) đã lưu — không mất khi tải lại.
       try { restoreNotifPrefs(); } catch (e) { }

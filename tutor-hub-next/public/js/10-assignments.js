@@ -277,7 +277,18 @@
             hideBusy();
             if (r.error) { showToast('Lỗi nộp bài: ' + r.error.message, 'error'); return; }
             showToast('Đã nộp bài.', 'success');
-            reloadSubmissions();
+            // Nộp xong: xoá nội dung trong ô soạn — nếu không, renderAssignments()
+            // (gọi trong reloadSubmissions) sẽ nạp lại đúng chữ vừa gửi vào input
+            // (composer pre-fill từ mySub.content để hỗ trợ "sửa"), khiến chữ có
+            // cảm giác "kẹt cứng" không biến mất sau khi bấm Nộp/Cập nhật.
+            reloadSubmissions(function () {
+              var inpEl = document.getElementById('subInput_' + assignmentId);
+              if (inpEl) inpEl.value = '';
+              var fiEl = document.getElementById('subFile_' + assignmentId);
+              if (fiEl) fiEl.value = '';
+              var fnEl = document.getElementById('subFileName_' + assignmentId);
+              if (fnEl) fnEl.textContent = '';
+            });
           });
       }
       showBusy(file ? 'Đang nộp bài…' : 'Đang nộp…');
@@ -292,8 +303,10 @@
       } else { _save(null); }
     }
 
-    function reloadSubmissions() {
-      if (!_db) { renderAssignments(); return; }
+    // onDone: gọi SAU khi renderAssignments() đã vẽ xong (dùng để dọn ô input
+    // composer hậu-submit — xem submitWork).
+    function reloadSubmissions(onDone) {
+      if (!_db) { renderAssignments(); if (onDone) onDone(); return; }
       _db.from('assignment_submissions').select('*').order('submitted_at', { ascending: false }).then(function (r) {
         if (!r.error && r.data) {
           submissions = r.data.map(function (s) {
@@ -302,6 +315,7 @@
         }
         renderAssignments();
         try { updateNotifBadge(); } catch (e) { }
+        if (onDone) onDone();
       });
     }
 
