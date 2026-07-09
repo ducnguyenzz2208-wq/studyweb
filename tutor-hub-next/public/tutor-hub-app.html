@@ -1709,6 +1709,49 @@
       .asn-composer input.form-input { min-height: 44px; }
     }
 
+    /* ── Thư mục nộp bài: dòng bấm được + TRANG nộp bài ─────────────── */
+    .folder-list { display: flex; flex-direction: column; gap: 8px; }
+    .folder-row {
+      display: flex; align-items: center; gap: 12px;
+      background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+      padding: 12px 14px; cursor: pointer; min-height: 52px;
+      transition: background 0.15s, border-color 0.15s, transform 0.05s;
+    }
+    .folder-row:hover { background: var(--nav-hover-bg); border-color: var(--sidebar-active, var(--primary, #4f46e5)); }
+    .folder-row:active { transform: scale(0.995); }
+    .folder-row:focus-visible { outline: 2px solid var(--primary, #4f46e5); outline-offset: 2px; }
+    .folder-row-ic { font-size: 20px; flex-shrink: 0; }
+    .folder-row-name { flex: 1; min-width: 0; font-weight: 600; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .folder-row-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+    .folder-row-chev { font-size: 22px; color: var(--text-muted); line-height: 1; }
+
+    .fp-topbar { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+    .fp-crumb { font-size: 13px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; }
+    .fp-crumb span { opacity: 0.6; margin: 0 2px; }
+    .fp-head { margin-bottom: 14px; }
+    .fp-folder-title { font-size: 20px; font-weight: 800; margin-bottom: 10px; }
+    .fp-deadline { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .fp-due { font-size: 13.5px; color: var(--text-muted); }
+    .fp-countdown { font-size: 13px; font-weight: 700; padding: 4px 12px; border-radius: 999px; }
+    .fp-ok { background: rgba(16,185,129,0.14); color: #059669; }
+    .fp-warn { background: rgba(245,158,11,0.16); color: #d97706; }
+    .fp-over { background: rgba(239,68,68,0.14); color: #dc2626; }
+    .fp-neutral { background: var(--nav-hover-bg); color: var(--text-muted); }
+    .fp-your-sub {
+      background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin-bottom: 14px;
+    }
+    .fp-your-head { font-weight: 700; font-size: 14px; color: var(--success, #059669); margin-bottom: 6px; }
+    .fp-sub-time { font-size: 13px; color: var(--text-muted); margin-bottom: 8px; }
+    .fp-sub-content { font-size: 14px; white-space: pre-wrap; word-break: break-word; margin-bottom: 4px; }
+    .fp-grade { margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border); }
+    .fp-grade-num { font-size: 17px; font-weight: 800; color: var(--success, #059669); }
+    .fp-grade-num.muted { color: var(--text-muted); font-size: 14px; font-weight: 600; }
+    .fp-feedback { font-size: 13.5px; color: var(--text); margin-top: 4px; }
+    .fp-feedback.muted { color: var(--text-muted); }
+    .fp-composer-wrap { margin-top: 4px; }
+    .fp-empty { padding: 16px; text-align: center; color: var(--text-muted); font-size: 13.5px; }
+    .fp-manage-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+
     /* ── Help tooltip (giải thích thuật ngữ) ─────────────────────── */
     .help-tip {
       display: inline-flex;

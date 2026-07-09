@@ -397,6 +397,7 @@
               id: s.id, assignmentId: s.assignment_id, studentId: s.student_id,
               studentName: s.student_name || '',
               submittedAt: (s.submitted_at || '').split('T')[0],
+              submittedAtRaw: s.submitted_at || '',   // giữ cả giờ nộp cho trang thư mục
               type: s.type || 'text', content: s.content || '',
               fileUrl: s.file_url || null,
               folderId: s.folder_id || '',   // thư mục nộp bài (migration 026)

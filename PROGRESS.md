@@ -2,6 +2,26 @@
 
 > App quản lý trung tâm gia sư. Live: https://studyweb-swart.vercel.app
 
+## Thư mục nộp bài → TRANG nộp bài riêng (Moodle-style) ✅ ĐÃ LÀM
+- [x] **Bấm thư mục → sang trang nộp bài** (10-assignments.js + CSS): thay vì hiện composer/bài nộp
+      inline trong thanh bài tập, mỗi thư mục giờ là **1 dòng bấm được** (`_folderRow`) → mở
+      `_renderFolderPage()` (state `_folderView={aid,fid}`, `renderClassFeed` route sang trang này).
+      Vẫn nằm trong mục Bài tập nên **thanh nav trái + class-sidebar giữ nguyên (đồng bộ)**. Có nút
+      **← Quay lại** (`closeFolderPage`) + breadcrumb Lớp › Bài.
+- [x] **Trong trang**: thẻ hạn nộp + **đếm ngược "Còn N ngày"/"Quá hạn N ngày"** (`_daysLeftInfo`, tô
+      màu xanh/cam/đỏ theo mức khẩn); đề bài (mô tả + tài liệu GV); nút **Nộp/Cập nhật** (camera 1 chạm
+      + tệp, dùng lại `_composerHtml`/`submitWork`); **giờ nộp** đầy đủ (`_fmtDateTime` +
+      `submittedAtRaw` map mới, hiện "🕒 Nộp lúc: 09/07/2026 14:10"); **điểm + nhận xét** nếu GV đã chấm,
+      còn chưa chấm thì "⏳ Chờ giáo viên chấm điểm".
+- [x] **Phân quyền**: **HS chỉ thấy bài của mình** (`allSubs.find(studentId===_dbUserId)`), không thấy
+      bài bạn khác; **GV/Admin quản lý cả thư mục** — xem & chấm mọi bài nộp (`renderSubmissionRow` có
+      Chấm điểm/Xoá), nút **Xoá thư mục**; GV không có ô nộp. Xoá đúng thư mục đang xem → tự thoát về
+      feed; đổi section bằng nav → reset `_folderView` (không kẹt trang cũ).
+- Verify (mock, HS+GV): dòng thư mục bấm được → trang có back/countdown "Còn 2 ngày"/giờ nộp/điểm 9-10
+      /nhận xét/composer; HS KHÔNG thấy bài HS khác, GV thấy cả 2 + Xoá thư mục + Chấm điểm, GV không có
+      composer; nộp trên trang → ở lại trang, hiện bài mới + "Chờ chấm"; back về feed; đổi nav reset đúng;
+      class-sidebar vẫn hiển thị. `node --check` pass, 0 lỗi console.
+
 ## Reports & Analytics: GV chỉ thấy KPI/biểu đồ đúng môn mình dạy ✅ ĐÃ LÀM
 - [x] **Lọc theo môn GV dạy** (09-reports-comments.js `renderReports`): task đề xuất join
       `classes/class_members/subjects/profiles` qua `subject_id`, nhưng schema thật KHÔNG có cột

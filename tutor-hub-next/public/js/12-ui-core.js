@@ -429,6 +429,9 @@
         showToast('Access restricted for your role.', 'error');
         return;
       }
+      // Rời khỏi mục Bài tập bằng thanh điều hướng → thoát trang thư mục đang mở
+      // (bấm "Bài tập" luôn về feed, không kẹt ở trang thư mục cũ).
+      if (typeof _folderView !== 'undefined') _folderView = null;
       currentSection = id;
       history.replaceState(null, '', '#' + id);
       // Persist across full reloads — the iframe reloads without its hash,

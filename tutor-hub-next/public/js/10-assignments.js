@@ -47,7 +47,33 @@
       el.innerHTML = html;
     }
 
-    function selectClass(id) { currentClassId = id; renderAssignments(); }
+    function selectClass(id) { currentClassId = id; _folderView = null; renderAssignments(); }
+
+    // ── TRANG THƯ MỤC NỘP BÀI (mở khi HS/GV bấm vào 1 thư mục) ───────────
+    // _folderView = { aid, fid } → renderClassFeed vẽ trang thư mục thay cho feed.
+    var _folderView = null;
+    function openFolderPage(aid, fid) { _folderView = { aid: aid, fid: fid || '' }; renderAssignments(); window.scrollTo(0, 0); }
+    function closeFolderPage() { _folderView = null; renderAssignments(); }
+
+    // "Còn N ngày" đến hạn nộp (theo hạn của BÀI). cls: ok/warn/over để tô màu.
+    function _daysLeftInfo(dueStr) {
+      var due = _parseYMD(dueStr);
+      if (!due) return { text: 'Không có hạn nộp', cls: 'neutral' };
+      var today = _parseYMD(_ymdStr(new Date()));
+      var diff = Math.round((due.getTime() - today.getTime()) / 864e5);
+      if (diff > 1) return { text: 'Còn ' + diff + ' ngày', cls: diff <= 2 ? 'warn' : 'ok' };
+      if (diff === 1) return { text: 'Còn 1 ngày', cls: 'warn' };
+      if (diff === 0) return { text: 'Hạn hôm nay', cls: 'warn' };
+      return { text: 'Đã quá hạn ' + Math.abs(diff) + ' ngày', cls: 'over' };
+    }
+    // Định dạng ngày-giờ nộp: "09/07/2026 06:10" (giờ địa phương).
+    function _fmtDateTime(raw) {
+      if (!raw) return '';
+      var d = new Date(raw);
+      if (isNaN(d.getTime())) return String(raw).split('T')[0];
+      var p = function (n) { return String(n).padStart(2, '0'); };
+      return p(d.getDate()) + '/' + p(d.getMonth() + 1) + '/' + d.getFullYear() + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+    }
 
     // ── Kỳ học theo TUẦN (Moodle-style) ──────────────────────────
     function _pd2(n) { return String(n).padStart(2, '0'); }
@@ -79,6 +105,8 @@
     function renderClassFeed() {
       var el = document.getElementById('classFeed');
       if (!el) return;
+      // Đang mở 1 thư mục → vẽ TRANG THƯ MỤC (nộp bài / quản lý) thay cho feed.
+      if (_folderView) { el.innerHTML = _renderFolderPage(); typesetMath(el); return; }
       var isTeacher = currentUser && (currentUser.role === 'Teacher' || currentUser.role === 'Admin');
       var cls = _classesForFeed();
       var cur = cls.find(function (c) { return c.id === currentClassId; });
@@ -213,12 +241,14 @@
           '</div>'
         : '';
 
-      // Khu nộp bài — chia theo thư mục nếu GV đã tạo; nếu không → 1 khu mặc định.
+      // Khu nộp bài — nếu GV đã tạo thư mục: hiện DANH SÁCH thư mục bấm được
+      // (bấm → sang TRANG nộp bài riêng). Nếu chưa có thư mục: khu nộp mặc định inline.
       var submitArea;
       if (folders.length) {
-        submitArea = folders.map(function (f) { return _folderSection(a, f, allSubs, isStudent, isTeacher, false); }).join('');
+        var rows = folders.map(function (f) { return _folderRow(a, f, allSubs, isStudent, isTeacher); });
         if (allSubs.some(function (s) { return !(s.folderId); }))
-          submitArea += _folderSection(a, { id: '', name: 'Chưa phân loại' }, allSubs, isStudent, isTeacher, true);
+          rows.push(_folderRow(a, { id: '', name: 'Chưa phân loại' }, allSubs, isStudent, false));
+        submitArea = '<div class="folder-list">' + rows.join('') + '</div>';
       } else {
         submitArea = _folderSection(a, { id: '', name: '' }, allSubs, isStudent, isTeacher, false);
       }
@@ -254,6 +284,106 @@
       var composer = (isStudent && a.status === 'open' && !readOnly) ? _composerHtml(a, folder, mySub) : '';
       return '<div class="asn-folder">' + head +
         '<div class="asn-thread-label">💬 Bài nộp (' + subs.length + ')</div>' + thread + composer + '</div>';
+    }
+
+    // Một dòng thư mục bấm được (trong thanh bài tập) → mở TRANG nộp bài.
+    function _folderRow(a, folder, allSubs, isStudent, isTeacher) {
+      var subs = allSubs.filter(function (s) { return (s.folderId || '') === (folder.id || ''); });
+      var right;
+      if (isStudent) {
+        var mine = subs.some(function (s) { return s.studentId === _dbUserId; });
+        right = '<span class="badge ' + (mine ? 'badge-success' : 'badge-warning') + '">' + (mine ? '✅ Đã nộp' : 'Chưa nộp') + '</span>';
+      } else {
+        right = '<span class="asn-count">' + subs.length + ' bài nộp</span>';
+      }
+      var del = (isTeacher && folder.id) ? '<button class="btn btn-sm btn-ghost" onclick="event.stopPropagation();deleteFolder(' + qid(a.id) + ',' + qid(folder.id) + ')" title="Xoá thư mục" aria-label="Xoá thư mục">🗑</button>' : '';
+      return '<div class="folder-row" role="button" tabindex="0" onclick="openFolderPage(' + qid(a.id) + ',' + qid(folder.id || '') + ')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();openFolderPage(' + qid(a.id) + ',' + qid(folder.id || '') + ');}">' +
+        '<span class="folder-row-ic">📁</span>' +
+        '<span class="folder-row-name">' + escHtml(folder.name) + '</span>' +
+        '<span class="folder-row-right">' + right + del + '<span class="folder-row-chev">›</span></span>' +
+        '</div>';
+    }
+
+    // ── TRANG THƯ MỤC: HS nộp/xem bài của mình; GV quản lý & chấm cả thư mục ──
+    function _renderFolderPage() {
+      var a = assignments.find(function (x) { return String(x.id) === String(_folderView.aid); });
+      if (!a) { _folderView = null; return '<div class="card" style="padding:24px;text-align:center;color:var(--text-muted);">Không tìm thấy bài tập. <a href="#" onclick="closeFolderPage();return false;">Quay lại</a></div>'; }
+      var folders = Array.isArray(a.folders) ? a.folders : [];
+      var folder = folders.find(function (f) { return f.id === _folderView.fid; }) || { id: _folderView.fid || '', name: _folderView.fid ? 'Thư mục' : 'Chưa phân loại' };
+      var isTeacher = currentUser && (currentUser.role === 'Teacher' || currentUser.role === 'Admin');
+      var isStudent = currentUser && currentUser.role === 'Student';
+
+      var allSubs = submissions.filter(function (s) { return s.assignmentId === a.id && (s.folderId || '') === (folder.id || ''); });
+      var mySub = isStudent ? allSubs.find(function (s) { return s.studentId === _dbUserId; }) : null;
+
+      var di = _daysLeftInfo(a.dueDate);
+
+      // Thanh điều hướng: quay lại + breadcrumb lớp / bài / thư mục
+      var cur = _classesForFeed().find(function (c) { return c.id === a.classId; });
+      var head = '<div class="fp-topbar">' +
+        '<button class="btn btn-ghost btn-sm" onclick="closeFolderPage()">← Quay lại</button>' +
+        '<div class="fp-crumb">' + escHtml((cur && cur.name) || 'Lớp') + ' <span>›</span> ' + escHtml(a.title) + '</div>' +
+        '</div>';
+
+      // Tiêu đề thư mục + hạn nộp / đếm ngược
+      var titleCard = '<div class="card fp-head">' +
+        '<div class="fp-folder-title">📁 ' + escHtml(folder.name) + '</div>' +
+        '<div class="fp-deadline">' +
+        '<span class="fp-due">📅 Hạn nộp: <strong>' + escHtml(a.dueDate || 'không đặt') + '</strong></span>' +
+        '<span class="fp-countdown fp-' + di.cls + '">' + di.text + '</span>' +
+        '</div></div>';
+
+      // Đề bài (Homework) rút gọn
+      var attach = a.attachmentUrl
+        ? (_isImageUrl(a.attachmentUrl)
+            ? '<div style="margin-top:8px;"><a href="' + escAttr(a.attachmentUrl) + '" target="_blank" rel="noopener"><img src="' + escAttr(a.attachmentUrl) + '" style="max-width:100%;max-height:260px;border-radius:8px;" loading="lazy"></a></div>'
+            : '<div style="margin-top:8px;"><a class="btn btn-sm btn-ghost" href="' + escAttr(a.attachmentUrl) + '" target="_blank" rel="noopener">📎 Tài liệu / đề bài</a></div>')
+        : '';
+      var hwCard = '<div class="card"><div class="asn-sec-head">📄 Đề bài</div>' +
+        (a.description ? '<div class="asn-hw-desc">' + escHtml(a.description) + '</div>' : '<div class="asn-hw-desc muted">Giáo viên chưa ghi mô tả.</div>') +
+        attach + '</div>';
+
+      var mainCard;
+      if (isTeacher) {
+        // GV: quản lý thư mục — xem & chấm TẤT CẢ bài nộp trong thư mục.
+        var thread = allSubs.length
+          ? allSubs.map(function (s) { return renderSubmissionRow(a, s); }).join('')
+          : '<div class="asn-empty">Chưa có học sinh nào nộp bài.</div>';
+        var manage = folder.id
+          ? '<button class="btn btn-sm btn-ghost" onclick="deleteFolder(' + qid(a.id) + ',' + qid(folder.id) + ')">🗑 Xoá thư mục</button>'
+          : '';
+        mainCard = '<div class="card">' +
+          '<div class="fp-manage-head"><div class="asn-sec-head" style="margin:0;">💬 Bài nộp của học sinh (' + allSubs.length + ')</div>' + manage + '</div>' +
+          thread + '</div>';
+      } else {
+        // HS: chỉ thấy BÀI CỦA MÌNH + ô nộp + điểm/nhận xét.
+        var yourBlock;
+        if (mySub) {
+          var media = '';
+          if (mySub.fileUrl) {
+            media = _isImageUrl(mySub.fileUrl)
+              ? '<div style="margin-top:8px;"><a href="' + escAttr(mySub.fileUrl) + '" target="_blank" rel="noopener"><img src="' + escAttr(mySub.fileUrl) + '" style="max-width:100%;max-height:300px;border-radius:8px;" loading="lazy"></a></div>'
+              : '<div style="margin-top:6px;"><a href="' + escAttr(mySub.fileUrl) + '" target="_blank" rel="noopener">📎 Tệp đã nộp</a></div>';
+          }
+          var gradeBlock = (mySub.grade !== null && mySub.grade !== undefined)
+            ? '<div class="fp-grade"><div class="fp-grade-num">Điểm: ' + mySub.grade + '/10</div>' +
+              (mySub.feedback ? '<div class="fp-feedback">📝 Nhận xét: ' + escHtml(mySub.feedback) + '</div>' : '<div class="fp-feedback muted">Chưa có nhận xét.</div>') + '</div>'
+            : '<div class="fp-grade pending"><div class="fp-grade-num muted">⏳ Chờ giáo viên chấm điểm…</div></div>';
+          yourBlock = '<div class="fp-your-sub">' +
+            '<div class="fp-your-head">✅ Bài bạn đã nộp</div>' +
+            '<div class="fp-sub-time">🕒 Nộp lúc: <strong>' + escHtml(_fmtDateTime(mySub.submittedAtRaw) || mySub.submittedAt) + '</strong></div>' +
+            (mySub.content ? '<div class="fp-sub-content">' + escHtml(mySub.content) + '</div>' : '') +
+            media + gradeBlock + '</div>';
+        } else {
+          yourBlock = '<div class="fp-empty">Bạn chưa nộp bài cho thư mục này.</div>';
+        }
+        var composer = (a.status === 'open')
+          ? '<div class="fp-composer-wrap"><div class="asn-sec-head">' + (mySub ? '✏️ Nộp lại / cập nhật' : '📤 Nộp bài') + '</div>' + _composerHtml(a, folder, mySub) + '</div>'
+          : '<div class="fp-empty">Bài tập đã đóng, không thể nộp.</div>';
+        mainCard = '<div class="card">' + yourBlock + composer + '</div>';
+      }
+
+      return head + titleCard + hwCard + mainCard;
     }
 
     // Ô soạn nộp bài (📸 camera 1 chạm + 📎 tệp) cho 1 thư mục cụ thể.
@@ -506,6 +636,8 @@
         _persistFolders(a, function (err) {
           if (err) { a.folders = old; showToast('Xoá thư mục lỗi: ' + (err.message || ''), 'error'); return; }
           showToast('Đã xoá thư mục.', 'success');
+          // Đang xem đúng thư mục vừa xoá → thoát trang thư mục về feed.
+          if (_folderView && _folderView.aid === assignmentId && _folderView.fid === folderId) _folderView = null;
           renderAssignments();
           if (inModal) openFolderModal(a.id);
         });
@@ -566,7 +698,7 @@
       _db.from('assignment_submissions').select('*').order('submitted_at', { ascending: false }).then(function (r) {
         if (!r.error && r.data) {
           submissions = r.data.map(function (s) {
-            return { id: s.id, assignmentId: s.assignment_id, studentId: s.student_id, studentName: s.student_name || '', submittedAt: (s.submitted_at || '').split('T')[0], type: s.type || 'text', content: s.content || '', fileUrl: s.file_url || null, folderId: s.folder_id || '', grade: (s.grade != null ? Number(s.grade) : null), feedback: s.feedback || null };
+            return { id: s.id, assignmentId: s.assignment_id, studentId: s.student_id, studentName: s.student_name || '', submittedAt: (s.submitted_at || '').split('T')[0], submittedAtRaw: s.submitted_at || '', type: s.type || 'text', content: s.content || '', fileUrl: s.file_url || null, folderId: s.folder_id || '', grade: (s.grade != null ? Number(s.grade) : null), feedback: s.feedback || null };
           });
         }
         renderAssignments();
