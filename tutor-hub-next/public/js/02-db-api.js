@@ -368,6 +368,8 @@
         if (r.error) { _dbError.assignments = _dbErrMsg(r.error); if (currentSection === 'assignments') renderAssignments(); return; }
         delete _dbError.assignments;
         if (r.data) {
+          // Phát hiện migration 026 (cột 'folders') đã chạy chưa → bật/tắt UI thư mục.
+          if (r.data.length) { try { _setAsnFolders('folders' in r.data[0]); } catch (e) { } }
           assignments = r.data.map(function (a) {
             return {
               id: a.id, title: a.title, subject: a.subject || '',

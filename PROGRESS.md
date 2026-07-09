@@ -30,6 +30,13 @@
       toast; mobile nút 44px; 0 lỗi console; `node --check` pass.
 - **Việc thủ công**: chạy `026_assignment_folders.sql` trong Supabase để bật thư mục nộp bài (không
       chạy vẫn nộp bài bình thường ở khu mặc định).
+- [x] **Fix spam 400 "Could not find the 'folders' column" khi tạo thư mục** (chưa chạy migration 026):
+      thêm cờ `_asnFoldersReady` (localStorage `th_asn_folders`). Phát hiện cột `folders` tồn tại hay
+      không NGAY khi tải bài tập (`'folders' in row` của `select('*')` — KHÔNG tốn query/400). Khi CHƯA
+      bật, nút "📁 Tạo thư mục" mở **bảng hướng dẫn** (`_folderSetupModal`: 3 bước + SQL copy sẵn) thay vì
+      gọi DB → hết 400 trong F12. `saveFolder` cũng chặn khi chưa bật. Tự bật lại khi migration đã chạy
+      (cột xuất hiện → cờ '1'). Verify: pre-migration mở modal = 0 PATCH + hiện guide; post-migration tạo
+      thư mục lưu bình thường; 0 lỗi console.
 
 ## UX cho Học sinh cấp 2 (11–15 tuổi): camera + to-do + nav gọn + confetti ✅ ĐÃ LÀM
 Tối ưu trải nghiệm HS trên điện thoại/PC. Giữ classic-JS scope, không đụng auth/RLS.

@@ -154,6 +154,20 @@
     // Khoá token an toàn cho id phần tử DOM theo thư mục ('' → 'main').
     function _fkey(folderId) { return folderId ? String(folderId) : 'main'; }
 
+    // Migration 026 (cột assignments.folders) đã chạy chưa? Nếu CHƯA thì mọi thao tác
+    // thư mục sẽ bị Supabase trả 400 "Could not find the 'folders' column" (spam F12).
+    // Ta phát hiện & lưu cờ; khi chưa bật thì nút "Tạo thư mục" mở bảng HƯỚNG DẪN
+    // thay vì gọi DB (không lỗi). Tự bật lại khi cột đã có (chạy migration xong + tải lại).
+    var _asnFoldersReady = (function () { try { var v = localStorage.getItem('th_asn_folders'); return v === '1' ? true : (v === '0' ? false : null); } catch (e) { return null; } })();
+    function _setAsnFolders(v) { _asnFoldersReady = !!v; try { localStorage.setItem('th_asn_folders', v ? '1' : '0'); } catch (e) { } }
+    function _ensureAsnFolders(cb) {
+      if (_asnFoldersReady !== null) { cb(_asnFoldersReady); return; }
+      if (!_db) { cb(false); return; }
+      _db.from('assignments').select('folders').limit(1)
+        .then(function (r) { if (r.error && _isSchemaErr(r.error)) { _setAsnFolders(false); cb(false); } else { _setAsnFolders(true); cb(true); } })
+        .catch(function () { cb(false); });
+    }
+
     // MỘT thanh bài tập (accordion). Bấm thanh → mở phần Đề bài (GV) + Nộp bài (HS).
     // Thay cho giao diện "Facebook feed" cũ (card cuộn dọc luôn mở).
     function renderPostCard(a) {
@@ -420,10 +434,33 @@
       _db.from('assignments').update({ folders: a.folders }).eq('id', String(a.id))
         .then(function (r) { cb(r.error || null); }).catch(function (e) { cb(e); });
     }
+    // Bảng hướng dẫn bật thư mục khi migration 026 CHƯA chạy (thay vì gọi DB → 400).
+    function _folderSetupModal() {
+      var sql = "-- Supabase → SQL Editor → dán & Run:\n" +
+        "alter table assignments add column if not exists folders jsonb not null default '[]'::jsonb;\n" +
+        "alter table assignment_submissions add column if not exists folder_id text not null default '';\n" +
+        "alter table assignment_submissions drop constraint if exists assignment_submissions_assignment_id_student_id_key;\n" +
+        "alter table assignment_submissions add constraint assignment_submissions_asn_stu_folder_key unique (assignment_id, student_id, folder_id);";
+      openModal('<div class="modal-header"><h3>📁 Bật thư mục nộp bài</h3><button class="modal-close" onclick="closeModal()" aria-label="Đóng">✕</button></div>' +
+        '<div class="modal-body">' +
+        '<div class="hint">Tính năng “Thư mục nộp bài” cần bật <strong>một lần</strong> trên Supabase (migration 026). Sau khi chạy xong, tải lại trang là dùng được.</div>' +
+        '<div style="margin-top:10px;font-weight:600;font-size:13px;">Các bước:</div>' +
+        '<ol style="margin:6px 0 10px 18px;font-size:13.5px;line-height:1.7;">' +
+        '<li>Mở <strong>Supabase</strong> → dự án của bạn → <strong>SQL Editor</strong>.</li>' +
+        '<li>Dán đoạn lệnh dưới đây rồi bấm <strong>Run</strong>.</li>' +
+        '<li>Quay lại đây, <strong>tải lại trang</strong> (F5).</li></ol>' +
+        '<textarea class="form-textarea" readonly rows="6" style="font-family:monospace;font-size:12px;" onclick="this.select()">' + escHtml(sql) + '</textarea>' +
+        '<div class="hint" style="margin-top:8px;">Chưa bật cũng không sao — học sinh vẫn nộp bài bình thường ở khu nộp mặc định.</div>' +
+        '</div>' +
+        '<div class="modal-footer"><button class="btn btn-primary" onclick="closeModal()">Đã hiểu</button></div>');
+    }
+
     function openFolderModal(assignmentId) {
       var a = assignments.find(function (x) { return String(x.id) === String(assignmentId); });
       if (!a) return;
       if (!(currentUser && (currentUser.role === 'Teacher' || currentUser.role === 'Admin'))) { showToast('Chỉ GV/Admin tạo thư mục.', 'error'); return; }
+      // Chưa chạy migration 026 → hướng dẫn bật, KHÔNG gọi DB (tránh lỗi 400 spam F12).
+      if (_asnFoldersReady !== true) { _ensureAsnFolders(function (ok) { if (ok) openFolderModal(assignmentId); else _folderSetupModal(); }); return; }
       var list = (a.folders && a.folders.length)
         ? '<div class="asn-folder-list">' + a.folders.map(function (f) {
             return '<div class="asn-folder-row"><span>📁 ' + escHtml(f.name) + '</span><button class="btn btn-sm btn-ghost" onclick="deleteFolder(' + qid(a.id) + ',' + qid(f.id) + ')" title="Xoá">🗑</button></div>';
@@ -441,12 +478,19 @@
     function saveFolder(assignmentId) {
       var a = assignments.find(function (x) { return String(x.id) === String(assignmentId); });
       if (!a) return;
+      if (_asnFoldersReady === false) { _folderSetupModal(); return; }   // chưa bật → hướng dẫn
       var name = ((document.getElementById('mFolderName') || {}).value || '').trim();
       if (!name) { showToast('Nhập tên thư mục.', 'error'); return; }
       a.folders = Array.isArray(a.folders) ? a.folders : [];
       a.folders.push({ id: _genFolderId(), name: name });
       _persistFolders(a, function (err) {
-        if (err) { a.folders.pop(); showToast('Lưu thư mục lỗi (cần migration 026?): ' + (err.message || ''), 'error'); return; }
+        if (err) {
+          a.folders.pop();
+          if (_isSchemaErr(err)) { _setAsnFolders(false); _folderSetupModal(); }
+          else showToast('Lưu thư mục lỗi: ' + (err.message || ''), 'error');
+          return;
+        }
+        _setAsnFolders(true);
         showToast('Đã tạo thư mục nộp bài.', 'success');
         renderAssignments();
         openFolderModal(a.id);   // mở lại modal với danh sách mới
