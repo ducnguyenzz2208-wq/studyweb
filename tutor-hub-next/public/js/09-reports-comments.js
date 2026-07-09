@@ -1,7 +1,23 @@
     // ============================================================
     // REPORTS SECTION
     // ============================================================
+    // GV chỉ thấy KPI/biểu đồ của (các) môn mình dạy. `classes` đã được
+    // loadDbData() scope theo owner_id=GV từ trước (RLS 008) nên không cần
+    // query Supabase riêng — chỉ cần suy ra danh sách môn từ lớp GV sở hữu.
+    // Admin/Parent/Student: không lọc, giữ nguyên overview toàn trung tâm.
+    function _teacherReportSubjects() {
+      if (!(currentUser && currentUser.role === 'Teacher')) return null;
+      var set = {};
+      classes.forEach(function (c) { if (c.subject) set[c.subject] = 1; });
+      return Object.keys(set);
+    }
+
     function renderReports() {
+      var teacherSubjects = _teacherReportSubjects();   // null = không lọc (Admin/khác)
+      // Không lớp/không xác định môn nào → không ẩn gì (an toàn, tránh trắng báo cáo).
+      var showMath = !teacherSubjects || !teacherSubjects.length || teacherSubjects.indexOf('Math') !== -1;
+      var showEng = !teacherSubjects || !teacherSubjects.length || teacherSubjects.indexOf('English') !== -1;
+
       // KPI cards
       var totalStudents = students.length;
       var avgMath = totalStudents ? Math.round(students.reduce(function (s, x) { return s + x.mathScore; }, 0) / totalStudents) : 0;
@@ -14,36 +30,47 @@
       var activeSet = {};
       attendanceRecords.forEach(function (r) { if (r.date >= cutoff && r.status !== 'absent') activeSet[r.studentRef || r.studentName] = 1; });
       var activeCount = Object.keys(activeSet).length;
-      var atRiskCount = students.filter(function (s) { return s.mathScore < 70 || s.engScore < 70 || (s.attendance || 0) < 75; }).length;
+      // Điểm TB chỉ tính trên (các) môn GV thực dạy — GV dạy 1 môn thì hạng/điểm
+      // Top Students & At-Risk phải theo đúng môn đó, không trộn điểm môn GV không dạy.
+      function _relevantAvg(s) {
+        if (showMath && showEng) return (s.mathScore + s.engScore) / 2;
+        if (showMath) return s.mathScore;
+        if (showEng) return s.engScore;
+        return (s.mathScore + s.engScore) / 2;
+      }
+      var atRiskCount = students.filter(function (s) {
+        return (showMath && s.mathScore < 70) || (showEng && s.engScore < 70) || (s.attendance || 0) < 75;
+      }).length;
       var paid = payments.filter(function (p) { return p.status === 'Paid'; }).length;
       var overdueN = payments.filter(function (p) { return p.status === 'Overdue'; }).length;
       var kpiEl = document.getElementById('reportKPIs');
       kpiEl.innerHTML = [
         { num: totalStudents, label: 'Tổng học viên', change: activeCount + ' active (30 ngày)', up: true, color: 'var(--accent)' },
-        { num: avgMath + '%', label: 'Điểm TB Toán', change: 'trên ' + totalStudents + ' HV', up: avgMath >= 70, color: 'var(--accent2)' },
-        { num: avgEng + '%', label: 'Điểm TB Anh', change: 'trên ' + totalStudents + ' HV', up: avgEng >= 70, color: 'var(--accent3)' },
+        showMath && { num: avgMath + '%', label: 'Điểm TB Toán', change: 'trên ' + totalStudents + ' HV', up: avgMath >= 70, color: 'var(--accent2)' },
+        showEng && { num: avgEng + '%', label: 'Điểm TB Anh', change: 'trên ' + totalStudents + ' HV', up: avgEng >= 70, color: 'var(--accent3)' },
         { num: realAvgAtt + '%', label: 'Chuyên cần', change: attendanceRecords.length + ' lượt điểm danh', up: realAvgAtt >= 80, color: 'var(--accent4)' },
         { num: atRiskCount, label: 'HV cần chú ý', change: atRiskCount ? 'điểm/chuyên cần thấp' : 'không có 🎉', up: atRiskCount === 0, color: 'var(--danger)' },
         { num: paid + '/' + payments.length, label: 'Khoản đã thu', change: overdueN + ' quá hạn', up: overdueN === 0, color: 'var(--success)' },
-      ].map(function (k) {
+      ].filter(Boolean).map(function (k) {
         return '<div class="report-kpi"><div class="rk-num" style="color:' + k.color + '">' + k.num + '</div><div class="rk-label">' + k.label + '</div><div class="rk-change ' + (k.up ? 'rk-up' : 'rk-down') + '">' + k.change + '</div></div>';
       }).join('');
 
       // Top students
-      var sorted = students.slice().sort(function (a, b) { return ((b.mathScore + b.engScore) / 2) - ((a.mathScore + a.engScore) / 2); });
+      var sorted = students.slice().sort(function (a, b) { return _relevantAvg(b) - _relevantAvg(a); });
       var topEl = document.getElementById('topStudentsList');
       topEl.innerHTML = sorted.slice(0, 5).map(function (s, i) {
-        var avg = Math.round((s.mathScore + s.engScore) / 2);
+        var avg = Math.round(_relevantAvg(s));
         var rankCls = i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : '';
         return '<div class="top-student-row"><div class="ts-rank ' + rankCls + '">' + (i + 1) + '</div><div class="ts-name">' + s.name + '<div style="font-size:11px;color:var(--text-muted);">' + s.class + '</div></div><div class="ts-score">' + avg + '%</div></div>';
       }).join('');
 
       // At-risk students
-      var risky = students.filter(function (s) { return s.mathScore < 70 || s.engScore < 70 || s.attendance < 75; });
+      var risky = students.filter(function (s) { return (showMath && s.mathScore < 70) || (showEng && s.engScore < 70) || s.attendance < 75; });
       var riskEl = document.getElementById('atRiskList');
       riskEl.innerHTML = risky.length ? risky.map(function (s) {
-        var high = s.mathScore < 60 || s.attendance < 65;
-        return '<div class="atrisk-row"><div class="atrisk-indicator ' + (high ? 'risk-high' : 'risk-med') + '"></div><div style="flex:1;font-size:13px;"><strong>' + s.name + '</strong><div style="font-size:11px;color:var(--text-muted);">Math:' + s.mathScore + '% · Eng:' + s.engScore + '% · Att:' + s.attendance + '%</div></div></div>';
+        var high = (showMath && s.mathScore < 60) || s.attendance < 65;
+        var scoreLine = (showMath ? 'Math:' + s.mathScore + '% ' : '') + (showMath && showEng ? '· ' : '') + (showEng ? 'Eng:' + s.engScore + '% · ' : '') + 'Att:' + s.attendance + '%';
+        return '<div class="atrisk-row"><div class="atrisk-indicator ' + (high ? 'risk-high' : 'risk-med') + '"></div><div style="flex:1;font-size:13px;"><strong>' + s.name + '</strong><div style="font-size:11px;color:var(--text-muted);">' + scoreLine + '</div></div></div>';
       }).join('') : '<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:13px;">No at-risk students 🎉</div>';
 
       // Charts
@@ -55,8 +82,10 @@
           type: 'bar',
           data: {
             labels: ['<60', '60-69', '70-79', '80-89', '90-100'],
+            // GV không dạy môn nào thì ẩn hẳn dataset môn đó (rule 3: "Hide all
+            // other subjects entirely") — không chỉ Admin mới thấy đủ cả 2 môn.
             datasets: [
-              {
+              showMath && {
                 label: 'Math', backgroundColor: 'rgba(59,130,246,0.7)', data: [
                   students.filter(function (s) { return s.mathScore < 60; }).length,
                   students.filter(function (s) { return s.mathScore >= 60 && s.mathScore < 70; }).length,
@@ -65,7 +94,7 @@
                   students.filter(function (s) { return s.mathScore >= 90; }).length,
                 ]
               },
-              {
+              showEng && {
                 label: 'English', backgroundColor: 'rgba(139,92,246,0.7)', data: [
                   students.filter(function (s) { return s.engScore < 60; }).length,
                   students.filter(function (s) { return s.engScore >= 60 && s.engScore < 70; }).length,
@@ -74,15 +103,20 @@
                   students.filter(function (s) { return s.engScore >= 90; }).length,
                 ]
               }
-            ]
+            ].filter(Boolean)
           },
           options: { responsive: true, plugins: { legend: { labels: { color: getChartTextColor(), font: { size: 11 } } } }, scales: { x: { ticks: { color: getChartTextColor() }, grid: { color: getChartGridColor() } }, y: { ticks: { color: getChartTextColor() }, grid: { color: getChartGridColor() }, beginAtZero: true } } }
         });
       }
       if (hwCtx) {
         if (reportCharts.hw) reportCharts.hw.destroy();
-        // Số bài nộp theo bài tập (thật) — thay chart homework demo đã bỏ
-        var asgList = assignments.slice(0, 8);
+        // Số bài nộp theo bài tập (thật) — thay chart homework demo đã bỏ.
+        // GV: chỉ bài tập thuộc (các) môn mình dạy (assignments đã owner-scoped
+        // sẵn, lọc thêm theo subject cho đúng rule "chỉ hiện đúng môn được giao").
+        var asgPool = teacherSubjects && teacherSubjects.length
+          ? assignments.filter(function (a) { return teacherSubjects.indexOf(a.subject) !== -1; })
+          : assignments;
+        var asgList = asgPool.slice(0, 8);
         var hwData = asgList.map(function (a) { return submissions.filter(function (s) { return s.assignmentId === a.id; }).length; });
         var hwLabels = asgList.map(function (a) { return (a.title || '').substring(0, 18); });
         reportCharts.hw = new Chart(hwCtx, {

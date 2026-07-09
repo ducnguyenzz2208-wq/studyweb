@@ -2,6 +2,26 @@
 
 > App quản lý trung tâm gia sư. Live: https://studyweb-swart.vercel.app
 
+## Reports & Analytics: GV chỉ thấy KPI/biểu đồ đúng môn mình dạy ✅ ĐÃ LÀM
+- [x] **Lọc theo môn GV dạy** (09-reports-comments.js `renderReports`): task đề xuất join
+      `classes/class_members/subjects/profiles` qua `subject_id`, nhưng schema thật KHÔNG có cột
+      `subject_id` — `classes.subject` là TEXT, và `classes` cho GV **đã được `loadDbData()` scope sẵn**
+      theo `owner_id = GV` (RLS 008). Nên bỏ qua query Supabase thêm; `_teacherReportSubjects()` suy môn
+      GV dạy trực tiếp từ mảng `classes` đang có trong bộ nhớ (distinct `c.subject`), 0 query mới.
+- [x] Ẩn hẳn KPI **"Điểm TB Toán"/"Điểm TB Anh"** nếu GV không dạy môn đó; **Score Distribution** chỉ vẽ
+      dataset Math/English tương ứng (`.filter(Boolean)`); **Top Students/At-Risk** xếp hạng & hiện điểm
+      theo ĐÚNG môn GV dạy (`_relevantAvg`) — dạy 1 môn thì không trộn điểm môn kia; **Số bài nộp theo
+      bài tập** lọc `assignments` theo đúng (các) môn GV dạy trước khi vẽ. Dạy nhiều môn (Math+English) →
+      giữ nguyên hành vi gộp trung bình như cũ. GV không dạy Math/English (vd chỉ Chinese, đúng như
+      trường hợp thật) → cả 2 KPI/dataset ẩn, `_relevantAvg` fallback về trung bình gộp (an toàn, tránh
+      Top Students trống trơn). Admin/vai trò khác: `teacherSubjects=null` → không lọc, giữ nguyên
+      overview toàn trung tâm.
+- Verify (mock 4 kịch bản): GV chỉ dạy Chinese → ẩn cả 2 KPI điểm, biểu đồ điểm 0 dataset, biểu đồ nộp
+      bài chỉ còn bài Chinese; GV dạy Math+English → y hệt hành vi cũ (gộp điểm, sort đúng); GV chỉ dạy
+      Math → ẩn KPI Anh, chỉ dataset Math, Top Students xếp theo mathScore riêng; Admin dù chỉ có 1 lớp
+      Chinese trong bộ nhớ vẫn thấy đủ Math+English/toàn bộ bài tập (không bị lọc). 0 lỗi console;
+      `node --check` pass.
+
 ## Fix: Link tài liệu bị 404/403 khi bấm (đang cố Download thay vì mở link) ✅ ĐÃ LÀM
 - [x] **Nguyên nhân gốc — lệch tên thuộc tính `type` vs `fileType`** (24-materials.js, bug có TỪ TRƯỚC,
       không phải do tính năng Link gây ra): `loadMaterials()` (02-db-api.js) và cả nhánh lưu cục bộ trong
