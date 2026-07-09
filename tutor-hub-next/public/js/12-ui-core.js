@@ -388,7 +388,7 @@
     }
 
     function fileBadgeClass(type) {
-      return { PDF: 'pdf', PPT: 'ppt', DOC: 'doc', XLS: 'xls', Image: 'img' }[type] || 'pdf';
+      return { PDF: 'pdf', PPT: 'ppt', DOC: 'doc', XLS: 'xls', Image: 'img', Link: 'link' }[type] || 'pdf';
     }
 
     function generateMockBlob(name, type) {

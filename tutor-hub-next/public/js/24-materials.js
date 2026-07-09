@@ -9,6 +9,8 @@
     }
 
     function _isImageUrl(u) { return !!u && /\.(png|jpe?g|gif|webp|bmp|svg)(\?|#|$)/i.test(u); }
+    // Tên miền gọn cho tài liệu dạng Link (vd "drive.google.com").
+    function _linkHost(u) { try { return new URL(u).hostname.replace(/^www\./, ''); } catch (e) { return 'liên kết ngoài'; } }
     function _isImage(m) {
       if (!m) return false;
       if (m.fileType === 'Image') return true;
@@ -40,8 +42,9 @@
         return;
       }
       grid.innerHTML = list.map(function (m) {
+        var isLink = m.fileType === 'Link';
         var url = m.downloadUrl || generateMockBlob(m.fileName, m.fileType);
-        var isImg = _isImage(m) && m.downloadUrl && /^https?:/i.test(m.downloadUrl);
+        var isImg = !isLink && _isImage(m) && m.downloadUrl && /^https?:/i.test(m.downloadUrl);
         // qid() bọc id trong dấu nháy — BẮT BUỘC vì id DB là UUID (vd d1371f60-491d-…);
         // nếu chèn thẳng, onclick="deleteMaterial(d1371f60-491d-…)" → "491d" là token số
         // sai cú pháp → Uncaught SyntaxError, click không chạy được (không xoá được file).
@@ -58,16 +61,33 @@
           '<div class="mat-title">' + escHtml(m.title) + '</div>' +
           media +
           '<div class="mat-desc">' + m.description + '</div>' +
-          '<div class="mat-meta"><span>📅 ' + escHtml(m.uploadDate) + '</span><span>📁 ' + escHtml(m.fileName) + '</span></div>' +
-          '<a class="mat-download" href="' + url + '"' + (isImg ? ' target="_blank" rel="noopener"' : ' download="' + escHtml(m.fileName) + '"') + '>' + (isImg ? '🔍 Xem ảnh đầy đủ' : '⬇ Download') + '</a>' +
+          '<div class="mat-meta"><span>📅 ' + escHtml(m.uploadDate) + '</span>' +
+          (isLink
+            ? '<span title="' + escAttr(m.downloadUrl) + '">🔗 ' + escHtml(_linkHost(m.downloadUrl)) + '</span>'
+            : '<span>📁 ' + escHtml(m.fileName) + '</span>') +
+          '</div>' +
+          (isLink
+            ? '<a class="mat-download" href="' + escAttr(m.downloadUrl) + '" target="_blank" rel="noopener">🔗 Mở liên kết</a>'
+            : '<a class="mat-download" href="' + url + '"' + (isImg ? ' target="_blank" rel="noopener"' : ' download="' + escHtml(m.fileName) + '"') + '>' + (isImg ? '🔍 Xem ảnh đầy đủ' : '⬇ Download') + '</a>') +
           '</div>';
       }).join('');
       typesetMath(grid);
     }
 
+    // Loại "Link" hiện ô nhập URL thay cho ô chọn tệp; các loại khác hiện ô chọn tệp.
+    function toggleMatSource() {
+      var t = (document.getElementById('mMatType') || {}).value;
+      var isLink = (t === 'Link');
+      var fw = document.getElementById('mMatFileWrap');
+      var uw = document.getElementById('mMatUrlWrap');
+      if (fw) fw.style.display = isLink ? 'none' : '';
+      if (uw) uw.style.display = isLink ? '' : 'none';
+    }
+
     function openMaterialModal(id) {
       var m = id ? materials.find(function (x) { return x.id === id; }) : null;
-      var title = m ? 'Edit Material' : 'Upload Material';
+      var isLink = !!(m && m.fileType === 'Link');
+      var title = m ? 'Sửa tài liệu' : 'Tải lên tài liệu';
       var html = '<div class="modal-header"><h3>' + title + '</h3><button class="modal-close" onclick="closeModal()">✕</button></div>' +
         '<div class="modal-body">' +
         '<div class="form-group"><label>Title</label><input class="form-input" id="mMatTitle" value="' + (m ? escHtml(m.title) : '') + '"></div>' +
@@ -78,10 +98,11 @@
         '</select></div>' +
         '</div>' +
         '<div class="form-row">' +
-        '<div class="form-group"><label>File Type</label><select class="form-select" id="mMatType">' +
-        ['PDF', 'PPT', 'DOC', 'XLS', 'Image'].map(function (t) { return '<option value="' + t + '"' + (m && m.fileType === t ? ' selected' : '') + '>' + t + '</option>'; }).join('') +
+        '<div class="form-group"><label>Loại / Type</label><select class="form-select" id="mMatType" onchange="toggleMatSource()">' +
+        ['PDF', 'PPT', 'DOC', 'XLS', 'Image', 'Link'].map(function (t) { return '<option value="' + t + '"' + (m && m.fileType === t ? ' selected' : '') + '>' + (t === 'Link' ? '🔗 Link (URL)' : t) + '</option>'; }).join('') +
         '</select></div>' +
-        '<div class="form-group"><label>File</label><input class="form-input" type="file" id="mMatFile"></div>' +
+        '<div class="form-group" id="mMatFileWrap"' + (isLink ? ' style="display:none;"' : '') + '><label>Tệp / File</label><input class="form-input" type="file" id="mMatFile"></div>' +
+        '<div class="form-group" id="mMatUrlWrap"' + (isLink ? '' : ' style="display:none;"') + '><label>Đường dẫn (URL)</label><input class="form-input" type="url" id="mMatUrl" placeholder="https://..." value="' + (isLink ? escAttr(m.downloadUrl || '') : '') + '"></div>' +
         '</div>' +
         '<div class="form-group"><label>Description</label><textarea class="form-textarea" id="mMatDesc" oninput="updateMatPreview()">' + (m ? escHtml(m.description || '') : '') + '</textarea>' +
         '<div class="hint">Use TeX syntax for Math formulas if needed.</div></div>' +
@@ -117,6 +138,7 @@
       var subject = document.getElementById('mMatSubject').value;
       var classVal = document.getElementById('mMatClass') ? document.getElementById('mMatClass').value : '';
       var description = document.getElementById('mMatDesc') ? document.getElementById('mMatDesc').value.trim() : '';
+      var linkUrl = document.getElementById('mMatUrl') ? document.getElementById('mMatUrl').value.trim() : '';
 
       function _doSave(fileUrl, fileName, filePath) {
         hideBusy();
@@ -159,6 +181,14 @@
             closeModal(); renderMaterials();
           }
         }
+      }
+
+      // Loại "Link": lưu URL, KHÔNG upload storage. Tự thêm https:// nếu thiếu.
+      if (fileType === 'Link') {
+        if (!linkUrl) { showToast('Nhập đường dẫn (URL).', 'error'); return; }
+        var normUrl = /^(https?:|mailto:|tel:)/i.test(linkUrl) ? linkUrl : ('https://' + linkUrl);
+        _doSave(normUrl, '', '');   // fileName rỗng — đây là liên kết, không phải tệp
+        return;
       }
 
       if (file && _db) {

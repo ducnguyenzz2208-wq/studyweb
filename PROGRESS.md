@@ -2,6 +2,16 @@
 
 > App quản lý trung tâm gia sư. Live: https://studyweb-swart.vercel.app
 
+## Materials: cho phép đăng LINK (URL) ngoài tệp ✅ ĐÃ LÀM
+- [x] **Thêm loại "🔗 Link (URL)" trong Tài liệu** (24-materials.js + 12-ui-core.js + HTML): trước đây
+      chỉ up được TỆP. Nay chọn loại **Link** ở modal → ô "File" đổi thành ô **URL** (`toggleMatSource()`
+      ẩn/hiện theo loại). `saveMaterial` nhận loại Link → lưu URL vào `file_url`/`url` (tự thêm `https://`
+      nếu thiếu), KHÔNG upload storage. Thẻ tài liệu Link hiện badge **Link** (màu cyan), meta hiện tên
+      miền (`_linkHost`, vd "drive.google.com"), nút **"🔗 Mở liên kết"** mở tab mới (`target=_blank`) —
+      học sinh bấm là vào link GV gửi. Bộ lọc loại thêm option **Link**. `deleteMaterial` không cố xoá
+      storage với link ngoài (path rỗng). Cột `materials.type` là TEXT (không CHECK) nên lưu 'Link' an toàn.
+      Verify: mock tạo Link → lưu url + type=Link; render nút mở liên kết target=_blank; up tệp vẫn như cũ.
+
 ## Fix Materials delete + Assignments dạng thanh ngang (Moodle) + thư mục nộp bài ✅ ĐÃ LÀM
 - [x] **Fix "không xoá được tài liệu" + hết `Uncaught SyntaxError`** (24-materials.js): id tài liệu DB
       là **UUID** (vd `d1371f60-491d-…`) nhưng nút Sửa/Xoá chèn id **KHÔNG có nháy** →
