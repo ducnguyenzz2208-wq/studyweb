@@ -13,7 +13,7 @@
     function _linkHost(u) { try { return new URL(u).hostname.replace(/^www\./, ''); } catch (e) { return 'liên kết ngoài'; } }
     function _isImage(m) {
       if (!m) return false;
-      if (m.fileType === 'Image') return true;
+      if (m.type === 'Image') return true;
       return _isImageUrl(m.fileName) || _isImageUrl(m.downloadUrl);
     }
 
@@ -23,7 +23,7 @@
       var list = materials.filter(function (m) {
         return (!q || m.title.toLowerCase().includes(q)) &&
           (currentMatFilter === 'All' || m.subject === currentMatFilter) &&
-          (!typeF || m.fileType === typeF);
+          (!typeF || m.type === typeF);
       });
       var grid = document.getElementById('materialGrid');
       if (_dbError && _dbError.materials && !materials.length) {
@@ -42,8 +42,8 @@
         return;
       }
       grid.innerHTML = list.map(function (m) {
-        var isLink = m.fileType === 'Link';
-        var url = m.downloadUrl || generateMockBlob(m.fileName, m.fileType);
+        var isLink = m.type === 'Link';
+        var url = m.downloadUrl || generateMockBlob(m.fileName, m.type);
         var isImg = !isLink && _isImage(m) && m.downloadUrl && /^https?:/i.test(m.downloadUrl);
         // qid() bọc id trong dấu nháy — BẮT BUỘC vì id DB là UUID (vd d1371f60-491d-…);
         // nếu chèn thẳng, onclick="deleteMaterial(d1371f60-491d-…)" → "491d" là token số
@@ -54,7 +54,7 @@
           : '';
         return '<div class="material-card">' + editBtns +
           '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">' +
-          '<span class="file-badge ' + fileBadgeClass(m.fileType) + '">' + escHtml(m.fileType) + '</span>' +
+          '<span class="file-badge ' + fileBadgeClass(m.type) + '">' + escHtml(m.type) + '</span>' +
           '<span class="badge ' + (m.subject === 'Math' ? 'badge-purple' : 'badge-success') + '">' + escHtml(m.subject) + '</span>' +
           '<span class="badge badge-info">' + escHtml(m.class) + '</span>' +
           '</div>' +
@@ -86,7 +86,7 @@
 
     function openMaterialModal(id) {
       var m = id ? materials.find(function (x) { return x.id === id; }) : null;
-      var isLink = !!(m && m.fileType === 'Link');
+      var isLink = !!(m && m.type === 'Link');
       var title = m ? 'Sửa tài liệu' : 'Tải lên tài liệu';
       var html = '<div class="modal-header"><h3>' + title + '</h3><button class="modal-close" onclick="closeModal()">✕</button></div>' +
         '<div class="modal-body">' +
@@ -99,7 +99,7 @@
         '</div>' +
         '<div class="form-row">' +
         '<div class="form-group"><label>Loại / Type</label><select class="form-select" id="mMatType" onchange="toggleMatSource()">' +
-        ['PDF', 'PPT', 'DOC', 'XLS', 'Image', 'Link'].map(function (t) { return '<option value="' + t + '"' + (m && m.fileType === t ? ' selected' : '') + '>' + (t === 'Link' ? '🔗 Link (URL)' : t) + '</option>'; }).join('') +
+        ['PDF', 'PPT', 'DOC', 'XLS', 'Image', 'Link'].map(function (t) { return '<option value="' + t + '"' + (m && m.type === t ? ' selected' : '') + '>' + (t === 'Link' ? '🔗 Link (URL)' : t) + '</option>'; }).join('') +
         '</select></div>' +
         '<div class="form-group" id="mMatFileWrap"' + (isLink ? ' style="display:none;"' : '') + '><label>Tệp / File</label><input class="form-input" type="file" id="mMatFile"></div>' +
         '<div class="form-group" id="mMatUrlWrap"' + (isLink ? '' : ' style="display:none;"') + '><label>Đường dẫn (URL)</label><input class="form-input" type="url" id="mMatUrl" placeholder="https://..." value="' + (isLink ? escAttr(m.downloadUrl || '') : '') + '"></div>' +

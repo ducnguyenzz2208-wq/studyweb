@@ -2,6 +2,26 @@
 
 > App quản lý trung tâm gia sư. Live: https://studyweb-swart.vercel.app
 
+## Fix: Link tài liệu bị 404/403 khi bấm (đang cố Download thay vì mở link) ✅ ĐÃ LÀM
+- [x] **Nguyên nhân gốc — lệch tên thuộc tính `type` vs `fileType`** (24-materials.js, bug có TỪ TRƯỚC,
+      không phải do tính năng Link gây ra): `loadMaterials()` (02-db-api.js) và cả nhánh lưu cục bộ trong
+      `saveMaterial` đều gán loại tài liệu vào thuộc tính **`m.type`**. Nhưng `renderMaterials`,
+      `_isImage`, `fileBadgeClass`, bộ lọc loại, và `openMaterialModal` lại đọc **`m.fileType`** (luôn
+      `undefined` với dữ liệu thật từ DB) → badge loại tài liệu hiện trống rỗng, `isLink` không bao giờ
+      đúng dù DB đã lưu `type:'Link'` chính xác → tài liệu Link vẫn hiện nút **"⬇ Download"** thay vì
+      "🔗 Mở liên kết", bấm vào trình duyệt cố `fetch`/tải cưỡng bức link Google Drive → Google trả về
+      403/404 (không có quyền) vì đây là điều hướng thường chứ không phải file tải được.
+- [x] **Fix**: đổi toàn bộ 7 chỗ đọc `m.fileType` → `m.type` trong 24-materials.js (badge, `_isImage`,
+      bộ lọc loại, `isLink` ở cả `renderMaterials` và `openMaterialModal`, dropdown loại trong modal sửa).
+      **Không cần sửa dữ liệu cũ** — vì `saveMaterial` vốn đã ghi đúng `type:'Link'` vào DB (dùng biến cục
+      bộ từ dropdown, không phải `m.fileType`), tài liệu Link đã tạo trước đó tự hiển thị đúng ngay sau
+      khi deploy, không cần đăng lại. Nút Link giờ là `<a target="_blank">` KHÔNG có thuộc tính
+      `download` → trình duyệt điều hướng mở tab mới bình thường thay vì cố tải xuống.
+      Verify: mock tài liệu `type:'Link'` (đúng dữ liệu như trong ảnh lỗi) → badge "Link" đúng màu, nút
+      "🔗 Mở liên kết" không có `download`, target=_blank; sửa tài liệu Link cũ pre-fill đúng URL; bộ lọc
+      Link/PDF lọc đúng; tài liệu PDF thường không bị ảnh hưởng (vẫn badge "pdf" + nút Download có
+      `download` attr); 0 lỗi console.
+
 ## Materials: cho phép đăng LINK (URL) ngoài tệp ✅ ĐÃ LÀM
 - [x] **Thêm loại "🔗 Link (URL)" trong Tài liệu** (24-materials.js + 12-ui-core.js + HTML): trước đây
       chỉ up được TỆP. Nay chọn loại **Link** ở modal → ô "File" đổi thành ô **URL** (`toggleMatSource()`
