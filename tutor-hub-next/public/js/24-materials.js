@@ -42,7 +42,10 @@
       grid.innerHTML = list.map(function (m) {
         var url = m.downloadUrl || generateMockBlob(m.fileName, m.fileType);
         var isImg = _isImage(m) && m.downloadUrl && /^https?:/i.test(m.downloadUrl);
-        var editBtns = editMode ? '<div class="mat-actions"><button class="btn btn-sm btn-ghost" onclick="event.stopPropagation();openMaterialModal(' + m.id + ')">✏️</button><button class="btn btn-sm btn-danger" onclick="event.stopPropagation();deleteMaterial(' + m.id + ')">🗑</button></div>' : '';
+        // qid() bọc id trong dấu nháy — BẮT BUỘC vì id DB là UUID (vd d1371f60-491d-…);
+        // nếu chèn thẳng, onclick="deleteMaterial(d1371f60-491d-…)" → "491d" là token số
+        // sai cú pháp → Uncaught SyntaxError, click không chạy được (không xoá được file).
+        var editBtns = editMode ? '<div class="mat-actions"><button class="btn btn-sm btn-ghost" onclick="event.stopPropagation();openMaterialModal(' + qid(m.id) + ')">✏️</button><button class="btn btn-sm btn-danger" onclick="event.stopPropagation();deleteMaterial(' + qid(m.id) + ')">🗑</button></div>' : '';
         var media = isImg
           ? '<a href="' + escAttr(m.downloadUrl) + '" target="_blank" rel="noopener"><img src="' + escAttr(m.downloadUrl) + '" alt="' + escAttr(m.title) + '" style="width:100%;max-height:260px;object-fit:contain;border-radius:8px;background:var(--bg);margin:6px 0;cursor:zoom-in;" loading="lazy"></a>'
           : '';
@@ -86,7 +89,7 @@
         '</div>' +
         '<div class="modal-footer">' +
         '<button class="btn btn-ghost" onclick="closeModal()">Cancel</button>' +
-        '<button class="btn btn-primary" onclick="saveMaterial(' + (id || 'null') + ')">Save</button>' +
+        '<button class="btn btn-primary" onclick="saveMaterial(' + (id ? qid(id) : 'null') + ')">Save</button>' +
         '</div>';
       openModal(html);
       setTimeout(function () { updateMatPreview(); }, 100);
@@ -174,14 +177,30 @@
       }
     }
 
+    // Suy ra đường dẫn file trong bucket 'materials' từ public URL (cho tài liệu cũ
+    // chưa lưu file_path). URL dạng .../storage/v1/object/public/materials/<path>.
+    function _storagePathFromUrl(url) {
+      if (!url) return '';
+      var m = String(url).match(/\/storage\/v1\/object\/(?:public|sign)\/materials\/([^?#]+)/);
+      return m ? decodeURIComponent(m[1]) : '';
+    }
+
     function deleteMaterial(id) {
       uiConfirm('Xóa tài liệu này?', function () {
+        var mat = materials.find(function (m) { return m.id === id; });
+        var path = (mat && mat.filePath) || _storagePathFromUrl(mat && mat.downloadUrl);
         materials = materials.filter(function (m) { return m.id !== id; });
         showToast('Đã xóa tài liệu.', 'success');
         renderMaterials();
-        if (_db) {
-          _db.from('materials').delete().eq('id', String(id))
-            .then(function (r) { if (r.error) showToast('Lỗi xóa: ' + r.error.message, 'error'); });
+        if (!_db) return;
+        // Xoá bản ghi DB; đồng thời xoá luôn FILE trong Storage bucket 'materials'
+        // (trước đây chỉ xoá bản ghi → file mồ côi vẫn tốn dung lượng).
+        _db.from('materials').delete().eq('id', String(id))
+          .then(function (r) { if (r.error) showToast('Lỗi xóa: ' + r.error.message, 'error'); });
+        if (path) {
+          _db.storage.from('materials').remove([path])
+            .then(function (rs) { if (rs && rs.error) console.warn('storage remove', rs.error.message); })
+            .catch(function (e) { console.warn('storage remove', e && e.message); });
         }
       });
     }

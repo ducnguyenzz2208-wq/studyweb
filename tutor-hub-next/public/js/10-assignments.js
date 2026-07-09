@@ -151,54 +151,109 @@
       });
     }
 
+    // Khoá token an toàn cho id phần tử DOM theo thư mục ('' → 'main').
+    function _fkey(folderId) { return folderId ? String(folderId) : 'main'; }
+
+    // MỘT thanh bài tập (accordion). Bấm thanh → mở phần Đề bài (GV) + Nộp bài (HS).
+    // Thay cho giao diện "Facebook feed" cũ (card cuộn dọc luôn mở).
     function renderPostCard(a) {
       var isTeacher = currentUser && (currentUser.role === 'Teacher' || currentUser.role === 'Admin');
       var isStudent = currentUser && currentUser.role === 'Student';
-      var subs = submissions.filter(function (s) { return s.assignmentId === a.id; });
+      var allSubs = submissions.filter(function (s) { return s.assignmentId === a.id; });
+      var folders = Array.isArray(a.folders) ? a.folders : [];
+
       var statusBadge = a.status === 'open'
         ? '<span class="badge badge-success">Đang mở</span>'
         : '<span class="badge badge-warning">Đã đóng</span>';
+
+      // Thông tin bên phải thanh: HS = tiến độ nộp; GV = tổng số bài nộp.
+      var rightInfo;
+      if (isStudent) {
+        var need = folders.length || 1;
+        var mineCount = folders.length
+          ? folders.filter(function (f) { return allSubs.some(function (s) { return s.studentId === _dbUserId && (s.folderId || '') === f.id; }); }).length
+          : (allSubs.some(function (s) { return s.studentId === _dbUserId && !(s.folderId); }) ? 1 : 0);
+        var doneAll = mineCount >= need;
+        rightInfo = '<span class="badge ' + (doneAll ? 'badge-success' : 'badge-warning') + '">' + (doneAll ? '✅ Đã nộp' : '📤 ' + mineCount + '/' + need) + '</span>';
+      } else {
+        rightInfo = '<span class="asn-count">' + allSubs.length + ' bài nộp</span>';
+      }
+
+      // Đề bài (Homework) — GV đăng: mô tả + tài liệu/đề đính kèm
       var attach = '';
       if (a.attachmentUrl) {
         attach = _isImageUrl(a.attachmentUrl)
           ? '<div style="margin-top:8px;"><a href="' + escAttr(a.attachmentUrl) + '" target="_blank" rel="noopener"><img src="' + escAttr(a.attachmentUrl) + '" style="max-width:100%;max-height:320px;border-radius:8px;cursor:zoom-in;" loading="lazy"></a></div>'
-          : '<div style="margin-top:8px;"><a class="btn btn-sm btn-ghost" href="' + escAttr(a.attachmentUrl) + '" target="_blank" rel="noopener">📎 Tệp đính kèm</a></div>';
+          : '<div style="margin-top:8px;"><a class="btn btn-sm btn-ghost" href="' + escAttr(a.attachmentUrl) + '" target="_blank" rel="noopener">📎 Tài liệu / đề bài</a></div>';
       }
-      var teacherActions = isTeacher
-        ? '<button class="btn btn-sm btn-ghost" onclick="openAssignmentModal(' + qid(a.id) + ')" title="Sửa">✏️</button>' +
-          '<button class="btn btn-sm btn-ghost" onclick="deleteAssignment(' + qid(a.id) + ')" title="Xóa">🗑</button>' : '';
-      var thread = subs.map(function (s) { return renderSubmissionRow(a, s); }).join('');
+      var homework = '<div class="asn-hw">' +
+        '<div class="asn-sec-head">📄 Đề bài (Homework)</div>' +
+        (a.description ? '<div class="asn-hw-desc">' + escHtml(a.description) + '</div>' : '<div class="asn-hw-desc muted">Giáo viên chưa ghi mô tả.</div>') +
+        attach + '</div>';
+
+      var toolbar = isTeacher
+        ? '<div class="asn-toolbar">' +
+            '<button class="btn btn-sm btn-ghost" onclick="openFolderModal(' + qid(a.id) + ')" title="Tạo thư mục nộp bài">📁 Tạo thư mục nộp bài</button>' +
+            '<button class="btn btn-sm btn-ghost" onclick="openAssignmentModal(' + qid(a.id) + ')" title="Sửa bài">✏️ Sửa</button>' +
+            '<button class="btn btn-sm btn-ghost" onclick="deleteAssignment(' + qid(a.id) + ')" title="Xoá bài">🗑 Xoá</button>' +
+          '</div>'
+        : '';
+
+      // Khu nộp bài — chia theo thư mục nếu GV đã tạo; nếu không → 1 khu mặc định.
+      var submitArea;
+      if (folders.length) {
+        submitArea = folders.map(function (f) { return _folderSection(a, f, allSubs, isStudent, isTeacher, false); }).join('');
+        if (allSubs.some(function (s) { return !(s.folderId); }))
+          submitArea += _folderSection(a, { id: '', name: 'Chưa phân loại' }, allSubs, isStudent, isTeacher, true);
+      } else {
+        submitArea = _folderSection(a, { id: '', name: '' }, allSubs, isStudent, isTeacher, false);
+      }
+
+      return '<details class="asn-bar">' +
+        '<summary class="asn-sum">' +
+          '<span class="wk-caret">▸</span>' +
+          '<span class="asn-ic">' + escHtml((a.subject || 'GV').slice(0, 1).toUpperCase()) + '</span>' +
+          '<span class="asn-main"><span class="asn-title">' + escHtml(a.title) + '</span>' +
+          '<span class="asn-meta">' + escHtml(a.subject || '') + ' · 📅 ' + escHtml(a.dueDate || 'không hạn') + '</span></span>' +
+          '<span class="asn-badges">' + statusBadge + rightInfo + '</span>' +
+        '</summary>' +
+        '<div class="asn-body">' + toolbar + homework +
+          '<div class="asn-sec-head" style="margin-top:14px;">📤 Nộp bài</div>' +
+          '<div class="asn-submit-wrap">' + submitArea + '</div>' +
+        '</div>' +
+      '</details>';
+    }
+
+    // Một khu nộp bài (theo 1 thư mục). readOnly=true: chỉ hiện bài đã nộp, không composer.
+    function _folderSection(a, folder, allSubs, isStudent, isTeacher, readOnly) {
+      var fid = folder.id || '';
+      var subs = allSubs.filter(function (s) { return (s.folderId || '') === fid; });
       var mySub = isStudent ? subs.find(function (s) { return s.studentId === _dbUserId; }) : null;
-      var composer = '';
-      if (isStudent && a.status === 'open') {
-        composer = '<div style="display:flex;gap:6px;margin-top:10px;align-items:center;flex-wrap:wrap;">' +
-          '<input class="form-input" id="subInput_' + a.id + '" placeholder="' + (mySub ? 'Cập nhật bài nộp...' : 'Viết bài nộp...') + '" style="flex:1;min-width:140px;" value="' + escAttr(mySub ? mySub.content : '') + '">' +
-          // Camera: capture="environment" mở thẳng camera sau trên điện thoại (chụp bài viết tay)
-          '<input type="file" id="subCam_' + a.id + '" accept="image/*" capture="environment" style="display:none;" onchange="_subFilePicked(' + qid(a.id) + ', \'cam\')">' +
-          // Tệp/thư viện: ảnh hoặc PDF
-          '<input type="file" id="subFile_' + a.id + '" accept="image/*,application/pdf" style="display:none;" onchange="_subFilePicked(' + qid(a.id) + ')">' +
-          '<button class="btn btn-sm btn-ghost" onclick="document.getElementById(\'subCam_' + a.id + '\').click()" title="Chụp bài làm" aria-label="Chụp bài làm bằng camera">📸</button>' +
-          '<button class="btn btn-sm btn-ghost" onclick="document.getElementById(\'subFile_' + a.id + '\').click()" title="Chọn ảnh/PDF" aria-label="Chọn ảnh hoặc PDF">📎</button>' +
-          '<span id="subFileName_' + a.id + '" style="font-size:11px;color:var(--text-muted);max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>' +
-          '<button class="btn btn-sm btn-primary" onclick="submitWork(' + qid(a.id) + ', this)">' + (mySub ? 'Cập nhật' : 'Nộp') + '</button>' +
-          '</div>';
-      }
-      return '<div class="card" style="margin-bottom:14px;">' +
-        '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">' +
-        '<div style="display:flex;gap:10px;align-items:center;min-width:0;">' +
-        '<div style="width:40px;height:40px;border-radius:50%;background:var(--primary,#3b82f6);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0;">' + escHtml((a.subject || 'GV').slice(0, 1).toUpperCase()) + '</div>' +
-        '<div style="min-width:0;"><div style="font-weight:700;overflow:hidden;text-overflow:ellipsis;">' + escHtml(a.title) + '</div>' +
-        '<div style="font-size:12px;color:var(--text-muted);">' + escHtml(a.subject || '') + ' · 📅 ' + escHtml(a.dueDate || 'không hạn') + ' ' + statusBadge + '</div></div>' +
-        '</div>' +
-        '<div style="display:flex;gap:4px;flex-shrink:0;">' + teacherActions + '</div>' +
-        '</div>' +
-        (a.description ? '<div style="margin-top:10px;font-size:14px;white-space:pre-wrap;">' + escHtml(a.description) + '</div>' : '') +
-        attach +
-        '<div style="margin-top:12px;border-top:1px solid var(--border);padding-top:10px;">' +
-        '<div style="font-size:13px;font-weight:600;color:var(--text-muted);margin-bottom:6px;">💬 Bài nộp (' + subs.length + ')</div>' +
-        (thread || '<div style="font-size:13px;color:var(--text-muted);">Chưa có bài nộp.</div>') +
-        composer +
-        '</div>' +
+      var head = folder.name
+        ? '<div class="asn-folder-head">📁 ' + escHtml(folder.name) +
+            (isTeacher && folder.id ? '<button class="btn btn-sm btn-ghost" onclick="deleteFolder(' + qid(a.id) + ',' + qid(folder.id) + ')" title="Xoá thư mục">🗑</button>' : '') +
+          '</div>'
+        : '';
+      var thread = subs.length
+        ? subs.map(function (s) { return renderSubmissionRow(a, s); }).join('')
+        : '<div class="asn-empty">Chưa có bài nộp.</div>';
+      var composer = (isStudent && a.status === 'open' && !readOnly) ? _composerHtml(a, folder, mySub) : '';
+      return '<div class="asn-folder">' + head +
+        '<div class="asn-thread-label">💬 Bài nộp (' + subs.length + ')</div>' + thread + composer + '</div>';
+    }
+
+    // Ô soạn nộp bài (📸 camera 1 chạm + 📎 tệp) cho 1 thư mục cụ thể.
+    function _composerHtml(a, folder, mySub) {
+      var fk = _fkey(folder.id);
+      var base = a.id + '__' + fk;
+      return '<div class="asn-composer">' +
+        '<input class="form-input" id="subInput_' + base + '" placeholder="' + (mySub ? 'Cập nhật bài nộp...' : 'Viết bài nộp...') + '" style="flex:1;min-width:140px;" value="' + escAttr(mySub ? mySub.content : '') + '">' +
+        '<input type="file" id="subCam_' + base + '" accept="image/*" capture="environment" style="display:none;" onchange="_subFilePicked(' + qid(a.id) + ', \'cam\', ' + qid(fk) + ')">' +
+        '<input type="file" id="subFile_' + base + '" accept="image/*,application/pdf" style="display:none;" onchange="_subFilePicked(' + qid(a.id) + ', \'file\', ' + qid(fk) + ')">' +
+        '<button class="btn btn-sm btn-ghost" onclick="document.getElementById(\'subCam_' + base + '\').click()" title="Chụp bài làm" aria-label="Chụp bài làm bằng camera">📸</button>' +
+        '<button class="btn btn-sm btn-ghost" onclick="document.getElementById(\'subFile_' + base + '\').click()" title="Chọn ảnh/PDF" aria-label="Chọn ảnh hoặc PDF">📎</button>' +
+        '<span id="subFileName_' + base + '" style="font-size:11px;color:var(--text-muted);max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>' +
+        '<button class="btn btn-sm btn-primary" onclick="submitWork(' + qid(a.id) + ', this, ' + qid(folder.id || '') + ')">' + (mySub ? 'Cập nhật' : 'Nộp') + '</button>' +
         '</div>';
     }
 
@@ -220,7 +275,7 @@
       }
       // Hàng thao tác kiểu Facebook: Sửa · Xóa · (Chấm)
       var acts = [];
-      if (isOwner && a.status === 'open') acts.push('<span onclick="focusComposer(' + qid(a.id) + ')" style="cursor:pointer;font-weight:600;">Sửa</span>');
+      if (isOwner && a.status === 'open') acts.push('<span onclick="focusComposer(' + qid(a.id) + ',' + qid(_fkey(s.folderId)) + ')" style="cursor:pointer;font-weight:600;">Sửa</span>');
       if (isOwner || isTeacher) acts.push('<span onclick="deleteSubmission(' + qid(s.id) + ')" style="cursor:pointer;font-weight:600;color:var(--danger);">Xóa</span>');
       if (isTeacher) acts.push('<span onclick="openGradeModal(' + qid(s.id) + ')" style="cursor:pointer;font-weight:600;color:var(--accent);">' + (s.grade != null ? 'Sửa điểm' : 'Chấm điểm') + '</span>');
       var actRow = '<div style="font-size:12px;color:var(--text-muted);margin-top:3px;display:flex;gap:12px;align-items:center;">' +
@@ -239,9 +294,12 @@
         '</div></div>';
     }
 
-    function focusComposer(assignmentId) {
-      var inp = document.getElementById('subInput_' + assignmentId);
-      if (inp) { inp.focus(); inp.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+    function focusComposer(assignmentId, fk) {
+      var inp = document.getElementById('subInput_' + assignmentId + '__' + (fk || 'main'));
+      if (inp) {
+        var det = inp.closest('details'); if (det && !det.open) det.open = true;   // mở thanh nếu đang gập
+        inp.focus(); inp.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      }
     }
 
     function deleteSubmission(subId) {
@@ -257,23 +315,47 @@
       });
     }
 
-    // Chọn tệp: composer có 2 input (📸 camera + 📎 tệp). Giữ 1 nguồn duy nhất —
-    // vừa chọn cái này thì xoá cái kia để submitWork/tên tệp không bị lẫn.
-    function _subFilePicked(assignmentId, which) {
-      var fi = document.getElementById('subFile_' + assignmentId);
-      var fc = document.getElementById('subCam_' + assignmentId);
+    // Chọn tệp: composer có 2 input (📸 camera + 📎 tệp) theo TỪNG thư mục (fk).
+    // Giữ 1 nguồn duy nhất — vừa chọn cái này thì xoá cái kia.
+    function _subFilePicked(assignmentId, which, fk) {
+      var base = assignmentId + '__' + (fk || 'main');
+      var fi = document.getElementById('subFile_' + base);
+      var fc = document.getElementById('subCam_' + base);
       if (which === 'cam') { if (fi) fi.value = ''; }
       else { if (fc) fc.value = ''; }
-      var span = document.getElementById('subFileName_' + assignmentId);
+      var span = document.getElementById('subFileName_' + base);
       var f = (fc && fc.files && fc.files[0]) || (fi && fi.files && fi.files[0]) || null;
       if (span) span.textContent = f ? f.name : '';
     }
 
-    // Lõi nộp bài dùng CHUNG cho composer trong feed và modal "Nộp ngay".
-    // Xử lý: kiểm tra, khoá nút (⏳), upload tệp (nếu có), upsert DB, mở lại nút
-    // khi lỗi. `btn` (tuỳ chọn) = nút vừa bấm để hiện trạng thái loading.
-    // done(err): err=null khi thành công; gọi sau khi DB trả về.
-    function _persistSubmission(assignmentId, text, file, btn, done) {
+    // ── Upsert bài nộp có nhận diện cột folder_id (migration 026) ──────────
+    // Trước migration: cột folder_id/ràng buộc mới chưa có → tự fallback về luồng
+    // cũ (1 bài/assignment) cho thư mục mặc định; nộp vào thư mục CÓ TÊN thì báo
+    // cần chạy 026. Lưu cờ vào localStorage để đỡ thử lại nhiều lần.
+    var _subFoldersReady = (function () { try { var v = localStorage.getItem('th_sub_folders'); return v === '1' ? true : (v === '0' ? false : null); } catch (e) { return null; } })();
+    function _setSubFolders(v) { _subFoldersReady = v; try { localStorage.setItem('th_sub_folders', v ? '1' : '0'); } catch (e) { } }
+    function _isSchemaErr(err) { var m = (err && (err.message || err.msg || err.code) || '').toString().toLowerCase(); return /folder_id|column|schema cache|pgrst204|could not find|on conflict|no unique|constraint/.test(m); }
+    function _upsertSubmission(payload, folderId, cb) {
+      var hasFolder = !!folderId;   // nộp vào thư mục có tên (không phải mặc định)
+      function withoutFolder() {
+        _db.from('assignment_submissions').upsert(payload, { onConflict: 'assignment_id,student_id' }).select()
+          .then(function (r) { cb(r.error || null); }).catch(function (e) { cb(e); });
+      }
+      function withFolder() {
+        var p = {}; for (var k in payload) p[k] = payload[k]; p.folder_id = folderId || '';
+        _db.from('assignment_submissions').upsert(p, { onConflict: 'assignment_id,student_id,folder_id' }).select()
+          .then(function (r) {
+            if (r.error && _isSchemaErr(r.error)) { _setSubFolders(false); if (hasFolder) cb({ folderUnsupported: true }); else withoutFolder(); }
+            else { if (!r.error) _setSubFolders(true); cb(r.error || null); }
+          }).catch(function (e) { cb(e); });
+      }
+      if (_subFoldersReady === false) { if (hasFolder) { cb({ folderUnsupported: true }); return; } withoutFolder(); }
+      else withFolder();
+    }
+
+    // Lõi nộp bài dùng CHUNG cho composer trong thanh bài, modal "Nộp ngay", và các thư mục.
+    // done(err): err=null khi thành công. folderId '' = thư mục mặc định.
+    function _persistSubmission(assignmentId, text, file, btn, done, folderId) {
       if (!text && !file) { showToast('Nhập nội dung hoặc chụp/đính kèm ảnh.', 'error'); return; }
       if (!_db || !_dbUserId) { showToast('Chưa kết nối tài khoản.', 'error'); return; }
       var origHtml = btn ? btn.innerHTML : '';
@@ -286,14 +368,16 @@
           student_name: currentUser.name, type: file ? 'file' : 'text', content: text,
         };
         if (fileUrl) payload.file_url = fileUrl;
-        _db.from('assignment_submissions').upsert(payload, { onConflict: 'assignment_id,student_id' }).select()
-          .then(function (r) {
-            hideBusy();
-            if (r.error) { showToast('Lỗi nộp bài: ' + r.error.message, 'error'); _restore(); if (done) done(r.error); return; }
-            showToast('Đã nộp bài. Làm tốt lắm! 🎉', 'success');
-            if (done) done(null);   // KHÔNG _restore ở đây: bên gọi tự render lại
-          })
-          .catch(function (e) { showToast('Lỗi mạng khi nộp bài. Thử lại.', 'error'); _fail(e); });
+        _upsertSubmission(payload, folderId, function (err) {
+          hideBusy();
+          if (err) {
+            if (err.folderUnsupported) showToast('Thư mục nộp bài cần chạy migration 026 trên Supabase.', 'error');
+            else showToast('Lỗi nộp bài: ' + (err.message || ''), 'error');
+            _restore(); if (done) done(err); return;
+          }
+          showToast('Đã nộp bài. Làm tốt lắm! 🎉', 'success');
+          if (done) done(null);   // KHÔNG _restore ở đây: bên gọi tự render lại
+        });
       }
       showBusy(file ? 'Đang tải bài lên…' : 'Đang nộp…');
       if (file) {
@@ -307,23 +391,79 @@
       } else { _save(null); }
     }
 
-    function submitWork(assignmentId, btn) {
-      var inp = document.getElementById('subInput_' + assignmentId);
+    function submitWork(assignmentId, btn, folderId) {
+      var fk = _fkey(folderId);
+      var base = assignmentId + '__' + fk;
+      var inp = document.getElementById('subInput_' + base);
       var text = inp ? inp.value.trim() : '';
-      var fc = document.getElementById('subCam_' + assignmentId);
-      var fi = document.getElementById('subFile_' + assignmentId);
+      var fc = document.getElementById('subCam_' + base);
+      var fi = document.getElementById('subFile_' + base);
       var file = (fc && fc.files && fc.files[0]) || (fi && fi.files && fi.files[0]) || null;
       _persistSubmission(assignmentId, text, file, btn, function (err) {
         if (err) return;   // _persistSubmission đã mở lại nút + báo lỗi
         celebrate();       // 🎉 ăn mừng nộp thành công
-        // Nộp xong: xoá ô soạn (composer pre-fill từ mySub.content để hỗ trợ "sửa",
-        // nếu không dọn thì chữ vừa gửi bị nạp lại trông như "kẹt").
+        // Nộp xong: xoá ô soạn của ĐÚNG thư mục (composer pre-fill để hỗ trợ "sửa").
         reloadSubmissions(function () {
-          var inpEl = document.getElementById('subInput_' + assignmentId); if (inpEl) inpEl.value = '';
-          var fiEl = document.getElementById('subFile_' + assignmentId); if (fiEl) fiEl.value = '';
-          var fcEl = document.getElementById('subCam_' + assignmentId); if (fcEl) fcEl.value = '';
-          var fnEl = document.getElementById('subFileName_' + assignmentId); if (fnEl) fnEl.textContent = '';
+          var inpEl = document.getElementById('subInput_' + base); if (inpEl) inpEl.value = '';
+          var fiEl = document.getElementById('subFile_' + base); if (fiEl) fiEl.value = '';
+          var fcEl = document.getElementById('subCam_' + base); if (fcEl) fcEl.value = '';
+          var fnEl = document.getElementById('subFileName_' + base); if (fnEl) fnEl.textContent = '';
           try { renderStudentPortal(); } catch (e) { }   // cập nhật danh sách "Việc cần làm"
+        });
+      }, folderId);
+    }
+
+    // ── Thư mục nộp bài (GV/Admin tạo trong từng Assignment) ─────────────
+    function _genFolderId() { return 'f' + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36); }
+    function _persistFolders(a, cb) {
+      if (!_db) { cb(null); return; }
+      _db.from('assignments').update({ folders: a.folders }).eq('id', String(a.id))
+        .then(function (r) { cb(r.error || null); }).catch(function (e) { cb(e); });
+    }
+    function openFolderModal(assignmentId) {
+      var a = assignments.find(function (x) { return String(x.id) === String(assignmentId); });
+      if (!a) return;
+      if (!(currentUser && (currentUser.role === 'Teacher' || currentUser.role === 'Admin'))) { showToast('Chỉ GV/Admin tạo thư mục.', 'error'); return; }
+      var list = (a.folders && a.folders.length)
+        ? '<div class="asn-folder-list">' + a.folders.map(function (f) {
+            return '<div class="asn-folder-row"><span>📁 ' + escHtml(f.name) + '</span><button class="btn btn-sm btn-ghost" onclick="deleteFolder(' + qid(a.id) + ',' + qid(f.id) + ')" title="Xoá">🗑</button></div>';
+          }).join('') + '</div>'
+        : '<div class="hint" style="margin-top:8px;">Chưa có thư mục nào.</div>';
+      openModal('<div class="modal-header"><h3>📁 Thư mục nộp bài — ' + escHtml(a.title) + '</h3><button class="modal-close" onclick="closeModal()" aria-label="Đóng">✕</button></div>' +
+        '<div class="modal-body">' +
+        '<div class="hint">Tạo thư mục để học sinh nộp đúng chỗ (VD: “Bài tập về nhà Tuần 1”, “Bài bổ sung”). Mỗi thư mục là một chỗ nộp riêng.</div>' +
+        '<div class="form-group"><label for="mFolderName">Tên thư mục mới</label><input class="form-input" id="mFolderName" placeholder="VD: Bài tập về nhà Tuần 1" onkeydown="if(event.key===\'Enter\'){event.preventDefault();saveFolder(' + qid(a.id) + ');}"></div>' +
+        list +
+        '</div>' +
+        '<div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal()">Đóng</button>' +
+        '<button class="btn btn-primary" onclick="saveFolder(' + qid(a.id) + ')">＋ Thêm thư mục</button></div>');
+    }
+    function saveFolder(assignmentId) {
+      var a = assignments.find(function (x) { return String(x.id) === String(assignmentId); });
+      if (!a) return;
+      var name = ((document.getElementById('mFolderName') || {}).value || '').trim();
+      if (!name) { showToast('Nhập tên thư mục.', 'error'); return; }
+      a.folders = Array.isArray(a.folders) ? a.folders : [];
+      a.folders.push({ id: _genFolderId(), name: name });
+      _persistFolders(a, function (err) {
+        if (err) { a.folders.pop(); showToast('Lưu thư mục lỗi (cần migration 026?): ' + (err.message || ''), 'error'); return; }
+        showToast('Đã tạo thư mục nộp bài.', 'success');
+        renderAssignments();
+        openFolderModal(a.id);   // mở lại modal với danh sách mới
+      });
+    }
+    function deleteFolder(assignmentId, folderId) {
+      var a = assignments.find(function (x) { return String(x.id) === String(assignmentId); });
+      if (!a || !Array.isArray(a.folders)) return;
+      uiConfirm('Xoá thư mục này? Bài đã nộp trong đó sẽ về mục “Chưa phân loại”.', function () {
+        var old = a.folders.slice();
+        a.folders = a.folders.filter(function (f) { return f.id !== folderId; });
+        var inModal = !!document.getElementById('mFolderName');
+        _persistFolders(a, function (err) {
+          if (err) { a.folders = old; showToast('Xoá thư mục lỗi: ' + (err.message || ''), 'error'); return; }
+          showToast('Đã xoá thư mục.', 'success');
+          renderAssignments();
+          if (inModal) openFolderModal(a.id);
         });
       });
     }
@@ -382,7 +522,7 @@
       _db.from('assignment_submissions').select('*').order('submitted_at', { ascending: false }).then(function (r) {
         if (!r.error && r.data) {
           submissions = r.data.map(function (s) {
-            return { id: s.id, assignmentId: s.assignment_id, studentId: s.student_id, studentName: s.student_name || '', submittedAt: (s.submitted_at || '').split('T')[0], type: s.type || 'text', content: s.content || '', fileUrl: s.file_url || null, grade: (s.grade != null ? Number(s.grade) : null), feedback: s.feedback || null };
+            return { id: s.id, assignmentId: s.assignment_id, studentId: s.student_id, studentName: s.student_name || '', submittedAt: (s.submitted_at || '').split('T')[0], type: s.type || 'text', content: s.content || '', fileUrl: s.file_url || null, folderId: s.folder_id || '', grade: (s.grade != null ? Number(s.grade) : null), feedback: s.feedback || null };
           });
         }
         renderAssignments();

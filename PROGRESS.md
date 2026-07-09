@@ -2,6 +2,35 @@
 
 > App quản lý trung tâm gia sư. Live: https://studyweb-swart.vercel.app
 
+## Fix Materials delete + Assignments dạng thanh ngang (Moodle) + thư mục nộp bài ✅ ĐÃ LÀM
+- [x] **Fix "không xoá được tài liệu" + hết `Uncaught SyntaxError`** (24-materials.js): id tài liệu DB
+      là **UUID** (vd `d1371f60-491d-…`) nhưng nút Sửa/Xoá chèn id **KHÔNG có nháy** →
+      `onclick="deleteMaterial(d1371f60-491d-…)"`; `491d` là token số sai → SyntaxError, click chết
+      (không xoá được). Sửa: bọc `qid(m.id)` cho openMaterialModal/deleteMaterial + `saveMaterial`.
+      **Đồng thời xoá luôn FILE trong Storage** (trước chỉ xoá bản ghi DB → file mồ côi): `deleteMaterial`
+      gọi `storage.from('materials').remove([path])`; lấy path từ `file_path` (map thêm `filePath` trong
+      `loadMaterials`) hoặc suy ra từ public URL (`_storagePathFromUrl`). Verify: onclick parse OK, mock
+      xoá gọi cả DB.delete lẫn storage.remove đúng path (kể cả URL cũ có %20).
+- [x] **Tái cấu trúc Assignments: bỏ "Facebook feed" → THANH NGANG accordion (kiểu Moodle)**
+      (10-assignments.js `renderPostCard` + CSS): mỗi bài là 1 `<details class="asn-bar">` — thanh gọn
+      (icon môn · tiêu đề · môn·hạn · trạng thái · tiến độ/bài nộp); bấm mở ra body. Nằm trong section
+      Tuần (nested accordion). Không còn card cuộn dọc luôn-mở.
+- [x] **Homework lồng trong Assignment**: body chia rõ **📄 Đề bài (Homework)** (mô tả + tài liệu/đề GV
+      đăng) và **📤 Nộp bài** (khu nộp của HS) ở ngay dưới. GV có toolbar Sửa/Xoá/Tạo thư mục.
+- [x] **Thư mục nộp bài do GV tạo** (task 4): nút **"📁 Tạo thư mục nộp bài"** (`openFolderModal`/
+      `saveFolder`/`deleteFolder`) — GV cấu trúc sẵn thư mục (VD "Bài tập về nhà Tuần 1", "Bài bổ sung").
+      Khu nộp HS **chia theo từng thư mục**, mỗi thư mục 1 composer (📸 camera 1 chạm + 📎 + Nộp) nộp
+      riêng; bài nộp gom đúng thư mục; tiến độ "📤 x/y thư mục". Bài cũ không thư mục → mục "Chưa phân loại".
+      Cần **migration `026_assignment_folders.sql`** (thêm `assignments.folders` jsonb +
+      `assignment_submissions.folder_id` + đổi UNIQUE → (assignment_id, student_id, folder_id) cho phép
+      nộp nhiều thư mục). **An toàn khi CHƯA chạy 026**: `_upsertSubmission` tự nhận diện cột thiếu (lưu
+      cờ `th_sub_folders`) → nộp mặc định fallback luồng cũ (KHÔNG hỏng); nộp vào thư mục có tên thì báo
+      "cần chạy migration 026". Verify: GV thấy 2 thư mục + bài gom đúng; HS thấy composer/thư mục + "📤
+      1/2"; post-migration onConflict gồm folder_id; pre-migration default fallback OK, folder bị chặn +
+      toast; mobile nút 44px; 0 lỗi console; `node --check` pass.
+- **Việc thủ công**: chạy `026_assignment_folders.sql` trong Supabase để bật thư mục nộp bài (không
+      chạy vẫn nộp bài bình thường ở khu mặc định).
+
 ## UX cho Học sinh cấp 2 (11–15 tuổi): camera + to-do + nav gọn + confetti ✅ ĐÃ LÀM
 Tối ưu trải nghiệm HS trên điện thoại/PC. Giữ classic-JS scope, không đụng auth/RLS.
 - [x] **Nộp bài 1 chạm bằng camera** (10-assignments.js): composer trong feed có thêm nút **📸 Chụp

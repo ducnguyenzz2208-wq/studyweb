@@ -162,6 +162,7 @@
               description: m.description || '', content: m.content || '',
               fileName: m.file_name || '', pinned: !!m.pinned,
               downloadUrl: m.file_url || m.url || '',
+              filePath: m.file_path || '',   // đường dẫn trong Storage → để xoá file khi xoá tài liệu
               uploadDate: (m.created_at || '').split('T')[0],
               ownerId: m.owner_id
             };
@@ -377,6 +378,7 @@
               createdAt: (a.created_at || '').split('T')[0],
               gradesPublished: !!a.grades_published,
               attachmentUrl: a.attachment_url || null,
+              folders: Array.isArray(a.folders) ? a.folders : [],   // thư mục nộp bài (migration 026)
             };
           });
           if (currentSection === 'assignments') renderAssignments();
@@ -395,6 +397,7 @@
               submittedAt: (s.submitted_at || '').split('T')[0],
               type: s.type || 'text', content: s.content || '',
               fileUrl: s.file_url || null,
+              folderId: s.folder_id || '',   // thư mục nộp bài (migration 026)
               grade: s.grade !== null && s.grade !== undefined ? Number(s.grade) : null,
               feedback: s.feedback || null,
             };
