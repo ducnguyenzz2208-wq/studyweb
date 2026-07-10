@@ -2,6 +2,50 @@
 
 > App quản lý trung tâm gia sư. Live: https://studyweb-swart.vercel.app
 
+## Tích hợp Google Drive: file nặng (PDF/Word...) lưu vào Drive của GV ⚠️ CẦN SETUP THỦ CÔNG
+- [x] **Đã kiểm chứng: service account KHÔNG dùng được** với Gmail cá nhân — test thật với key
+      `tutorhub-uploader@tutorhub-502013.iam.gserviceaccount.com` cho lỗi cứng `"Service Accounts do
+      not have storage quota"` dù đã bật Drive API + share thư mục cho service account. Đây là giới hạn
+      kiến trúc của Google (chỉ né được bằng Shared Drive — tính năng Google Workspace, không có ở Gmail
+      thường). → Đã chuyển sang **OAuth delegation**: GV tự kết nối Drive CỦA HỌ, upload dùng quota
+      cá nhân (không cần secret nào lộ ra client, không cần service-role key ở Supabase).
+- [x] **Migration** `027_google_drive_tokens.sql`: bảng lưu refresh/access token theo từng GV, RLS
+      owner-only (giống mọi bảng khác trong dự án — không cần service-role key).
+- [x] **`lib/google-drive.ts`**: helper trao đổi/làm mới token, tự tạo thư mục "TutorHub Uploads" trong
+      Drive của GV, mở phiên **resumable upload**, cấp quyền "ai có link đều xem", xoá file.
+- [x] **API routes** (`app/api/google-drive/*`): `connect` (mở màn hình xin quyền Google — bắt buộc
+      thoát ra khỏi iframe bằng `window.top.location`), `callback` (đổi code lấy token, lưu DB), `disconnect`
+      (thu hồi + xoá token), `upload-init` (mở phiên resumable, **client PUT thẳng lên Google — KHÔNG
+      qua server mình**, né giới hạn kích thước request-body ~4.5MB của Vercel serverless — quan trọng
+      với file nặng), `publish-file` (công khai link), `delete-file`.
+- [x] **Materials tích hợp** (24-materials.js): `saveMaterial` tự kiểm tra đã kết nối Drive chưa
+      (`_checkDriveConnected`) → có thì upload qua Drive (nút Save hiện "⏳ Đang tải lên Drive... N%"
+      theo `xhr.upload.onprogress`), lỗi Drive thì tự fallback về Supabase Storage (không làm hỏng
+      luồng upload cũ); chưa kết nối thì y hệt hành vi cũ. `deleteMaterial` xoá đúng nơi (Drive hay
+      Supabase) dựa vào marker `gdrive:<fileId>` lưu trong `file_path`. `renderMaterials` hiện tài liệu
+      Drive như link ngoài ("📂 Mở trên Google Drive", `target=_blank`, KHÔNG gắn `download` — thuộc
+      tính này bị trình duyệt bỏ qua với URL khác gốc và sẽ điều hướng cả tab ra khỏi app nếu dùng nhầm).
+- [x] **Cài đặt**: card "Google Drive" (`renderDriveSettings`, hook vào `renderSettings()` có sẵn) —
+      nút Kết nối/Ngắt kết nối, hiện email Drive đã kết nối.
+- **Bug đã bắt & sửa khi tự review code** (chưa test được vì môi trường này không có Chrome để đăng
+      nhập Google thật): sửa tài liệu KHÔNG chọn tệp mới thì `resolvedPath` phải giữ nguyên `file_path`
+      cũ (trước đó bị reset về rỗng) — nếu không, tài liệu Drive bị sửa tên/mô tả sẽ mất marker
+      `gdrive:`, khiến lần sau tưởng nhầm là tệp Supabase (gắn `download` sai + xoá không dọn được file
+      trên Drive).
+- **⚠️ CẦN BẠN LÀM (không tự động được — cần đăng nhập Google Cloud Console thật)**:
+  1. Chạy `027_google_drive_tokens.sql` trên Supabase SQL Editor.
+  2. Google Cloud Console (project `tutorhub-502013`) → APIs & Services → **OAuth consent screen**:
+     loại **External**, thêm scope `.../auth/drive.file`, thêm chính email Google của bạn vào **Test
+     users** (app ở chế độ Testing, chỉ test user mới đăng nhập được).
+  3. **Credentials** → **Create OAuth client ID** → Web application → Authorized redirect URI:
+     `https://studyweb-swart.vercel.app/api/google-drive/callback`. Lấy Client ID + Client Secret.
+  4. Vào **Vercel** → project → Settings → Environment Variables → thêm `GOOGLE_CLIENT_ID` và
+     `GOOGLE_CLIENT_SECRET` (giá trị lấy ở bước 3) → redeploy.
+  5. Vào app → Cài đặt → bấm "🔗 Kết nối Google Drive" → đăng nhập Google → thử up 1 tài liệu PDF/Word.
+- **Chưa test end-to-end được** (môi trường làm việc không có Chrome/đăng nhập Google thật) — đã
+      `tsc --noEmit` + `node --check` sạch, review code kỹ 2 lượt, nhưng luồng OAuth thật (bước 5) cần
+      bạn tự thử sau khi hoàn tất bước 2-4, báo lại nếu lỗi để tôi sửa tiếp.
+
 ## Thư mục nộp bài → TRANG nộp bài riêng (Moodle-style) ✅ ĐÃ LÀM
 - [x] **Bấm thư mục → sang trang nộp bài** (10-assignments.js + CSS): thay vì hiện composer/bài nộp
       inline trong thanh bài tập, mỗi thư mục giờ là **1 dòng bấm được** (`_folderRow`) → mở

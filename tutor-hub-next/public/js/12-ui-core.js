@@ -556,6 +556,7 @@
       var isTA = currentUser && (currentUser.role === 'Teacher' || currentUser.role === 'Admin');
       var sdg = document.getElementById('sampleDataGroup'); if (sdg) sdg.style.display = (_db && isTA) ? '' : 'none';
       try { renderSampleDataControls(); } catch (e) { }
+      try { renderDriveSettings(); } catch (e) { }
       // Đồng bộ ô chọn cỡ chữ + trạng thái dark mode với giá trị đã lưu
       var fs = document.getElementById('settingFontSize');
       if (fs) { try { fs.value = localStorage.getItem('th_fontsize') || 'normal'; } catch (e) { fs.value = 'normal'; } }
