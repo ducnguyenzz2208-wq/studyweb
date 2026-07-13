@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { getValidAccessToken, ensureUploadsFolder, createResumableSession } from '@/lib/google-drive'
+import { getValidAccessToken, ensureUploadsFolder, createResumableSession, siteUrl } from '@/lib/google-drive'
 
 // Mở phiên upload trên Drive rồi trả cho CLIENT một URL để tự PUT file trực
 // tiếp lên Google — file KHÔNG đi qua serverless function của mình, nên
@@ -21,7 +21,9 @@ export async function POST(request: Request) {
     if (!tok) return NextResponse.json({ error: 'not_connected' }, { status: 409 })
 
     const folderId = await ensureUploadsFolder(tok.accessToken, user.id, tok.folderId)
-    const uploadUrl = await createResumableSession(tok.accessToken, folderId, fileName, mimeType, fileSize)
+    // Origin của client (browser) — cần để phiên resumable có CORS cho domain này.
+    const origin = request.headers.get('origin') || siteUrl()
+    const uploadUrl = await createResumableSession(tok.accessToken, folderId, fileName, mimeType, fileSize, origin)
 
     // Access token đi kèm để client PUT thẳng lên Google — token này chỉ có
     // scope drive.file (không đọc được Drive nói chung) và hết hạn trong ~1h.

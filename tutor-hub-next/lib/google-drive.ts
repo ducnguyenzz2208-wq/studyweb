@@ -117,15 +117,20 @@ export async function ensureUploadsFolder(accessToken: string, userId: string, e
 // Mở 1 phiên "resumable upload" trên Drive — trả về URL Google để CLIENT tự
 // PUT file thẳng lên (không đi qua server của mình), tránh giới hạn kích
 // thước request-body của serverless function (quan trọng với file "nặng").
-export async function createResumableSession(accessToken: string, folderId: string, fileName: string, mimeType: string, fileSize: number) {
+export async function createResumableSession(accessToken: string, folderId: string, fileName: string, mimeType: string, fileSize: number, origin?: string) {
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${accessToken}`,
+    'Content-Type': 'application/json; charset=UTF-8',
+    'X-Upload-Content-Type': mimeType || 'application/octet-stream',
+    'X-Upload-Content-Length': String(fileSize),
+  }
+  // BẮT BUỘC cho upload TỪ TRÌNH DUYỆT: gửi Origin của client khi MỞ phiên để
+  // Google trả về session URI có CORS cho đúng domain này. Thiếu header này thì
+  // lệnh PUT file thẳng lên Google (cross-origin) bị CORS chặn -> "Lỗi mạng".
+  if (origin) headers['Origin'] = origin
   const res = await fetch(`${DRIVE_UPLOAD_API}?uploadType=resumable&fields=id,name,webViewLink,mimeType,size`, {
     method: 'POST',
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      'Content-Type': 'application/json; charset=UTF-8',
-      'X-Upload-Content-Type': mimeType || 'application/octet-stream',
-      'X-Upload-Content-Length': String(fileSize),
-    },
+    headers,
     body: JSON.stringify({ name: fileName, parents: [folderId] }),
   })
   if (!res.ok) {
