@@ -220,17 +220,24 @@
       box.innerHTML = '<div class="card">' + head + body + '</div>';
     }
 
-    // ── Nhạc nền (đa nền tảng: YouTube / Spotify / SoundCloud) ───
-    // YouTube dùng IFrame API (điều khiển phát/dừng/âm lượng + tự chuyển bài).
-    // Spotify & SoundCloud dùng khung nhúng CHÍNH THỨC (điều khiển ngay trong khung).
-    var POMO_PROV_NAME = { youtube: 'YouTube', spotify: 'Spotify', soundcloud: 'SoundCloud' };
-    // Chuẩn hoá track cũ (chỉ có videoId) → có provider.
+    // ── Nhạc nền (YouTube / YouTube Music / SoundCloud) ───
+    // YouTube & YouTube Music: IFrame API (phát/dừng/âm lượng + tự chuyển bài),
+    //   hỗ trợ BÀI LẺ và ALBUM/PLAYLIST của YouTube Music (qua playlist id).
+    // SoundCloud: CHỈ nhận ALBUM (set) — khung nhúng chính thức.
+    // (Đã gỡ Spotify theo yêu cầu — không thêm được link Spotify nữa.)
+    var POMO_PROV_NAME = { youtube: 'YouTube', ytmusic: 'YouTube Music', soundcloud: 'SoundCloud' };
+    function _isYtFam(p) { return p === 'youtube' || p === 'ytmusic'; }
+    // Chuẩn hoá track cũ (chỉ có videoId) → có provider/kind; BỎ track Spotify cũ (đã gỡ).
     function _pomoTracks() {
       var t = _lsGet(_pk('th_music_queue'), []);
-      var changed = false;
-      t.forEach(function (x) { if (!x.provider) { x.provider = 'youtube'; x.ref = x.ref || x.videoId; changed = true; } });
-      if (changed) _lsSet(_pk('th_music_queue'), t);
-      return t;
+      var filtered = t.filter(function (x) { return x.provider !== 'spotify'; });
+      var changed = filtered.length !== t.length;
+      filtered.forEach(function (x) {
+        if (!x.provider) { x.provider = 'youtube'; x.ref = x.ref || x.videoId; changed = true; }
+        if (!x.kind) { x.kind = 'track'; changed = true; }
+      });
+      if (changed) _lsSet(_pk('th_music_queue'), filtered);
+      return filtered;
     }
     function _pomoSaveTracks(t) { _lsSet(_pk('th_music_queue'), t); }
     function _pomoIdx() { var i = _lsGet(_pk('th_music_index'), 0); return (typeof i === 'number' && i >= 0) ? i : 0; }
@@ -241,35 +248,47 @@
       for (var i = 0; i < pats.length; i++) { var m = t.match(pats[i]); if (m) return m[1]; }
       return null;
     }
-    // Nhận diện nguồn nhạc từ link. Trả về {provider, ref, url} hoặc null.
+    // Nhận diện nguồn nhạc từ link. Trả về {provider, kind, ref, url} hoặc null.
+    // kind: 'track' (bài lẻ) | 'album' (playlist/album — tự phát lần lượt).
     function _parseMusicUrl(raw) {
       var url = (raw || '').trim(); if (!url) return null;
-      var yt = _parseYtId(url); if (yt) return { provider: 'youtube', ref: yt, url: url };
-      var sp = url.match(/open\.spotify\.com\/(?:intl-[a-z]+\/)?(track|album|playlist|episode|show)\/([A-Za-z0-9]+)/);
-      if (sp) return { provider: 'spotify', ref: sp[1] + '/' + sp[2], url: url };
-      if (/(?:https?:\/\/)?(?:www\.|m\.)?soundcloud\.com\/[^\/\s]+\/[^\/\s]+/.test(url)) return { provider: 'soundcloud', ref: url, url: url };
+      // YouTube Music (music.youtube.com): bài lẻ (watch?v=) hoặc album/playlist (list=)
+      if (/music\.youtube\.com/i.test(url)) {
+        var vm = url.match(/[?&]v=([\w-]{11})/);
+        var lm = url.match(/[?&]list=([\w-]+)/);
+        if (vm) return { provider: 'ytmusic', kind: 'track', ref: vm[1], list: lm ? lm[1] : null, url: url };
+        if (lm) return { provider: 'ytmusic', kind: 'album', ref: lm[1], url: url };
+        return null;
+      }
+      // YouTube thường: bài lẻ (watch/youtu.be/embed/shorts)
+      var yt = _parseYtId(url);
+      if (yt) { var lm2 = url.match(/[?&]list=([\w-]+)/); return { provider: 'youtube', kind: 'track', ref: yt, list: lm2 ? lm2[1] : null, url: url }; }
+      // YouTube thường dạng playlist (không có video id) → coi như album
+      var plm = url.match(/youtube\.com\/playlist\?list=([\w-]+)/);
+      if (plm) return { provider: 'youtube', kind: 'album', ref: plm[1], url: url };
+      // SoundCloud: CHỈ nhận ALBUM (set) — link phải có /sets/
+      if (/soundcloud\.com\/[^\/\s]+\/sets\/[^\/\s]+/i.test(url)) return { provider: 'soundcloud', kind: 'album', ref: url, url: url };
       return null;
     }
-    // URL khung nhúng cho Spotify/SoundCloud (YouTube xử lý riêng qua IFrame API).
+    // URL khung nhúng cho SoundCloud (YouTube/YT Music xử lý riêng qua IFrame API).
     function _pomoEmbedSrc(t) {
-      if (t.provider === 'spotify') return 'https://open.spotify.com/embed/' + t.ref + '?utm_source=tutorhub';
       if (t.provider === 'soundcloud') return 'https://w.soundcloud.com/player/?url=' + encodeURIComponent(t.ref) + '&auto_play=false&hide_related=true&show_comments=false&visual=true&color=%234f46e5';
       return null;
     }
     function pomoAddTrack() {
       var inp = document.getElementById('pomoMusicUrl'); var url = inp ? inp.value : '';
       var p = _parseMusicUrl(url);
-      if (!p) { showToast('Chỉ hỗ trợ link YouTube, Spotify hoặc SoundCloud.', 'error'); return; }
-      var fallbackTitle = POMO_PROV_NAME[p.provider] || 'Bài nhạc';
-      var ytThumb = p.provider === 'youtube' ? 'https://i.ytimg.com/vi/' + p.ref + '/hqdefault.jpg' : '';
-      var oembed = p.provider === 'youtube'
-        ? 'https://www.youtube.com/oembed?url=' + encodeURIComponent('https://www.youtube.com/watch?v=' + p.ref) + '&format=json'
-        : p.provider === 'spotify'
-          ? 'https://open.spotify.com/oembed?url=' + encodeURIComponent(p.url)
-          : 'https://soundcloud.com/oembed?format=json&url=' + encodeURIComponent(p.url);
+      if (!p) { showToast('Chỉ nhận link YouTube, YouTube Music (bài/album), hoặc SoundCloud (album).', 'error'); return; }
+      var fallbackTitle = (POMO_PROV_NAME[p.provider] || 'Bài nhạc') + (p.kind === 'album' ? ' • Album' : '');
+      var ytThumb = (_isYtFam(p.provider) && p.kind === 'track' && p.ref) ? 'https://i.ytimg.com/vi/' + p.ref + '/hqdefault.jpg' : '';
+      var oembed = _isYtFam(p.provider)
+        ? (p.kind === 'track'
+            ? 'https://www.youtube.com/oembed?url=' + encodeURIComponent('https://www.youtube.com/watch?v=' + p.ref) + '&format=json'
+            : 'https://www.youtube.com/oembed?url=' + encodeURIComponent('https://www.youtube.com/playlist?list=' + p.ref) + '&format=json')
+        : 'https://soundcloud.com/oembed?format=json&url=' + encodeURIComponent(p.url);
       function _add(title, thumb) {
         var t = _pomoTracks();
-        t.push({ id: 'track-' + Date.now() + '-' + Math.floor(Math.random() * 1e6), provider: p.provider, ref: p.ref, url: p.url, title: title || fallbackTitle, thumbnailUrl: thumb || ytThumb || '', addedAt: Date.now() });
+        t.push({ id: 'track-' + Date.now() + '-' + Math.floor(Math.random() * 1e6), provider: p.provider, kind: p.kind, ref: p.ref, list: p.list || null, url: p.url, title: title || fallbackTitle, thumbnailUrl: thumb || ytThumb || '', addedAt: Date.now() });
         _pomoSaveTracks(t); if (inp) inp.value = ''; _renderPomoMusic(); showToast('Đã thêm vào hàng chờ.', 'success');
       }
       // oEmbed công khai (không cần key) để lấy tiêu đề + ảnh; lỗi thì dùng tên nguồn.
@@ -302,19 +321,27 @@
     }
     function _pomoCurrentTrack() { var t = _pomoTracks(); var i = _pomoIdx(); return t[i] || null; }
     function _pomoPlayCurrent(autoplay) {
-      var track = _pomoCurrentTrack(); if (!track || track.provider !== 'youtube') return;
+      var track = _pomoCurrentTrack(); if (!track || !_isYtFam(track.provider)) return;
       var host = document.getElementById('pomoYtPlayer'); if (!host) return;
+      var isAlbum = track.kind === 'album';
+      var vid = track.ref || track.videoId; // track cũ dùng videoId; track mới dùng ref
       _loadYtApi(function () {
         if (_ytPlayer && _ytPlayer.loadVideoById) {
-          _ytPlayer.loadVideoById(track.videoId); if (!autoplay && _ytPlayer.pauseVideo) _ytPlayer.pauseVideo();
+          if (isAlbum) { try { _ytPlayer.loadPlaylist({ list: track.ref, listType: 'playlist', index: 0 }); } catch (er) { } }
+          else { _ytPlayer.loadVideoById(vid); }
+          if (!autoplay && _ytPlayer.pauseVideo) { try { _ytPlayer.pauseVideo(); } catch (er) { } }
         } else {
-          _ytPlayer = new window.YT.Player('pomoYtPlayer', {
-            videoId: track.videoId, playerVars: { rel: 0, modestbranding: 1 },
+          var pv = { rel: 0, modestbranding: 1 };
+          if (isAlbum) { pv.listType = 'playlist'; pv.list = track.ref; }
+          var opts = {
+            playerVars: pv,
             events: {
               onReady: function (e) { try { var v = document.getElementById('pomoVol'); if (v) e.target.setVolume(+v.value); } catch (er) { } if (autoplay) try { e.target.playVideo(); } catch (er) { } },
               onStateChange: function (e) { if (e.data === window.YT.PlayerState.ENDED) pomoMusicNext(); _pomoSyncPlayBtn(); }
             }
-          });
+          };
+          if (!isAlbum) opts.videoId = vid;
+          _ytPlayer = new window.YT.Player('pomoYtPlayer', opts);
         }
       });
     }
@@ -336,13 +363,16 @@
       var box = document.getElementById('pomoMusic'); if (!box) return;
       // Huỷ player cũ trước khi thay DOM để tránh tham chiếu tới iframe đã gỡ.
       try { if (_ytPlayer && _ytPlayer.destroy) _ytPlayer.destroy(); } catch (e) { } _ytPlayer = null;
-      var tracks = _pomoTracks(); var ci = _pomoIdx(); var cur = tracks[ci] || null;
-      var addBar = '<div class="pomo-music-add"><input class="form-input" id="pomoMusicUrl" placeholder="Dán link YouTube / Spotify / SoundCloud…" aria-label="Link nhạc (YouTube, Spotify, SoundCloud)" onkeydown="if(event.key===\'Enter\'){event.preventDefault();pomoAddTrack();}">' +
+      var tracks = _pomoTracks();
+      var ci = _pomoIdx(); if (ci > tracks.length - 1) ci = tracks.length - 1; if (ci < 0) ci = 0;
+      if (ci !== _pomoIdx()) _pomoSaveIdx(ci);
+      var cur = tracks[ci] || null;
+      var addBar = '<div class="pomo-music-add"><input class="form-input" id="pomoMusicUrl" placeholder="Dán link YouTube / YouTube Music (bài/album) / SoundCloud (album)…" aria-label="Link nhạc (YouTube, YouTube Music, SoundCloud)" onkeydown="if(event.key===\'Enter\'){event.preventDefault();pomoAddTrack();}">' +
         '<button class="btn btn-primary" onclick="pomoAddTrack()">' + svgIcon('plus-square', 15) + ' Thêm</button></div>';
       var player;
       if (!cur) {
-        player = '<div class="empty-state" style="padding:24px 16px;"><span class="empty-state-ic">' + svgIcon('flashcards', 24) + '</span><div class="empty-state-title">Chưa có nhạc</div><div class="empty-state-hint">Dán link YouTube, Spotify hoặc SoundCloud để nghe nhạc học tập.</div></div>';
-      } else if (cur.provider === 'youtube') {
+        player = '<div class="empty-state" style="padding:24px 16px;"><span class="empty-state-ic">' + svgIcon('flashcards', 24) + '</span><div class="empty-state-title">Chưa có nhạc</div><div class="empty-state-hint">Dán link YouTube, YouTube Music (bài hoặc album), hoặc SoundCloud (album) để nghe nhạc học tập.</div></div>';
+      } else if (_isYtFam(cur.provider)) {
         player = '<div class="pomo-player"><div id="pomoYtPlayer"></div></div>' +
           '<div class="pomo-music-ctrl">' +
           '<button class="btn btn-ghost" aria-label="Bài trước" onclick="pomoMusicPrev()">' + svgIcon('skipback', 18) + '</button>' +
@@ -351,27 +381,28 @@
           '<span class="pomo-vol-ic" aria-hidden="true">' + svgIcon('volume', 16) + '</span>' +
           '<input type="range" id="pomoVol" min="0" max="100" value="70" class="pomo-vol" aria-label="Âm lượng" oninput="pomoMusicVolume(this.value)"></div>';
       } else {
-        // Spotify / SoundCloud: khung nhúng chính thức (điều khiển phát trong khung) + nút chuyển bài.
+        // SoundCloud (album): khung nhúng chính thức (điều khiển phát trong khung) + nút chuyển bài.
         player = '<div class="pomo-embed-wrap prov-' + cur.provider + '"><iframe class="pomo-embed" src="' + escAttr(_pomoEmbedSrc(cur)) + '" allow="autoplay; encrypted-media; clipboard-write; fullscreen; picture-in-picture" loading="lazy" title="' + escAttr(POMO_PROV_NAME[cur.provider] + ': ' + cur.title) + '"></iframe></div>' +
           '<div class="pomo-music-ctrl">' +
           '<button class="btn btn-ghost" aria-label="Bài trước" onclick="pomoMusicPrev()">' + svgIcon('skipback', 18) + '</button>' +
-          '<span style="flex:1;text-align:center;font-size:12px;color:var(--text-muted);">Bấm phát ngay trong khung ' + POMO_PROV_NAME[cur.provider] + '</span>' +
+          '<span style="flex:1;text-align:center;font-size:12px;color:var(--text-muted);">Album ' + POMO_PROV_NAME[cur.provider] + ' — bấm phát trong khung</span>' +
           '<button class="btn btn-ghost" aria-label="Bài sau" onclick="pomoMusicNext()">' + svgIcon('skip', 18) + '</button></div>';
       }
       var list = tracks.length ? '<div class="pomo-queue">' + tracks.map(function (t, i) {
         var prov = t.provider || 'youtube';
+        var isAlbum = t.kind === 'album';
         var thumb = t.thumbnailUrl
           ? '<img src="' + escAttr(t.thumbnailUrl) + '" alt="" loading="lazy">'
-          : '<span class="pomo-track-noimg prov-' + prov + '">' + (POMO_PROV_NAME[prov] || '?').charAt(0) + '</span>';
+          : '<span class="pomo-track-noimg prov-' + prov + '">' + (isAlbum ? '💿' : (POMO_PROV_NAME[prov] || '?').charAt(0)) + '</span>';
         return '<div class="pomo-track' + (i === ci ? ' current' : '') + '" onclick="pomoMusicSelect(' + i + ')">' +
           thumb +
           '<div class="pomo-track-meta"><div class="pomo-track-title">' + escHtml(t.title) + '</div>' +
-          '<span class="pomo-track-prov prov-' + prov + '">' + (POMO_PROV_NAME[prov] || prov) + '</span></div>' +
+          '<span class="pomo-track-prov prov-' + prov + '">' + (POMO_PROV_NAME[prov] || prov) + (isAlbum ? ' · Album' : '') + '</span></div>' +
           '<button class="pomo-track-del" aria-label="Xoá khỏi hàng chờ" onclick="event.stopPropagation();removePomoTrack(' + qid(t.id) + ')">✕</button>' +
           '</div>';
       }).join('') + '</div>' : '';
       box.innerHTML = '<div class="card"><div class="card-header"><div class="card-title">Nhạc học tập</div></div>' + addBar + player + list + '</div>';
-      if (cur && cur.provider === 'youtube') { _pomoPlayCurrent(false); setTimeout(_pomoSyncPlayBtn, 400); }
+      if (cur && _isYtFam(cur.provider)) { _pomoPlayCurrent(false); setTimeout(_pomoSyncPlayBtn, 400); }
     }
 
     // ── Chuỗi tập trung (lịch tháng heatmap) ─────────────────────

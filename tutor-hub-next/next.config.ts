@@ -16,11 +16,11 @@ const nextConfig: NextConfig = {
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net",
               "font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net",
               "img-src 'self' data: blob: https:",
-              // oEmbed lấy tiêu đề/ảnh: YouTube + Spotify + SoundCloud;
+              // oEmbed lấy tiêu đề/ảnh: YouTube (gồm YouTube Music) + SoundCloud;
               // googleapis.com: PUT file thẳng lên Google Drive (upload resumable)
-              "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://cdn.jsdelivr.net https://www.youtube.com https://open.spotify.com https://soundcloud.com https://www.googleapis.com",
-              // frame-src cho khung nhúng trình phát: YouTube + Spotify + SoundCloud
-              "frame-src https://www.youtube.com https://www.youtube-nocookie.com https://open.spotify.com https://w.soundcloud.com",
+              "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://cdn.jsdelivr.net https://www.youtube.com https://soundcloud.com https://www.googleapis.com",
+              // frame-src cho khung nhúng trình phát: YouTube (gồm YouTube Music) + SoundCloud
+              "frame-src https://www.youtube.com https://www.youtube-nocookie.com https://w.soundcloud.com",
               "worker-src 'self' blob:",
               "frame-ancestors 'self'",
             ].join('; '),

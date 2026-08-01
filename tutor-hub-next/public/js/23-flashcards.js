@@ -314,8 +314,11 @@
       var html = '<div class="modal-header"><h3>' + title + '</h3><button class="modal-close" onclick="closeModal()">✕</button></div>' +
         '<div class="modal-body">' +
         '<div class="form-group"><label>Mặt trước</label><textarea class="form-textarea" id="mCardFront" oninput="updateCardPreview()">' + (c ? escHtml(c.front) : '') + '</textarea>' +
-        '<div class="hint">Hỗ trợ LaTeX: \\(x^2+1\\) hoặc \\[\\frac{a}{b}\\]</div></div>' +
-        '<div class="form-group"><label>Mặt sau</label><textarea class="form-textarea" id="mCardBack" oninput="updateCardPreview()">' + (c ? escHtml(c.back) : '') + '</textarea></div>' +
+        '<div class="hint">Hỗ trợ LaTeX: \\(x^2+1\\) hoặc \\[\\frac{a}{b}\\]</div>' +
+        _fcMathBar('mCardFront') + '</div>' +
+        '<div class="form-group"><label>Mặt sau</label><textarea class="form-textarea" id="mCardBack" oninput="updateCardPreview()">' + (c ? escHtml(c.back) : '') + '</textarea>' +
+        _fcMathBar('mCardBack') + '</div>' +
+        '<input type="file" id="fcImgInput" accept="image/*" style="display:none" onchange="fcImgChosen(this)">' +
         '<div class="form-row">' +
         '<div class="form-group"><label>Gợi ý (tuỳ chọn)</label><input class="form-input" id="mCardHint" value="' + (c ? escHtml(c.hint || '') : '') + '"></div>' +
         '<div class="form-group"><label>Độ khó</label><select class="form-select" id="mCardDiff">' +
@@ -504,5 +507,113 @@
       } else {
         _finish(null);
       }
+    }
+
+    // ============================================================
+    // FLASHCARDS — NHẬN DIỆN TOÁN HỌC (ảnh công thức → LaTeX + chèn hình)
+    // ------------------------------------------------------------
+    // 2 chế độ trên mỗi ô (Mặt trước / Mặt sau):
+    //  • 'ocr'   : ảnh công thức → LaTeX (qua API route same-origin /api/math-ocr;
+    //              cần MATHPIX_APP_ID/KEY ở server — chưa cấu hình thì báo rõ + chèn ảnh).
+    //  • 'attach': chèn ảnh (hình học, sơ đồ) — nén phía client rồi upload Supabase
+    //              Storage (bucket 'materials'); lỗi/không có DB thì nhúng data URL.
+    // Ô Mặt trước/Mặt sau vốn render RAW HTML nên chèn <img>/LaTeX là hiển thị được.
+    // ============================================================
+    var _fcImgTarget = null, _fcImgMode = null;
+    function _fcMathBar(targetId) {
+      return '<div class="fc-mathbar">' +
+        '<button type="button" class="btn btn-sm btn-ghost" title="Chụp/chọn ảnh công thức → tự chuyển thành LaTeX" onclick="fcPickImage(' + qid(targetId) + ',\'ocr\')">🧮 Nhận diện công thức</button>' +
+        '<button type="button" class="btn btn-sm btn-ghost" title="Chèn ảnh (hình học, sơ đồ…) vào thẻ" onclick="fcPickImage(' + qid(targetId) + ',\'attach\')">🖼️ Chèn ảnh</button>' +
+        '</div>';
+    }
+    function fcPickImage(targetId, mode) {
+      _fcImgTarget = targetId; _fcImgMode = mode;
+      var inp = document.getElementById('fcImgInput');
+      if (inp) { inp.value = ''; inp.click(); }
+    }
+    function fcImgChosen(input) {
+      var file = input && input.files && input.files[0]; if (!file) return;
+      if (!/^image\//.test(file.type)) { showToast('Vui lòng chọn tệp ảnh.', 'error'); return; }
+      if (_fcImgMode === 'ocr') _fcOcrImage(file); else _fcAttachImage(file);
+    }
+    // Nén ảnh phía client (canvas) → trả về {dataUrl, blob} JPEG. Nền trắng cho ảnh trong suốt.
+    function _fcCompressImage(file, maxDim, cb) {
+      var reader = new FileReader();
+      reader.onload = function (e) {
+        var img = new Image();
+        img.onload = function () {
+          var w = img.width || 1, h = img.height || 1;
+          var scale = Math.min(1, maxDim / Math.max(w, h));
+          var cw = Math.max(1, Math.round(w * scale)), ch = Math.max(1, Math.round(h * scale));
+          var canvas = document.createElement('canvas'); canvas.width = cw; canvas.height = ch;
+          var ctx = canvas.getContext('2d');
+          ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, cw, ch);
+          ctx.drawImage(img, 0, 0, cw, ch);
+          var dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+          if (canvas.toBlob) canvas.toBlob(function (blob) { cb(dataUrl, blob); }, 'image/jpeg', 0.82);
+          else cb(dataUrl, null);
+        };
+        img.onerror = function () { cb(null, null); };
+        img.src = e.target.result;
+      };
+      reader.onerror = function () { cb(null, null); };
+      reader.readAsDataURL(file);
+    }
+    function _fcInsertAtCursor(targetId, text) {
+      var ta = document.getElementById(targetId); if (!ta) return;
+      var start = ta.selectionStart != null ? ta.selectionStart : ta.value.length;
+      var end = ta.selectionEnd != null ? ta.selectionEnd : ta.value.length;
+      ta.value = ta.value.slice(0, start) + text + ta.value.slice(end);
+      var pos = start + text.length; try { ta.selectionStart = ta.selectionEnd = pos; } catch (e) { }
+      ta.focus(); updateCardPreview();
+    }
+    function _fcInsertImg(targetId, src) { _fcInsertAtCursor(targetId, '<img class="fc-img" src="' + src + '" alt="Hình">'); }
+    function _fcAttachImage(file) {
+      var target = _fcImgTarget || 'mCardFront';
+      showBusy('Đang xử lý ảnh…');
+      _fcCompressImage(file, 1000, function (dataUrl, blob) {
+        if (!dataUrl) { hideBusy(); showToast('Không đọc được ảnh.', 'error'); return; }
+        if (_db && _dbUserId && blob) {
+          var path = 'flashcards/' + _dbUserId + '/' + Date.now() + '-' + Math.floor(Math.random() * 1e6) + '.jpg';
+          _db.storage.from('materials').upload(path, blob, { upsert: true, contentType: 'image/jpeg' })
+            .then(function (r) {
+              hideBusy();
+              if (r.error) { _fcInsertImg(target, dataUrl); showToast('Ảnh đã chèn (cục bộ) — lỗi tải lên: ' + r.error.message, 'warning'); return; }
+              var pub = _db.storage.from('materials').getPublicUrl(path).data.publicUrl;
+              _fcInsertImg(target, pub); showToast('Đã chèn ảnh.', 'success');
+            })
+            .catch(function () { hideBusy(); _fcInsertImg(target, dataUrl); showToast('Ảnh đã chèn (cục bộ).', 'info'); });
+        } else {
+          hideBusy(); _fcInsertImg(target, dataUrl); showToast('Đã chèn ảnh.', 'success');
+        }
+      });
+    }
+    function _fcOcrImage(file) {
+      var target = _fcImgTarget || 'mCardFront';
+      showBusy('Đang nhận diện công thức…');
+      _fcCompressImage(file, 1400, function (dataUrl) {
+        if (!dataUrl) { hideBusy(); showToast('Không đọc được ảnh.', 'error'); return; }
+        fetch('/api/math-ocr', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ image: dataUrl }) })
+          .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { return { status: r.status, body: j }; }); })
+          .then(function (res) {
+            hideBusy();
+            if (res.status === 501 || (res.body && res.body.error === 'not_configured')) {
+              _fcInsertImg(target, dataUrl);
+              showToast('Chưa bật nhận diện công thức (cần MATHPIX_APP_ID/KEY ở server). Tạm chèn ảnh — xem hướng dẫn trong PROGRESS.md.', 'warning');
+              return;
+            }
+            if (res.status === 401) { showToast('Cần đăng nhập để dùng nhận diện công thức.', 'error'); return; }
+            if (res.body && res.body.latex) {
+              var latex = String(res.body.latex);
+              var wrapped = /\n|\\\\|\\begin/.test(latex) ? ('\\[' + latex + '\\]') : ('\\(' + latex + '\\)');
+              _fcInsertAtCursor(target, wrapped);
+              showToast('Đã nhận diện công thức.', 'success');
+            } else {
+              _fcInsertImg(target, dataUrl);
+              showToast((res.body && res.body.error) ? ('Lỗi nhận diện: ' + res.body.error + ' — đã chèn ảnh.') : 'Không nhận diện được công thức. Đã chèn ảnh thay thế.', 'warning');
+            }
+          })
+          .catch(function () { hideBusy(); _fcInsertImg(target, dataUrl); showToast('Lỗi mạng khi nhận diện. Đã chèn ảnh thay thế.', 'error'); });
+      });
     }
 

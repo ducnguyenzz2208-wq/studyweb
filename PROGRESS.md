@@ -2,6 +2,51 @@
 
 > App quản lý trung tâm gia sư. Live: https://studyweb-swart.vercel.app
 
+## Nhạc YouTube Music (bài + album) + SoundCloud album + gỡ Spotify ✅ ĐÃ LÀM
+- [x] **Thêm YouTube Music** (26-pomodoro.js `_parseMusicUrl`): nhận link `music.youtube.com` —
+      **bài lẻ** (`watch?v=`) và **album/playlist** (`playlist?list=OLAK5uy_…` hoặc `list=`). Provider
+      mới `ytmusic` (nhãn "YouTube Music"). Cả YouTube thường lẫn YT Music phát qua **IFrame API**;
+      bài lẻ → `loadVideoById`, album → `loadPlaylist({list,listType:'playlist'})` (tự phát lần lượt,
+      hết playlist thì `pomoMusicNext`).
+- [x] **Nhận ALBUM** cho SoundCloud + YT Music: SoundCloud giờ **CHỈ nhận album (set)** — link phải có
+      `/sets/` (track lẻ bị từ chối, đúng music_rules "SoundCloud: Albums ONLY"); YT Music nhận cả bài
+      lẫn album. Track có `kind:'track'|'album'`; hàng chờ hiện marker 💿 + nhãn "· Album".
+- [x] **Gỡ Spotify**: `_parseMusicUrl` không còn nhận link Spotify; `_pomoTracks()` tự **lọc bỏ track
+      Spotify cũ** trong hàng chờ (localStorage) khi tải; `_pomoEmbedSrc` bỏ nhánh spotify; placeholder/
+      empty-state cập nhật (chỉ YouTube / YouTube Music / SoundCloud). **CSP** (`next.config.ts`) gỡ
+      `open.spotify.com` khỏi `connect-src`/`frame-src`. ⚠️ Cần Vercel redeploy để CSP mới có hiệu lực.
+- [x] **Fix bug tiềm ẩn**: track YouTube mới lưu id ở `ref` nhưng `_pomoPlayCurrent` cũ đọc `track.videoId`
+      (undefined) → không phát. Nay dùng `track.ref || track.videoId` (tương thích track cũ).
+- Verify (live, mock mode): parser đúng 9 ca (YT Music bài/album, YT thường, youtu.be, playlist, SC album,
+      SC track bị loại, Spotify bị loại, rác bị loại); track Spotify cũ trong queue bị lọc + track YT cũ
+      (videoId-only) migrate sang `provider:youtube,kind:track,ref`; UI render player YT + hàng chờ có
+      marker Album 💿, không còn chữ "spotify" trong DOM; 0 lỗi console.
+
+## Flashcard: nhận diện toán học (ảnh công thức → LaTeX) + chèn ảnh hình học ✅ ĐÃ LÀM (OCR cần setup)
+- [x] **2 nút trên mỗi ô Mặt trước/Mặt sau** (23-flashcards.js `_fcMathBar` trong `openCardModal`):
+      **🧮 Nhận diện công thức** (ảnh → LaTeX) và **🖼️ Chèn ảnh** (hình học/sơ đồ). Dùng chung 1 input
+      file ẩn (`fcImgInput`) + state `_fcImgTarget/_fcImgMode`. Ô front/back vốn render RAW HTML nên
+      chèn `<img class="fc-img">` / LaTeX hiển thị ngay (MathJax v3 đã có sẵn qua jsdelivr).
+- [x] **Nén ảnh phía client** (`_fcCompressImage`, canvas): downscale (attach 1000px / OCR 1400px), nền
+      trắng cho ảnh trong suốt, xuất JPEG q0.82 → data URL + Blob. Verify live: 2000×1200 → 1000×600, ~5KB.
+- [x] **Chèn ảnh** (`_fcAttachImage`): có DB → upload Supabase Storage bucket `materials`
+      (`flashcards/<uid>/…jpg`) rồi chèn public URL (không phình DB); lỗi/không DB → nhúng data URL. CSS
+      `.fc-img` (max-height 240px, responsive) + `.fc-mathbar`.
+- [x] **OCR công thức** (`_fcOcrImage` → `POST /api/math-ocr`): API route same-origin
+      (`app/api/math-ocr/route.ts`) gọi **Mathpix** với key ở ENV server (KHÔNG lộ client — giống pattern
+      Google Drive), chỉ cho user đã đăng nhập. Trả `{latex}` → chèn `\(…\)`/`\[…\]` vào ô. Chưa cấu hình
+      env → **501 `not_configured`**, client báo rõ + **tạm chèn ảnh** (không mất công); lỗi/401 cũng
+      degrade an toàn (luôn còn đường chèn ảnh + gõ LaTeX tay).
+- Verify (live, mock mode): modal có 2 thanh × 2 nút + input file; `_fcInsertAtCursor`/`_fcInsertImg` chèn
+      đúng; preview render ảnh (max-h 240px) + 2 công thức MathJax typeset; `tsc --noEmit` sạch; 0 lỗi console.
+- **⚠️ CẦN BẠN LÀM để bật OCR** (tuỳ chọn — chèn ảnh + gõ LaTeX vẫn chạy nếu bỏ qua):
+  1. Tạo tài khoản **Mathpix OCR API** (https://mathpix.com/ocr-api), lấy `app_id` + `app_key`.
+  2. Vercel → project → Settings → Environment Variables → thêm `MATHPIX_APP_ID`, `MATHPIX_APP_KEY` → redeploy.
+  3. Vào app (qua `/dashboard` để có phiên đăng nhập) → Flashcard → Thêm/Sửa thẻ → 🧮 Nhận diện công thức.
+- **Chưa test được OCR end-to-end** ở môi trường này: `/api/math-ocr` nằm sau middleware auth (mock mode
+      không có phiên Supabase nên bị redirect `/login`) + chưa có key Mathpix. Cần bạn làm bước 1-2 rồi thử
+      bước 3 với tài khoản thật, báo lại nếu lỗi.
+
 ## Tích hợp Google Drive: file nặng (PDF/Word...) lưu vào Drive của GV ⚠️ CẦN SETUP THỦ CÔNG
 - [x] **Đã kiểm chứng: service account KHÔNG dùng được** với Gmail cá nhân — test thật với key
       `tutorhub-uploader@tutorhub-502013.iam.gserviceaccount.com` cho lỗi cứng `"Service Accounts do
