@@ -78,7 +78,7 @@
       `gdrive:`, khiến lần sau tưởng nhầm là tệp Supabase (gắn `download` sai + xoá không dọn được file
       trên Drive).
 - **⚠️ CẦN BẠN LÀM (không tự động được — cần đăng nhập Google Cloud Console thật)**:
-  1. Chạy `027_google_drive_tokens.sql` trên Supabase SQL Editor.
+  1. [x] ✅ Đã chạy `027_google_drive_tokens.sql` trên Supabase SQL Editor.
   2. Google Cloud Console (project `tutorhub-502013`) → APIs & Services → **OAuth consent screen**:
      loại **External**, thêm scope `.../auth/drive.file`, thêm chính email Google của bạn vào **Test
      users** (app ở chế độ Testing, chỉ test user mới đăng nhập được).
@@ -187,8 +187,8 @@
       "cần chạy migration 026". Verify: GV thấy 2 thư mục + bài gom đúng; HS thấy composer/thư mục + "📤
       1/2"; post-migration onConflict gồm folder_id; pre-migration default fallback OK, folder bị chặn +
       toast; mobile nút 44px; 0 lỗi console; `node --check` pass.
-- **Việc thủ công**: chạy `026_assignment_folders.sql` trong Supabase để bật thư mục nộp bài (không
-      chạy vẫn nộp bài bình thường ở khu mặc định).
+- [x] **Việc thủ công**: ✅ Đã chạy `026_assignment_folders.sql` trên Supabase (2026-08-01) — thư mục
+      nộp bài đã bật, cột `folders`/`folder_id` đã tồn tại (cờ `_asnFoldersReady` tự nhận đúng).
 - [x] **Fix spam 400 "Could not find the 'folders' column" khi tạo thư mục** (chưa chạy migration 026):
       thêm cờ `_asnFoldersReady` (localStorage `th_asn_folders`). Phát hiện cột `folders` tồn tại hay
       không NGAY khi tải bài tập (`'folders' in row` của `select('*')` — KHÔNG tốn query/400). Khi CHƯA
@@ -303,7 +303,7 @@ Tối ưu trải nghiệm HS trên điện thoại/PC. Giữ classic-JS scope, k
       PDF/Word). Tự nhận cột **Tên/Email/Lớp** theo tiêu đề (mọi thứ tự) hoặc theo vị trí; tự dò email
       theo dấu "@". Có preview + lớp mặc định + tải tệp mẫu CSV. Chèn vào `students` (owner=current user).
       Verify: modal + parser (đổi thứ tự cột, thiếu email) + SheetJS round-trip dưới CSP OK, 0 lỗi console.
-- [x] **Classes kiểu Moodle (weeks + feed nộp bài giống Facebook)** ✅ ĐÃ LÀM (cần chạy migration `025`):
+- [x] **Classes kiểu Moodle (weeks + feed nộp bài giống Facebook)** ✅ ĐÃ LÀM (✅ đã chạy migration `025`):
       Mục **Bài tập** (class-feed) giờ chia thành **📌 General + Tuần 1..N + Ngoài kỳ học** (accordion
       `<details>`). GV/Admin bấm **"🗓 Kỳ học"** đặt *Tuần 1 bắt đầu ngày… / số tuần* (`openClassTermModal`
       → lưu `classes.term_start`/`term_weeks`). Bài tự xếp vào tuần theo **hạn nộp** (`_classWeeks`/`_weekOf`
@@ -354,28 +354,20 @@ enrollment_requests, notifications`.
 - **Chuẩn hoá badge thông báo**: chuyển `buildNotifications` từ tính client-side sang đọc thẳng bảng `notifications`.
 
 ## Việc thủ công cần làm (Supabase / deploy)
+- [x] ✅ **Đã chạy TẤT CẢ migration `017`→`027` trên Supabase (xác nhận 2026-08-01)** — `017_notifications`,
+      `018_find_account_by_name`, `019_realtime_notifications`, `020_audit_log`, `021_reminders`,
+      `022_secure_notifications_insert`, `023_fix_signup_trigger`, `024_admin_list_all_users`,
+      `025_class_term_weeks`, `026_assignment_folders`, `027_google_drive_tokens`. Mọi tính năng phụ
+      thuộc migration ở các mục trên (nhật ký, nhắc, tra tên, kỳ học theo tuần, thư mục nộp bài, Drive)
+      giờ chạy đầy đủ, không còn ở trạng thái fallback/báo lỗi thiếu cột/RPC.
+      ⚠️ Nếu sau này chạy LẠI `017` (nó tạo lại policy INSERT rộng của `notifications`) thì phải chạy
+      lại `022` để siết RLS lại.
+  - [ ] Nếu trước đó nút "Nhật ký" từng báo lỗi (cờ `_auditOff`/`th_audit_off` lưu trong localStorage do
+        404 lần đầu khi `020` chưa chạy): mở Console gõ `thAuditReset()` để bật lại ghi log — cờ cũ
+        không tự hết dù migration đã chạy.
 - [ ] Auth → URL Configuration: Redirect URLs có `https://studyweb-swart.vercel.app/**`;
       **Site URL** đúng domain prod (đây là nơi bị đá về khi redirect sai — lý do reset MK "không thấy lỗi gì").
 - [ ] Kiểm tra email recovery/confirm có về không (cả Spam); SMTP mặc định Supabase bị giới hạn rate.
-- [ ] Chạy migration `017_notifications.sql`.
-- [ ] Chạy migration `018_find_account_by_name.sql` (bật tra cứu học sinh theo TÊN; nếu chưa chạy,
-      tra theo email vẫn hoạt động, tra theo tên sẽ báo lỗi nhắc chạy migration).
-- [ ] Chạy migration `019_realtime_notifications.sql` — bật Supabase Realtime cho `notifications`
-      (không có bước này thì 🔔 vẫn cần bấm tải lại; app không lỗi).
-- [ ] Chạy migration `020_audit_log.sql` — bảng nhật ký + `log_audit()`. Chưa chạy: nút "Nhật ký"
-      báo lỗi khi mở, các thao tác vẫn chạy bình thường (ghi log là best-effort, không chặn).
-- [ ] Chạy migration `021_reminders.sql` — RPC nhắc học phí/bài tập. Chưa chạy: nút "Nhắc…" báo lỗi
-      RPC; mọi thứ khác không ảnh hưởng. (Tuỳ chọn: bật pg_cron theo comment trong file để tự động.)
-- [ ] **Chạy migration `022_secure_notifications_insert.sql`** (BẢO MẬT — nên chạy sớm): siết RLS
-      INSERT của `notifications` + RPC `send_payment_reminder`. Chưa chạy: học sinh vẫn có thể spam/giả
-      mạo thông báo, VÀ nút "🔔 Nhắc đóng" (từng khoản) sẽ báo lỗi RPC. Chạy SAU `017` và `021`.
-- [ ] **Chạy migration `023_fix_signup_trigger.sql`** (GẤP — đang chặn đăng ký): sửa lỗi
-      "Database error saving new user" (500) khi tạo tài khoản. Sau khi chạy, đăng ký được ngay.
-- [ ] **Chạy migration `024_admin_list_all_users.sql`** (GẤP — admin không thấy tài khoản chờ duyệt):
-      RPC `admin_list_users()` (thấy cả user chưa có profile) + `admin_set_role()` (duyệt = tạo profile).
-      Chưa chạy: app tự fallback đọc bảng profiles (chỉ thấy user ĐÃ có profile).
-- [ ] **Chạy migration `025_class_term_weeks.sql`**: thêm `term_start`/`term_weeks` vào `classes` cho
-      tính năng "Kỳ học theo tuần". Chưa chạy: nút "🗓 Kỳ học" lưu sẽ báo lỗi cột; feed vẫn hiện phẳng.
 - [ ] Sau khi push: chờ Vercel build xong rồi test lại reset password.
 
 ## Ổn định cho người dùng THẬT (roadmap — làm tiếp)
@@ -383,12 +375,12 @@ enrollment_requests, notifications`.
 > không phải thêm tính năng. Sắp theo mức ưu tiên.
 
 ### P0 — Đang chặn người dùng thật (cấu hình + lỗ hổng, phần lớn KHÔNG cần code)
-- [ ] **Chạy hết migration + Auth URL config** (xem mục "Việc thủ công" ở trên): `017`→`021` +
-      Site URL/Redirect URLs đúng domain prod. Thiếu → reset MK hỏng, không có realtime, nút Nhắc/Nhật ký lỗi.
+- [x] ✅ **Migration `017`→`027` đã chạy hết** (xem mục "Việc thủ công" ở trên). Còn lại của mục này:
+      **Auth URL config** (Site URL/Redirect URLs đúng domain prod) — CHƯA làm.
 - [ ] **Email deliverability**: cắm **Custom SMTP** (Resend/SendGrid free) trong Auth → SMTP. SMTP mặc
       định Supabase giới hạn rate → đăng ký đông thì email xác nhận rớt âm thầm. (Tuỳ chọn: tạm tắt
       "Confirm email" lúc đầu để giảm ma sát, bật lại khi có SMTP.)
-- [x] **Bịt lỗ hổng chèn notifications** ✅ CODE XONG (cần chạy migration `022`): migration
+- [x] **Bịt lỗ hổng chèn notifications** ✅ CODE XONG + ✅ migration `022` đã chạy: migration
       `022_secure_notifications_insert.sql` bỏ policy INSERT rộng + thêm RPC `send_payment_reminder`
       (SECURITY DEFINER, chỉ Admin, dựng message server-side). Client `sendPaymentReminder`
       (19-payments.js) đã chuyển từ `.from('notifications').insert` sang `_db.rpc(...)`. Đã rà: KHÔNG
@@ -429,20 +421,20 @@ enrollment_requests, notifications`.
       → hết `favicon.ico 404`.
 
 ### Nghiệm thu nhanh (chạy với tài khoản thật, mọi vai trò)
-> Code đã sẵn sàng; các bước cần MÔI TRƯỜNG THẬT của bạn (chạy migration `023`, cấu hình SMTP,
-> tài khoản admin) — chạy theo runbook dưới. Trạng thái: ✅ code-verified / ⏳ chờ bạn thao tác.
+> Code đã sẵn sàng; migration `023`/`024` ✅ ĐÃ CHẠY (xác nhận 2026-08-01). Còn lại cần MÔI TRƯỜNG THẬT
+> của bạn: cấu hình SMTP, tài khoản admin — chạy theo runbook dưới. Trạng thái: ✅ code-verified / ⏳ chờ bạn thao tác.
 - [x] **Lỗi "Database error saving new user" khi đăng ký** — ĐÃ FIX (migration `023_fix_signup_trigger.sql`:
       `handle_new_user()` bọc EXCEPTION nên không bao giờ 500; + `dashboard/page.tsx` tạo profile bù
-      nếu thiếu). ⏳ Cần chạy `023` trên prod rồi thử đăng ký lại.
+      nếu thiếu). ✅ Đã chạy `023` trên prod — có thể thử đăng ký lại.
 - [x] **Admin không thấy tài khoản chờ duyệt trong "Quản lý người dùng"** — ĐÃ FIX. Nguyên nhân: mục
       này đọc bảng `profiles`; tài khoản mà trigger tạo profile lỗi → có trong `auth.users` nhưng thiếu
       profile → vô hình với admin. Fix: migration `024` (RPC `admin_list_users` join `auth.users` → thấy
       cả user chưa có profile; `admin_set_role` duyệt = tạo profile) + client `loadUsersFromDb`/
-      `changeUserRole` gọi RPC (fallback đọc profiles nếu chưa chạy 024). ⏳ Cần chạy `024`.
+      `changeUserRole` gọi RPC (fallback đọc profiles nếu chưa chạy 024). ✅ Đã chạy `024`.
 > **Đã tự động hoá phần UI** bằng e2e (mock mode): đăng nhập theo vai trò, điều hướng, thêm học sinh,
 > phân quyền HS↔Admin. Các mục phụ thuộc SUPABASE thật (đăng ký/email/duyệt/RLS) vẫn cần bạn chạy tay.
-- [ ] ⏳ Đăng ký mới → email xác nhận → đăng nhập → màn "chờ duyệt". (cần chạy `023` + SMTP; màn
-      pending + gate Pending đã có sẵn trong `dashboard/page.tsx`.)
+- [ ] ⏳ Đăng ký mới → email xác nhận → đăng nhập → màn "chờ duyệt". (migration `023` ✅ đã chạy, còn
+      thiếu SMTP; màn pending + gate Pending đã có sẵn trong `dashboard/page.tsx`.)
 - [ ] ⏳ Admin cấp quyền → học sinh reload thấy đúng cổng. (code: `changeUserRole` + RLS "Admin updates
       any profile" + dashboard đọc role tươi mỗi lần vào — ✅ đường đi đúng, cần test với tài khoản thật.)
 - [ ] ⏳ Reset mật khẩu end-to-end. (code #7b đã xong; cần SMTP + Site URL/Redirect đúng.)
@@ -529,7 +521,7 @@ Patch tiếp trên app hiện có, diff nhỏ + an toàn, giữ route/auth/RLS/d
       với ô nhập trong `.form-group`; toast container `role="status" aria-live="polite"`.
 - **Verify**: mock-login admin trong preview → menu xuất 4 mục, CSV escape đúng (BOM + bọc "),
       nút nhắc/nhật ký hiện đúng vai trò, label-modal liên kết, 0 lỗi console; charts dark rõ chữ.
-- **Migration cần chạy tay** (Supabase SQL Editor): `019`, `020`, `021` (xem mục dưới).
+- **Migration cần chạy tay** (Supabase SQL Editor): `019`, `020`, `021` — ✅ đã chạy (xem mục "Việc thủ công").
 
 ---
 
