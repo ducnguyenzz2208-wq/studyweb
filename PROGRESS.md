@@ -2,6 +2,31 @@
 
 > App quản lý trung tâm gia sư. Live: https://studyweb-swart.vercel.app
 
+## Flashcard TTS v4: bảng mapping giọng theo ngôn ngữ + tinh chỉnh pitch/rate ✅ ĐÃ LÀM
+- [x] **Bảng tên giọng Nữ/Nam theo TỪNG ngôn ngữ** (`FC_VOICE_FEMALE_NAMES`/`FC_VOICE_MALE_NAMES`, thay
+      2 regex gộp cũ): vi-VN (HoaiMy♀/NamMinh♂), zh-CN (Xiaoxiao♀/Yunjian,Yunxi♂), zh-HK (HiuGaai,
+      HiuMaan♀/WanLung♂), zh-TW (HsiaoChen♀/Yunjun♂), en (Jenny/Aria/Zira♀/Guy/David/Ryan♂), ja-JP
+      (Nanami/Keiko♀/Keita/Naoki♂), ko-KR (SunHi/Heami♀/InJoon♂) — khớp CHUỖI CON không phân biệt
+      hoa/thường (`indexOf`, không cần regex phức tạp). Dropdown ngôn ngữ trong modal thẻ (`FC_TTS_LANGS`)
+      giờ HIỆN LUÔN mapping này trong nhãn (vd "Tiếng Việt — vi-VN · ♀HoaiMy ♂NamMinh") để GV biết trước
+      máy học sinh có thể phát giọng gì.
+- [x] **Sửa 1 lỗi phân loại giới tính**: yêu cầu gốc gộp "HoaiMy / NamMinh" cùng vào nhóm "Nữ" cho
+      tiếng Việt, nhưng thực tế `NamMinh` là giọng **Nam** (Microsoft/Edge Neural chính thức, HoaiMy mới
+      là Nữ). Đã phân loại đúng theo thực tế — nếu không, cơ chế xen kẽ Nam/Nữ sẽ chọn nhầm cả 2 giọng
+      Việt là "nữ" và không bao giờ đan xen đúng khi có đúng 2 giọng này trên máy.
+- [x] **Dọn logic cũ kém tin cậy**: bỏ hẳn `\bnữ\b`/`\bnam\b` (word-boundary Unicode với `ữ` không hoạt
+      động đúng trong JS regex vì `\w` chỉ tính ASCII — về lý thuyết gần như không bao giờ khớp được vế
+      sau `ữ`) — thay bằng bảng tên tường minh (đã có `hoaimy`/`namminh` nên không cần dò chữ Việt
+      chung nữa) + giữ `\bfemale\b`/`\bmale\b` (an toàn với ASCII).
+- [x] **Tinh chỉnh pitch/rate về ĐIỂM GIỮA khoảng** (thay vì biên cũ 0.9/1.1/0.95): `rate=0.92` (khoảng
+      0.90–0.95), `pitch` Nữ `1.08` (khoảng 1.05–1.10) / Nam `0.88` (khoảng 0.85–0.90) — điểm giữa nghe
+      tự nhiên hơn giá trị ở biên.
+- Verify (live): 25/25 ca tên giọng (đủ 7 ngôn ngữ + biến thể chung "Female"/"Male") phân loại đúng,
+      gồm xác nhận `HoaiMy→female`, `NamMinh→male`; đan xen David(0.88)→Zira(1.08)→David→Zira trên máy
+      thật, rate luôn 0.92; mặt sau vẫn im lặng (quy tắc cũ không đổi); Learn Mode chạy trọn buổi 4 thẻ
+      → thuộc hết (Leitner không đổi); dropdown modal thẻ hiện đúng nhãn mapping cho vi/zh-CN/zh-HK.
+      `tsc --noEmit` sạch, `node --check` pass, 0 lỗi console.
+
 ## Flashcard TTS v3: giọng chất lượng cao + xen kẽ/cố định Nam-Nữ ✅ ĐÃ LÀM
 - [x] **Ưu tiên giọng chất lượng cao** (`_fcVoiceQuality`): xếp hạng giọng có tên chứa "Natural"/
       "Neural" (+4) hay "Online"/"Google" (+2) lên trên giọng robot mặc định của hệ điều hành, trong

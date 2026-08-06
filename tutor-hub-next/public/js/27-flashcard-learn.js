@@ -41,16 +41,21 @@
     // (1) TEXT-TO-SPEECH
     // ============================================================
     // Mã BCP-47 dùng THẲNG cho Web Speech API (utterance.lang).
+    // Nhãn kèm TÊN GIỌNG gợi ý (♀/♂) — đúng là các giọng Natural/Neural chất
+    // lượng cao mà Edge/Chrome/Google cài sẵn cho ngôn ngữ đó, để người tạo thẻ
+    // biết trước máy học sinh có thể phát ra giọng gì. Chọn NGÔN NGỮ ở đây,
+    // KHÔNG chọn thẳng giọng — hệ thống tự tìm giọng chất lượng cao nhất khớp
+    // ngôn ngữ + tuỳ chọn Nam/Nữ (xem `_fcPickVoice`/`FC_VOICE_*_NAMES`).
     var FC_TTS_LANGS = [
       { code: 'auto', label: '🌐 Tự động nhận diện' },
-      { code: 'en-US', label: 'English (US) — en-US' },
+      { code: 'en-US', label: 'English (US) — en-US · ♀Jenny/Aria/Zira ♂Guy/David/Ryan' },
       { code: 'en-GB', label: 'English (UK) — en-GB' },
-      { code: 'vi-VN', label: 'Tiếng Việt — vi-VN' },
-      { code: 'ja-JP', label: '日本語 Tiếng Nhật — ja-JP' },
-      { code: 'ko-KR', label: '한국어 Tiếng Hàn — ko-KR' },
-      { code: 'zh-CN', label: '简体中文 Trung (Giản thể) — zh-CN' },
-      { code: 'zh-TW', label: '繁體中文 Trung (Phồn thể, Đài Loan) — zh-TW' },
-      { code: 'zh-HK', label: '繁體中文 Trung (Phồn thể, Hồng Kông) — zh-HK' },
+      { code: 'vi-VN', label: 'Tiếng Việt — vi-VN · ♀HoaiMy ♂NamMinh' },
+      { code: 'ja-JP', label: '日本語 Tiếng Nhật — ja-JP · ♀Nanami/Keiko ♂Keita/Naoki' },
+      { code: 'ko-KR', label: '한국어 Tiếng Hàn — ko-KR · ♀SunHi/Heami ♂InJoon' },
+      { code: 'zh-CN', label: '简体中文 Trung (Giản thể) — zh-CN · ♀Xiaoxiao ♂Yunjian/Yunxi' },
+      { code: 'zh-TW', label: '繁體中文 Trung (Phồn thể, Đài Loan) — zh-TW · ♀HsiaoChen ♂Yunjun' },
+      { code: 'zh-HK', label: '繁體中文 Trung (Phồn thể, Hồng Kông) — zh-HK · ♀HiuGaai/HiuMaan ♂WanLung' },
       { code: 'fr-FR', label: 'Français — fr-FR' },
       { code: 'de-DE', label: 'Deutsch — de-DE' },
       { code: 'es-ES', label: 'Español — es-ES' },
@@ -87,14 +92,41 @@
       showToast(v === 'auto' ? '🔀 Giọng đọc: xen kẽ Nam/Nữ giữa các thẻ.' : (v === 'male' ? '♂️ Giọng đọc: cố định Nam.' : '♀️ Giọng đọc: cố định Nữ.'), 'info');
     }
     // Đoán giới tính giọng qua TÊN giọng (Web Speech API không có field giới
-    // tính chuẩn) — khớp từ khoá "Female"/"Male"/"Nữ"/"Nam" hoặc tên riêng
-    // thường gặp ở giọng Windows/Edge/Chrome/Google cho nhiều ngôn ngữ.
-    var FC_VOICE_FEMALE_RE = /female|\bnữ\b|zira|hazel|susan|samantha|victoria|karen|moira|tessa|joanna|salli|kimberly|kendra|ivy|aria|jenny|michelle|linda|catherine|emma|olivia|sophie|xiaoxiao|yaoyao|huihui|hiugaai|nanami|mei|ayumi|haruka|yuna|sunhi/i;
-    var FC_VOICE_MALE_RE = /male(?!female)|\bnam\b|david|mark|guy|ryan|matthew|brian|daniel|george|james|alex|fred|tom|yunyang|yunxi|kangkang|zhiwei|liang|ichiro|osamu|junsu/i;
+    // tính chuẩn) — bảng tên riêng thường gặp ở giọng Natural/Neural của
+    // Edge/Chrome/Google cho từng ngôn ngữ (khớp CHUỖI CON, không phân biệt
+    // hoa/thường). Đây chính là mapping Nữ/Nam theo từng ngôn ngữ ở
+    // `FC_TTS_LANGS` phía trên — sửa/thêm tên ở ĐÂY nếu máy bạn có giọng khác.
+    var FC_VOICE_FEMALE_NAMES = [
+      'hoaimy',                                   // vi-VN
+      'xiaoxiao', 'yaoyao', 'huihui',             // zh-CN
+      'hiugaai', 'hiumaan',                       // zh-HK
+      'hsiaochen',                                // zh-TW
+      'jenny', 'aria', 'zira',                    // en
+      'nanami', 'keiko', 'ayumi', 'haruka', 'yuna', // ja-JP
+      'sunhi', 'heami',                           // ko-KR
+      'hazel', 'susan', 'samantha', 'victoria', 'karen', 'moira', 'tessa',
+      'joanna', 'salli', 'kimberly', 'kendra', 'ivy', 'michelle', 'linda',
+      'catherine', 'emma', 'olivia', 'sophie', 'mei'
+    ];
+    var FC_VOICE_MALE_NAMES = [
+      'namminh',                                  // vi-VN
+      'yunjian', 'yunxi', 'kangkang', 'zhiwei', 'liang', // zh-CN
+      'wanlung',                                  // zh-HK
+      'yunjun',                                   // zh-TW
+      'guy', 'david', 'ryan',                     // en
+      'keita', 'naoki', 'ichiro', 'osamu', 'junsu', // ja-JP (junsu dự phòng)
+      'injoon',                                   // ko-KR
+      'mark', 'matthew', 'brian', 'daniel', 'george', 'james', 'alex', 'fred',
+      'tom', 'yunyang'
+    ];
+    function _fcNameHasAny(name, list) {
+      for (var i = 0; i < list.length; i++) if (name.indexOf(list[i]) >= 0) return true;
+      return false;
+    }
     function _fcVoiceGender(voice) {
-      var n = String((voice && voice.name) || '');
-      if (FC_VOICE_FEMALE_RE.test(n)) return 'female';
-      if (FC_VOICE_MALE_RE.test(n)) return 'male';
+      var n = String((voice && voice.name) || '').toLowerCase();
+      if (/\bfemale\b/.test(n) || _fcNameHasAny(n, FC_VOICE_FEMALE_NAMES)) return 'female';
+      if (/\bmale\b/.test(n) || _fcNameHasAny(n, FC_VOICE_MALE_NAMES)) return 'male';
       return 'unknown';
     }
     // Điểm chất lượng: ưu tiên giọng "Natural"/"Neural"/"Online"/"Google" —
@@ -242,8 +274,10 @@
         // duyệt/thiết bị trả voice không hợp lệ), lỗi ở đây KHÔNG được làm
         // rớt luôn cả câu nói — phải rơi về giọng chuẩn của u.lang mà vẫn đọc.
         if (v) { try { u.voice = v; } catch (e2) { } }
-        u.rate = 0.95;
-        u.pitch = (g === 'male') ? 0.9 : 1.1; // trầm cho Nam, hơi bổng cho Nữ — nghe tự nhiên hơn mặc định
+        // rate 0.9–0.95, pitch Nữ 1.05–1.10 / Nam 0.85–0.90 — lấy điểm GIỮA
+        // khoảng cho tự nhiên nhất (biên trên/dưới dễ nghe robot hơn).
+        u.rate = 0.92;
+        u.pitch = (g === 'male') ? 0.88 : 1.08;
         u.volume = 1;
         window.speechSynthesis.speak(u);
       } catch (e) { console.warn('TTS lỗi:', e && e.message); }
