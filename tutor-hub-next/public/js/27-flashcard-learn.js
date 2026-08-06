@@ -1,7 +1,8 @@
     // ============================================================
     // FLASHCARD PRO — 2 tính năng:
-    //  (1) TỰ ĐỘNG PHÁT ÂM khi lật thẻ (Web Speech API) — tự nhận diện ngôn
-    //      ngữ theo nội dung mặt thẻ, hoặc theo cấu hình ngôn ngữ của bộ thẻ.
+    //  (1) TỰ ĐỘNG PHÁT ÂM khi lật thẻ (Web Speech API) — CHỈ đọc mặt trước;
+    //      tự nhận diện ngôn ngữ theo nội dung, ưu tiên giọng chất lượng cao
+    //      (Natural/Neural/Online/Google) + xen kẽ hoặc cố định giọng Nam/Nữ.
     //  (2) CHẾ ĐỘ HỌC (Learn) kiểu Quizlet — Leitner (spaced repetition) +
     //      Trắc nghiệm/Tự luận + hàng chờ ôn lại từ sai + thanh tiến trình.
     //
@@ -75,6 +76,50 @@
 
     function _fcTtsSupported() { return typeof window !== 'undefined' && 'speechSynthesis' in window && typeof window.SpeechSynthesisUtterance === 'function'; }
     function fcAutoSpeakOn() { return _fcLsGet(_fcPk('th_fc_autospeak'), true) !== false; }
+
+    // ── Chọn giọng đọc: chất lượng cao + Nam/Nữ ──────────────────
+    // Cấu hình giọng: 'auto' (mặc định, XEN KẼ Nam/Nữ giữa các thẻ nối tiếp)
+    // hoặc cố định 'male'/'female'. Lưu theo tài khoản, đọc/đổi trong header
+    // màn Học (và thanh công cụ màn Học thẻ).
+    function fcVoiceGenderPref() { return _fcLsGet(_fcPk('th_fc_voice_gender'), 'auto') || 'auto'; }
+    function fcSetVoiceGenderPref(v) {
+      _fcLsSet(_fcPk('th_fc_voice_gender'), v);
+      showToast(v === 'auto' ? '🔀 Giọng đọc: xen kẽ Nam/Nữ giữa các thẻ.' : (v === 'male' ? '♂️ Giọng đọc: cố định Nam.' : '♀️ Giọng đọc: cố định Nữ.'), 'info');
+    }
+    // Đoán giới tính giọng qua TÊN giọng (Web Speech API không có field giới
+    // tính chuẩn) — khớp từ khoá "Female"/"Male"/"Nữ"/"Nam" hoặc tên riêng
+    // thường gặp ở giọng Windows/Edge/Chrome/Google cho nhiều ngôn ngữ.
+    var FC_VOICE_FEMALE_RE = /female|\bnữ\b|zira|hazel|susan|samantha|victoria|karen|moira|tessa|joanna|salli|kimberly|kendra|ivy|aria|jenny|michelle|linda|catherine|emma|olivia|sophie|xiaoxiao|yaoyao|huihui|hiugaai|nanami|mei|ayumi|haruka|yuna|sunhi/i;
+    var FC_VOICE_MALE_RE = /male(?!female)|\bnam\b|david|mark|guy|ryan|matthew|brian|daniel|george|james|alex|fred|tom|yunyang|yunxi|kangkang|zhiwei|liang|ichiro|osamu|junsu/i;
+    function _fcVoiceGender(voice) {
+      var n = String((voice && voice.name) || '');
+      if (FC_VOICE_FEMALE_RE.test(n)) return 'female';
+      if (FC_VOICE_MALE_RE.test(n)) return 'male';
+      return 'unknown';
+    }
+    // Điểm chất lượng: ưu tiên giọng "Natural"/"Neural"/"Online"/"Google" —
+    // các hãng dùng những từ này để đánh dấu giọng tổng hợp bằng AI, nghe tự
+    // nhiên hơn hẳn giọng robot mặc định của hệ điều hành.
+    function _fcVoiceQuality(voice) {
+      var n = String((voice && voice.name) || '');
+      var score = 0;
+      if (/natural/i.test(n)) score += 4;
+      if (/neural/i.test(n)) score += 4;
+      if (/online/i.test(n)) score += 2;
+      if (/google/i.test(n)) score += 2;
+      return score;
+    }
+    // Xen kẽ Nam/Nữ giữa các THẺ MỚI (không đổi khi đọc lại đúng thẻ đang xem).
+    var _fcGenderToggle = 'female', _fcLastCardKey = null;
+    function _fcResolveGender(cardKey) {
+      var pref = fcVoiceGenderPref();
+      if (pref === 'male' || pref === 'female') return pref;
+      if (cardKey && cardKey !== _fcLastCardKey) {
+        _fcLastCardKey = cardKey;
+        _fcGenderToggle = (_fcGenderToggle === 'female') ? 'male' : 'female';
+      }
+      return _fcGenderToggle;
+    }
     // Ngôn ngữ cấu hình THEO TỪNG BỘ THẺ ('auto' = tự nhận diện theo nội dung).
     function fcDeckLang(deckId) { return _fcLsGet(_fcPk('th_fc_lang_' + deckId), 'auto') || 'auto'; }
     function fcSetDeckLang(deckId, code) {
@@ -155,22 +200,33 @@
       try { _fcVoiceCache = window.speechSynthesis.getVoices() || []; } catch (e) { _fcVoiceCache = []; }
       return _fcVoiceCache;
     }
-    function _fcPickVoice(lang) {
+    // Chọn giọng tốt nhất cho 1 ngôn ngữ + giới tính mong muốn:
+    //   1) Lọc theo ngôn ngữ (khớp đúng dialect, rồi mới nới về khớp base — vd 'en').
+    //   2) Trong nhóm đó, ưu tiên giọng khớp GIỚI TÍNH yêu cầu; KHÔNG có giọng nào
+    //      khớp giới tính → bỏ qua tiêu chí này (fallback êm, không lỗi).
+    //   3) Xếp hạng theo CHẤT LƯỢNG (Natural/Neural/Online/Google) — chọn cao nhất.
+    // Không có giọng nào khớp ngôn ngữ → trả null, browser tự dùng giọng chuẩn
+    // theo `utterance.lang` (fallback mặc định của trình duyệt, không lỗi app).
+    function _fcPickVoice(lang, gender) {
       var voices = _fcVoices(); if (!voices.length) return null;
       var want = String(lang || '').toLowerCase().replace('_', '-');
       var base = want.split('-')[0];
       var norm = function (v) { return String(v.lang || '').toLowerCase().replace('_', '-'); };
-      var exact = null, partial = null;
-      for (var i = 0; i < voices.length; i++) {
-        var vl = norm(voices[i]);
-        if (!exact && vl === want) exact = voices[i];
-        if (!partial && vl.split('-')[0] === base) partial = voices[i];
+      var exact = voices.filter(function (v) { return norm(v) === want; });
+      var partial = voices.filter(function (v) { return norm(v).split('-')[0] === base; });
+      var pool = exact.length ? exact : partial;
+      if (!pool.length) return null;
+      if (gender === 'male' || gender === 'female') {
+        var byGender = pool.filter(function (v) { return _fcVoiceGender(v) === gender; });
+        if (byGender.length) pool = byGender;
       }
-      return exact || partial || null;
+      return pool.slice().sort(function (a, b) { return _fcVoiceQuality(b) - _fcVoiceQuality(a); })[0];
     }
 
     // Đọc 1 đoạn văn bản. Tự huỷ câu đang đọc để không chồng tiếng.
-    function fcSpeak(text, lang) {
+    // `gender` (tuỳ chọn): 'male'/'female' — ép giọng + độ trầm/bổng cho lượt đọc
+    // này; bỏ trống thì dùng cấu hình cố định (nếu có) hoặc giọng đang xen kẽ.
+    function fcSpeak(text, lang, gender) {
       if (!_fcTtsSupported()) { showToast('Trình duyệt không hỗ trợ phát âm.', 'warning'); return; }
       var say = _fcPlainText(text);
       if (!say) { showToast('Mặt thẻ này không có chữ để đọc (chỉ có hình/công thức).', 'info'); return; }
@@ -179,8 +235,16 @@
         window.speechSynthesis.cancel();
         var u = new window.SpeechSynthesisUtterance(say);
         u.lang = lang || fcDetectLang(say);
-        var v = _fcPickVoice(u.lang); if (v) u.voice = v;
-        u.rate = 0.95; u.pitch = 1; u.volume = 1;
+        var pref = fcVoiceGenderPref();
+        var g = gender || (pref !== 'auto' ? pref : _fcGenderToggle);
+        var v = _fcPickVoice(u.lang, g);
+        // Gán voice trong try RIÊNG: nếu object giọng "hỏng" (một số trình
+        // duyệt/thiết bị trả voice không hợp lệ), lỗi ở đây KHÔNG được làm
+        // rớt luôn cả câu nói — phải rơi về giọng chuẩn của u.lang mà vẫn đọc.
+        if (v) { try { u.voice = v; } catch (e2) { } }
+        u.rate = 0.95;
+        u.pitch = (g === 'male') ? 0.9 : 1.1; // trầm cho Nam, hơi bổng cho Nữ — nghe tự nhiên hơn mặc định
+        u.volume = 1;
         window.speechSynthesis.speak(u);
       } catch (e) { console.warn('TTS lỗi:', e && e.message); }
     }
@@ -217,13 +281,24 @@
       if (studyState.flipped) { fcStopSpeak(); return; }   // mặt sau: không đọc
       fcSpeakCardFront(card, studyState.deckId);
     }
-    // Đọc mặt trước theo ĐÚNG mã lang đã đặt lúc tạo thẻ (nếu có).
+    // Đọc mặt trước theo ĐÚNG mã lang đã đặt lúc tạo thẻ (nếu có); mỗi THẺ MỚI
+    // (khác thẻ vừa đọc trước đó) → xen kẽ giọng Nam/Nữ (trừ khi đã cố định 1 giới).
     function fcSpeakCardFront(card, deckId) {
       if (!card) return;
-      fcSpeak(card.front, fcLangForCard(card, deckId, card.front));
+      var gender = _fcResolveGender(_fcCardKey(card) + '|' + deckId);
+      fcSpeak(card.front, fcLangForCard(card, deckId, card.front), gender);
     }
 
-    // Nút bật/tắt + chọn ngôn ngữ + nút đọc lại — chèn vào header màn Học.
+    // <select> chọn giọng Nam/Nữ/Xen kẽ — dùng chung cho thanh công cụ Học thẻ
+    // và header Chế độ Học (Cài đặt Flashcard).
+    function fcVoiceGenderSelectHtml() {
+      if (!_fcTtsSupported()) return '';
+      var pref = fcVoiceGenderPref();
+      var opt = function (v, label) { return '<option value="' + v + '"' + (pref === v ? ' selected' : '') + '>' + label + '</option>'; };
+      return '<select class="filter-select fc-gender-select" aria-label="Giọng đọc" title="Xen kẽ Nam/Nữ giữa các thẻ, hoặc cố định 1 giọng" onchange="fcSetVoiceGenderPref(this.value)">' +
+        opt('auto', '🔀 Xen kẽ Nam/Nữ') + opt('female', '♀️ Giọng Nữ') + opt('male', '♂️ Giọng Nam') + '</select>';
+    }
+    // Nút bật/tắt + chọn ngôn ngữ + chọn giọng — chèn vào header màn Học.
     function fcStudyToolsHtml(deckId) {
       if (!_fcTtsSupported()) return '';
       var on = fcAutoSpeakOn();
@@ -233,7 +308,8 @@
       return '<button class="btn btn-sm ' + (on ? 'btn-primary' : 'btn-ghost') + '" id="fcAutoSpeakBtn" aria-pressed="' + (on ? 'true' : 'false') +
         '" title="' + (on ? 'Đang BẬT tự động phát âm khi lật thẻ — bấm để tắt' : 'Đang TẮT tự động phát âm — bấm để bật') +
         '" onclick="toggleFcAutoSpeak()">' + (on ? '🔊' : '🔇') + ' Tự phát âm</button>' +
-        '<select class="filter-select fc-lang-select" aria-label="Ngôn ngữ phát âm của bộ thẻ" onchange="fcSetDeckLang(' + deckId + ',this.value)">' + opts + '</select>';
+        '<select class="filter-select fc-lang-select" aria-label="Ngôn ngữ phát âm của bộ thẻ" onchange="fcSetDeckLang(' + deckId + ',this.value)">' + opts + '</select>' +
+        fcVoiceGenderSelectHtml();
     }
     // Nút loa nhỏ đặt trên từng mặt thẻ (đọc THỦ CÔNG — vẫn dùng được cho mặt
     // sau dù mặt sau không còn tự động đọc). `lang` truyền vào thì đọc theo mã
@@ -513,7 +589,7 @@
         '<button class="btn btn-ghost" onclick="exitLearn()">← Thoát</button>' +
         '<div class="learn-title">🧠 Chế độ Học<span class="learn-deckname">' + escHtml(d ? d.title : '') + '</span></div>' +
         '<div class="learn-tools">' +
-        (_fcTtsSupported() ? '<button class="btn btn-sm ' + (fcAutoSpeakOn() ? 'btn-primary' : 'btn-ghost') + '" id="learnAutoSpeakBtn" aria-pressed="' + (fcAutoSpeakOn() ? 'true' : 'false') + '" onclick="toggleFcAutoSpeak()">' + (fcAutoSpeakOn() ? '🔊' : '🔇') + ' Tự phát âm</button>' : '') +
+        (_fcTtsSupported() ? '<button class="btn btn-sm ' + (fcAutoSpeakOn() ? 'btn-primary' : 'btn-ghost') + '" id="learnAutoSpeakBtn" aria-pressed="' + (fcAutoSpeakOn() ? 'true' : 'false') + '" onclick="toggleFcAutoSpeak()">' + (fcAutoSpeakOn() ? '🔊' : '🔇') + ' Tự phát âm</button>' + fcVoiceGenderSelectHtml() : '') +
         '<button class="btn btn-sm btn-ghost" title="Học lại từ đầu (xoá tiến độ)" onclick="learnResetProgress()">↺ Đặt lại</button>' +
         '</div></div>';
     }

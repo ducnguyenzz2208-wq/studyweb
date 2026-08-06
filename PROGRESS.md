@@ -2,6 +2,36 @@
 
 > App quản lý trung tâm gia sư. Live: https://studyweb-swart.vercel.app
 
+## Flashcard TTS v3: giọng chất lượng cao + xen kẽ/cố định Nam-Nữ ✅ ĐÃ LÀM
+- [x] **Ưu tiên giọng chất lượng cao** (`_fcVoiceQuality`): xếp hạng giọng có tên chứa "Natural"/
+      "Neural" (+4) hay "Online"/"Google" (+2) lên trên giọng robot mặc định của hệ điều hành, trong
+      nhóm giọng ĐÃ khớp ngôn ngữ. Không có giọng chất lượng cao → vẫn chọn giọng tốt nhất hiện có
+      (không lỗi) — máy test chỉ có 3 giọng Windows thường (David/Mark/Zira), không có giọng Natural.
+- [x] **Xen kẽ Nam/Nữ giữa các thẻ MỚI** (`_fcResolveGender`, mặc định "🔀 Xen kẽ"): mỗi khi sang MỘT
+      THẺ KHÁC (không phải lật đi lật lại đúng thẻ đang xem) → đổi giọng. Đoán giới tính giọng qua TÊN
+      (`_fcVoiceGender`: khớp "Female"/"Male"/"Nữ"/"Nam" hoặc các tên riêng thường gặp — Zira/Hazel/
+      Aria… = nữ, David/Mark/Guy/Ryan… = nam). Trong nhóm đúng giới tính, vẫn ưu tiên chất lượng cao nhất.
+- [x] **Cho chọn CỐ ĐỊNH 1 giọng** — dropdown mới `fcVoiceGenderSelectHtml()` (🔀 Xen kẽ / ♀️ Nữ / ♂️ Nam),
+      đặt cạnh nút "Tự phát âm" ở CẢ 2 nơi: thanh công cụ màn Học thẻ và header Chế độ Học. Lưu
+      `th_fc_voice_gender` theo tài khoản; chọn cố định thì KHÔNG xen kẽ nữa.
+- [x] **Tinh chỉnh pitch/rate**: Nam `pitch=0.9`, Nữ `pitch=1.1`, `rate=0.95` cho mọi lượt đọc (đúng
+      thông số yêu cầu) — nghe tự nhiên hơn giọng mặc định pitch=1 phẳng.
+- [x] **Fallback không lỗi app**: `_fcPickVoice` không tìm được giọng đúng ngôn ngữ → trả `null`, browser
+      tự dùng giọng chuẩn theo `utterance.lang`; không tìm được giọng đúng GIỚI TÍNH trong ngôn ngữ đó →
+      bỏ qua tiêu chí giới tính, vẫn chọn giọng chất lượng cao nhất có sẵn (không báo lỗi, không im lặng).
+      **Bug bắt được khi test**: gán `u.voice` cho object giọng "hỏng"/không đúng kiểu (một số trình
+      duyệt/thiết bị có thể trả voice không hợp lệ) làm `speechSynthesis.speak()` KHÔNG BAO GIỜ được gọi
+      (lỗi rơi ra ngoài, mất tiếng hoàn toàn) — đã tách riêng try/catch cho bước gán voice, lỗi ở đây chỉ
+      bỏ qua voice tuỳ chỉnh (rơi về giọng chuẩn theo `lang`) mà KHÔNG làm mất câu đọc.
+- Verify (live): mock giọng có Natural → chọn đúng giọng Natural chất lượng cao nhất theo cả ngôn ngữ +
+      giới tính (en-US nữ→Aria Natural, nam→Guy Natural, ja-JP nữ→Nanami Natural); không có giọng khớp
+      giới tính → fallback chọn chất lượng cao nhất, không lỗi; giọng "hỏng" → vẫn đọc được (voice=null,
+      pitch/rate đúng); trên máy thật (3 giọng Windows) xen kẽ đúng Zira(1.1)→David(0.9)→Zira→David qua
+      4 thẻ liên tiếp; lật lại đúng thẻ không đổi giọng; cố định Nữ/Nam → giữ nguyên pitch qua nhiều thẻ;
+      Learn Mode câu hỏi (mặt trước) vẫn xen kẽ đúng, chạy trọn buổi 4 thẻ → 12 lượt → thuộc hết (không
+      hỏng thuật toán Leitner); quy tắc "chỉ đọc mặt trước" vẫn đúng (lật sang sau → 0 lần đọc); dropdown
+      giọng hiện đúng ở cả màn Học thẻ + Chế độ Học. `tsc --noEmit` sạch, `node --check` pass, 0 lỗi console.
+
 ## Flashcard TTS v2: chỉ đọc MẶT TRƯỚC + ngôn ngữ theo TỪNG THẺ (+ Trung phồn thể) ✅ ĐÃ LÀM
 - [x] **CHỈ tự động đọc MẶT TRƯỚC** (27-flashcard-learn.js `fcOnFlip`): lật sang **mặt sau → IM LẶNG**
       (`fcStopSpeak()` để cắt luôn câu đang đọc dở). Lật ngược lại về mặt trước thì đọc lại. Mở thẻ /
