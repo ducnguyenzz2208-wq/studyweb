@@ -2,6 +2,60 @@
 
 > App quản lý trung tâm gia sư. Live: https://studyweb-swart.vercel.app
 
+## Flashcard: Tự động phát âm (TTS) + Chế độ Học kiểu Quizlet ✅ ĐÃ LÀM
+**Module MỚI `public/js/27-flashcard-learn.js`** (nạp sau 26-pomodoro, trước 25-init) — độc lập, tự có
+helper localStorage/plain-text; 23-flashcards.js chỉ gọi 3 hook (`fcOnFlip`, `fcStudyToolsHtml`,
+`startLearn`) + `_hideLearnView` → dễ gỡ/bảo trì, không đụng DB/RLS/auth.
+
+### 1) Tự động phát âm khi lật thẻ (Web Speech API)
+- [x] **Lật thẻ → tự đọc ĐÚNG mặt đang hiện** (`fcOnFlip` gọi từ `flipStudyCard`/`next`/`prevStudyCard`/
+      `startStudy`): mặt trước đọc mặt trước, lật sang mặt sau đọc mặt sau.
+- [x] **Tự nhận diện ngôn ngữ theo NỘI DUNG** (`fcDetectLang`): kana→`ja-JP`, hangul→`ko-KR`, Hán tự→
+      `zh-CN`, Thái→`th-TH`, Cyrillic→`ru-RU`, Ả Rập→`ar-SA`, Việt→`vi-VN`, Đức/TBN/Pháp, mặc định `en-US`.
+      ⚠️ Chốt kỹ thuật: tiếng Việt chỉ nhận qua **ký tự RIÊNG** (dải U+1EA0–U+1EF9 + ăđơư) — KHÔNG dùng
+      nguyên âm dấu dùng chung (à á è é ó ú) vì Pháp/TBN cũng có → bản đầu "très"/"estás" bị nhận nhầm
+      là tiếng Việt, đã sửa và test lại 13 ngôn ngữ đều đúng.
+- [x] **Cấu hình ngôn ngữ THEO TỪNG BỘ THẺ** (dropdown 11 ngôn ngữ trong header màn Học, lưu
+      `th_fc_lang_<deckId>` theo tài khoản): chọn cụ thể thì ưu tiên hơn tự nhận diện; để "🌐 Tự động"
+      thì dò theo nội dung. Chọn giọng khớp `lang` từ `speechSynthesis.getVoices()` (cache + nghe
+      `voiceschanged` vì Chrome nạp giọng bất đồng bộ).
+- [x] **Nút bật/tắt "🔊 Tự phát âm"** (`toggleFcAutoSpeak`, lưu `th_fc_autospeak` theo tài khoản, mặc
+      định BẬT) + nút loa 🔊 trên từng mặt thẻ để đọc thủ công bất cứ lúc nào.
+- [x] **KHÔNG đọc rác**: `_fcPlainText` lột thẻ HTML (`<img>` từ tính năng nhận diện toán học) và LaTeX
+      trước khi đọc — nếu không máy sẽ đọc "backslash frac a b". Mặt chỉ có hình/công thức → im lặng.
+      Tự huỷ câu đang đọc trước khi đọc câu mới (không chồng tiếng); thoát màn Học thì ngắt tiếng.
+- Verify (live): 13/13 ca nhận diện đúng (en/vi×3/ja/ko/zh/ru/th/fr/de/es + LaTeX); lật thẻ đọc đúng
+      mặt + đúng `lang`; override bộ thẻ (ja-JP) thắng tự nhận diện; tắt toggle → 0 lần đọc; mặt chỉ có
+      LaTeX+ảnh → 0 lần đọc; trạng thái lưu đúng localStorage.
+
+### 2) Chế độ Học (Learn) — Quizlet-style
+- [x] **Thuật toán Leitner** (spaced repetition đơn giản, box 0→3): **box 0 = Trắc nghiệm** (làm quen),
+      **box 1–2 = Tự luận** (gõ lại — nhớ chủ động), **box ≥3 = ĐÃ THUỘC** rời hàng chờ. Đúng → box+1;
+      **Sai → box về 0 + chèn lại vào hàng chờ cách 3 thẻ** → từ sai lặp lại tới khi thuộc hoàn toàn.
+      Box lưu `th_fc_learn_<deckId>` theo tài khoản → **đóng trình duyệt mở lại vẫn nhớ tiến độ**.
+- [x] **Trắc nghiệm**: 4 phương án, nhiễu lấy từ mặt sau các thẻ khác (lọc trùng); phím tắt **1–4**.
+- [x] **Tự luận**: so khớp "thông minh" — bỏ qua hoa/thường, khoảng trắng thừa, dấu câu; chấp nhận
+      **nhiều đáp án** ngăn bởi `/` hoặc `;`; bỏ phần trong ngoặc; **tha lỗi gõ nhầm 1 ký tự**
+      (Levenshtein ≤1, đáp án ≥4 ký tự) → báo "Gần đúng — chú ý chính tả". Nút **"Tôi chưa biết"**.
+      ⚠️ Thẻ có đáp án là **ảnh/công thức/quá dài (>60 ký tự)** → tự ép về Trắc nghiệm (không thể gõ).
+- [x] **Sai → hiện NGAY đáp án đúng** (khối đỏ + tô sáng phương án đúng + khoá các nút) kèm ví dụ và
+      dòng nhắc "Thẻ này sẽ xuất hiện lại…"; đúng thì khối xanh. Bật TTS thì tự đọc đáp án đúng.
+- [x] **Thanh tiến trình**: 2 dải màu (đã thuộc / đang học) + 4 chip đếm **Đã thuộc / Đang học / Chưa
+      học / Tổng**, có `role="progressbar"` + `aria-valuenow`. Màn hoàn thành hiện Đúng/Sai/độ chính xác
+      + `celebrate()` (confetti) + nút **Học lại từ đầu** (`learnResetProgress`).
+- [x] **Vào từ**: nút **"🧠 Chế độ Học"** cạnh "🎯 Học ngay" trong trang chi tiết bộ thẻ. Thoát bằng nút
+      hoặc **Esc**; **Enter** = nộp/tiếp. Gỡ listener bàn phím + ngắt tiếng khi thoát (không rò rỉ).
+- Verify (live, mock): chạy trọn 1 buổi học 5 thẻ → 15 lượt đúng (mỗi thẻ 1 MC + 2 tự luận) → 5/5 thuộc,
+      thanh 100%, màn hoàn thành đúng số liệu; mapping box→dạng câu hỏi đúng {0:mc, 1:written, 2:written};
+      trả lời SAI → hiện đáp án đúng + box về 0 + chèn lại đúng vị trí 3 + hàng chờ giữ nguyên độ dài;
+      10/10 ca so khớp tự luận đúng (kể cả sai dấu tiếng Việt = SAI, gõ thiếu 1 ký tự = gần đúng);
+      4/4 ca ép Trắc nghiệm (ảnh/LaTeX/quá dài); mở lại khi đã thuộc hết → vào thẳng màn hoàn thành;
+      Đặt lại → xoá box, quay lại câu hỏi; phím 1–4/Enter/Esc chạy đúng; thoát dọn sạch state.
+- **Fix khi tự review**: `.learn-card` ban đầu dùng `var(--card)` — biến này KHÔNG tồn tại trong dự án
+      (đúng tên là `--card-bg`) → thẻ bị trong suốt. Đã sửa + thêm `box-shadow: var(--shadow)`; kiểm tra
+      lại light/dark đều đúng nền (trắng / #1a2235), mobile 375px 1 cột, nút 44px, input 16px (không bị
+      iOS tự phóng to), không tràn ngang. `tsc --noEmit` sạch, `node --check` pass, **0 lỗi console**.
+
 ## Nhạc YouTube Music (bài + album) + SoundCloud album + gỡ Spotify ✅ ĐÃ LÀM
 - [x] **Thêm YouTube Music** (26-pomodoro.js `_parseMusicUrl`): nhận link `music.youtube.com` —
       **bài lẻ** (`watch?v=`) và **album/playlist** (`playlist?list=OLAK5uy_…` hoặc `list=`). Provider

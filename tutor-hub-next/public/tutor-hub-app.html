@@ -2498,6 +2498,319 @@
       max-height: 200px;
     }
 
+    /* FLASHCARD — nút phát âm (TTS) */
+    .fc-tts-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      line-height: 1;
+      padding: 3px 6px;
+      margin-left: 6px;
+      color: var(--text);
+      vertical-align: middle;
+      transition: background .15s, transform .15s;
+    }
+
+    .fc-tts-btn:hover {
+      background: var(--nav-hover-bg);
+      transform: scale(1.08);
+    }
+
+    .fc-lang-select {
+      height: 30px;
+      padding: 0 8px;
+      font-size: 12px;
+      max-width: 150px;
+    }
+
+    /* FLASHCARD — CHẾ ĐỘ HỌC (Learn mode) */
+    .learn-container {
+      max-width: 760px;
+      margin: 0 auto;
+    }
+
+    .learn-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+
+    .learn-title {
+      flex: 1;
+      min-width: 140px;
+      font-size: 17px;
+      font-weight: 800;
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .learn-deckname {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    .learn-tools {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .learn-progress-wrap {
+      margin-bottom: 16px;
+    }
+
+    .learn-progress-head {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 6px;
+    }
+
+    .learn-chip {
+      font-size: 11.5px;
+      color: var(--text-muted);
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 3px 10px;
+    }
+
+    .learn-chip strong {
+      color: var(--text);
+    }
+
+    .learn-chip.ok strong {
+      color: var(--success);
+    }
+
+    .learn-chip.mid strong {
+      color: var(--warning);
+    }
+
+    .learn-progress-bar {
+      display: flex;
+      height: 10px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .learn-seg {
+      height: 100%;
+      transition: width .35s ease;
+    }
+
+    .learn-seg.ok {
+      background: var(--success);
+    }
+
+    .learn-seg.mid {
+      background: var(--warning);
+    }
+
+    .learn-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px;
+      box-shadow: var(--shadow);
+    }
+
+    .learn-qhead {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+    }
+
+    .learn-remain {
+      font-size: 11.5px;
+      color: var(--text-muted);
+    }
+
+    .learn-question {
+      font-size: 21px;
+      font-weight: 700;
+      line-height: 1.45;
+      margin-bottom: 6px;
+      word-break: break-word;
+    }
+
+    .learn-hint {
+      font-size: 12.5px;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+
+    .learn-choices {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .learn-choice {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-align: left;
+      background: var(--bg);
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 14px;
+      cursor: pointer;
+      font-size: 14.5px;
+      color: var(--text);
+      min-height: 52px;
+      transition: border-color .15s, background .15s, transform .1s;
+    }
+
+    .learn-choice:hover:not(:disabled) {
+      border-color: var(--accent);
+      transform: translateY(-1px);
+    }
+
+    .learn-choice:disabled {
+      cursor: default;
+    }
+
+    .learn-choice.correct {
+      border-color: var(--success);
+      background: color-mix(in srgb, var(--success) 14%, transparent);
+    }
+
+    .learn-choice.dim {
+      opacity: .5;
+    }
+
+    .learn-choice-key {
+      flex: 0 0 22px;
+      height: 22px;
+      border-radius: 5px;
+      background: var(--nav-hover-bg);
+      color: var(--text-muted);
+      font-size: 11px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .learn-choice-body {
+      flex: 1;
+      word-break: break-word;
+    }
+
+    .learn-written {
+      margin-top: 16px;
+    }
+
+    .learn-input {
+      font-size: 16px;
+      padding: 12px 14px;
+    }
+
+    .learn-written-btns {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .learn-feedback {
+      margin-top: 16px;
+      border-radius: 10px;
+      padding: 14px 16px;
+      border: 1.5px solid var(--border);
+    }
+
+    .learn-feedback.ok {
+      border-color: var(--success);
+      background: color-mix(in srgb, var(--success) 10%, transparent);
+    }
+
+    .learn-feedback.bad {
+      border-color: var(--danger);
+      background: color-mix(in srgb, var(--danger) 10%, transparent);
+    }
+
+    .learn-fb-title {
+      font-weight: 700;
+      font-size: 14px;
+      margin-bottom: 6px;
+    }
+
+    .learn-fb-answer {
+      font-size: 18px;
+      font-weight: 700;
+      word-break: break-word;
+    }
+
+    .learn-fb-example,
+    .learn-fb-note {
+      font-size: 12.5px;
+      color: var(--text-muted);
+      margin-top: 6px;
+    }
+
+    .learn-next-btn {
+      margin-top: 12px;
+      width: 100%;
+    }
+
+    .learn-done {
+      text-align: center;
+    }
+
+    .learn-done-ic {
+      font-size: 46px;
+    }
+
+    .learn-done-title {
+      font-size: 20px;
+      font-weight: 800;
+      margin-top: 6px;
+    }
+
+    .learn-done-sub {
+      color: var(--text-muted);
+      font-size: 13.5px;
+      margin-top: 6px;
+    }
+
+    .learn-done-btns {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      margin-top: 18px;
+      flex-wrap: wrap;
+    }
+
+    @media (max-width: 640px) {
+      .learn-choices {
+        grid-template-columns: 1fr;
+      }
+
+      .learn-question {
+        font-size: 18px;
+      }
+
+      .learn-choice,
+      .learn-written-btns .btn {
+        min-height: 44px;
+      }
+    }
+
     /* SIDEBAR SCROLLABLE NAV */
     .sidebar-nav {
       flex: 1;
@@ -4161,6 +4474,7 @@
       </div>
       <div id="flashcards-deck-view" style="display:none;"></div>
       <div id="flashcards-study-view" style="display:none;"></div>
+      <div id="flashcards-learn-view" style="display:none;"></div>
     </div>
 
     <!-- MATERIALS -->
@@ -4797,6 +5111,7 @@
   <script src="js/23-flashcards.js"></script>
   <script src="js/24-materials.js"></script>
   <script src="js/26-pomodoro.js"></script>
+  <script src="js/27-flashcard-learn.js"></script>
   <script src="js/25-init.js"></script>
 </body>
 

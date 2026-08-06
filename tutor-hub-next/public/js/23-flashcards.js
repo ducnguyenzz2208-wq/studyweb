@@ -51,6 +51,7 @@
       if (!d) return;
       document.getElementById('flashcards-list-view').style.display = 'none';
       document.getElementById('flashcards-study-view').style.display = 'none';
+      _hideLearnView();
       var view = document.getElementById('flashcards-deck-view');
       view.style.display = '';
 
@@ -62,6 +63,7 @@
         '<div style="flex:1;min-width:200px;"><h2 style="font-size:22px;font-weight:800;">' + escHtml(d.title) + '</h2>' +
         '<div style="color:var(--text-muted);font-size:13px;margin-top:2px;">' + escHtml(d.subject) + ' · ' + escHtml(d.class) + ' · ' + d.cards.length + ' thẻ</div></div>' +
         '<button class="btn btn-primary" onclick="startStudy(' + d.id + ')">🎯 Học ngay</button>' +
+        '<button class="btn btn-primary" onclick="startLearn(' + d.id + ')" title="Ôn tập lặp lại: trắc nghiệm + tự luận, từ sai lặp lại tới khi thuộc">🧠 Chế độ Học</button>' +
         editBtns +
         '</div>';
 
@@ -104,11 +106,19 @@
       typesetMath(view);
     }
 
+    // Ẩn màn "Chế độ Học" (27-flashcard-learn.js) khi chuyển view khác.
+    function _hideLearnView() {
+      var lv = document.getElementById('flashcards-learn-view');
+      if (lv) { lv.style.display = 'none'; lv.innerHTML = ''; }
+      if (typeof fcStopSpeak === 'function') fcStopSpeak();
+    }
+
     function backToDecks() {
       currentDeckView = null;
       document.getElementById('flashcards-list-view').style.display = '';
       document.getElementById('flashcards-deck-view').style.display = 'none';
       document.getElementById('flashcards-study-view').style.display = 'none';
+      _hideLearnView();
       renderDecks();
     }
 
@@ -121,8 +131,10 @@
       studyState = { deckId: deckId, index: 0, flipped: false, shuffled: false, cards: d.cards.slice() };
       document.getElementById('flashcards-list-view').style.display = 'none';
       document.getElementById('flashcards-deck-view').style.display = 'none';
+      _hideLearnView();
       document.getElementById('flashcards-study-view').style.display = '';
       renderStudyCard();
+      if (typeof fcOnFlip === 'function') fcOnFlip(); // đọc mặt trước thẻ đầu tiên
     }
 
     function renderStudyCard() {
@@ -136,7 +148,8 @@
         '<div class="study-header">' +
         '<button class="btn btn-ghost" onclick="exitStudy()">← Exit Study</button>' +
         '<div class="study-progress">Card <strong>' + (studyState.index + 1) + '</strong> of <strong>' + cards.length + '</strong></div>' +
-        '<div style="display:flex;gap:6px;">' +
+        '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">' +
+        (typeof fcStudyToolsHtml === 'function' ? fcStudyToolsHtml(studyState.deckId) : '') +
         '<button class="btn btn-sm btn-ghost" onclick="shuffleCards()" title="Shuffle">🔀</button>' +
         '<button class="btn btn-sm ' + (card.difficulty === 'hard' ? 'btn-danger' : 'btn-ghost') + '" onclick="toggleDifficult()" title="Mark Difficult">⭐</button>' +
         '</div>' +
@@ -147,13 +160,13 @@
         '<div class="flashcard-wrapper" onclick="flipStudyCard()">' +
         '<div class="flashcard' + (studyState.flipped ? ' flipped' : '') + '" id="studyFlashcard">' +
         '<div class="flashcard-face">' +
-        '<div class="flashcard-label">Front</div>' +
+        '<div class="flashcard-label">Front' + (typeof fcSpeakBtnHtml === 'function' ? fcSpeakBtnHtml(card.front, studyState.deckId, 'mặt trước') : '') + '</div>' +
         '<div class="flashcard-text">' + card.front + '</div>' +
         (card.hint ? '<div class="flashcard-hint">💡 ' + escHtml(card.hint) + '</div>' : '') +
         '<div style="margin-top:16px;font-size:11px;color:var(--text-muted);">Click to flip</div>' +
         '</div>' +
         '<div class="flashcard-face flashcard-back">' +
-        '<div class="flashcard-label">Back</div>' +
+        '<div class="flashcard-label">Back' + (typeof fcSpeakBtnHtml === 'function' ? fcSpeakBtnHtml(card.back, studyState.deckId, 'mặt sau') : '') + '</div>' +
         '<div class="flashcard-text">' + card.back + '</div>' +
         (card.example ? '<div class="flashcard-example">📝 ' + card.example + '</div>' : '') +
         '<div style="margin-top:12px;"><span class="badge ' + ({ easy: 'badge-success', medium: 'badge-warning', hard: 'badge-danger' }[card.difficulty] || 'badge-gray') + '">' + card.difficulty + '</span></div>' +
@@ -175,6 +188,8 @@
       studyState.flipped = !studyState.flipped;
       var fc = document.getElementById('studyFlashcard');
       if (fc) fc.classList.toggle('flipped', studyState.flipped);
+      // Lật sang mặt mới → tự phát âm mặt đó (27-flashcard-learn.js).
+      if (typeof fcOnFlip === 'function') fcOnFlip();
     }
 
     function nextStudyCard() {
@@ -182,6 +197,7 @@
       studyState.index++;
       studyState.flipped = false;
       renderStudyCard();
+      if (typeof fcOnFlip === 'function') fcOnFlip();
     }
 
     function prevStudyCard() {
@@ -189,6 +205,7 @@
       studyState.index--;
       studyState.flipped = false;
       renderStudyCard();
+      if (typeof fcOnFlip === 'function') fcOnFlip();
     }
 
     function shuffleCards() {
@@ -219,6 +236,7 @@
     }
 
     function exitStudy() {
+      if (typeof fcStopSpeak === 'function') fcStopSpeak();
       studyState = null;
       document.getElementById('flashcards-study-view').style.display = 'none';
       if (currentDeckView) {
