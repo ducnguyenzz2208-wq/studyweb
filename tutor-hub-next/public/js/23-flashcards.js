@@ -160,7 +160,7 @@
         '<div class="flashcard-wrapper" onclick="flipStudyCard()">' +
         '<div class="flashcard' + (studyState.flipped ? ' flipped' : '') + '" id="studyFlashcard">' +
         '<div class="flashcard-face">' +
-        '<div class="flashcard-label">Front' + (typeof fcSpeakBtnHtml === 'function' ? fcSpeakBtnHtml(card.front, studyState.deckId, 'mặt trước') : '') + '</div>' +
+        '<div class="flashcard-label">Front' + (typeof fcSpeakBtnHtml === 'function' ? fcSpeakBtnHtml(card.front, studyState.deckId, 'mặt trước', fcLangForCard(card, studyState.deckId, card.front)) : '') + '</div>' +
         '<div class="flashcard-text">' + card.front + '</div>' +
         (card.hint ? '<div class="flashcard-hint">💡 ' + escHtml(card.hint) + '</div>' : '') +
         '<div style="margin-top:16px;font-size:11px;color:var(--text-muted);">Click to flip</div>' +
@@ -334,6 +334,11 @@
         '<div class="form-group"><label>Mặt trước</label><textarea class="form-textarea" id="mCardFront" oninput="updateCardPreview()">' + (c ? escHtml(c.front) : '') + '</textarea>' +
         '<div class="hint">Hỗ trợ LaTeX: \\(x^2+1\\) hoặc \\[\\frac{a}{b}\\]</div>' +
         _fcMathBar('mCardFront') + '</div>' +
+        // Ngôn ngữ phát âm của MẶT TRƯỚC — mặt trước là mặt được tự động đọc.
+        (typeof fcLangOptionsHtml === 'function' ?
+          '<div class="form-group"><label>🔊 Ngôn ngữ phát âm (mặt trước)</label>' +
+          '<select class="form-select" id="mCardLang">' + fcLangOptionsHtml(c ? fcCardLang(c, deckId) : '') + '</select>' +
+          '<div class="hint">Dùng khi tự động đọc mặt trước. Để "Tự động nhận diện" nếu muốn app tự đoán theo nội dung.</div></div>' : '') +
         '<div class="form-group"><label>Mặt sau</label><textarea class="form-textarea" id="mCardBack" oninput="updateCardPreview()">' + (c ? escHtml(c.back) : '') + '</textarea>' +
         _fcMathBar('mCardBack') + '</div>' +
         '<input type="file" id="fcImgInput" accept="image/*" style="display:none" onchange="fcImgChosen(this)">' +
@@ -379,24 +384,33 @@
         example: document.getElementById('mCardExample').value.trim(),
         difficulty: document.getElementById('mCardDiff').value,
       };
+      // Ngôn ngữ phát âm mặt trước ('' = tự động nhận diện).
+      var langEl = document.getElementById('mCardLang');
+      var frontLang = langEl && langEl.value && langEl.value !== 'auto' ? langEl.value : '';
+      // Chỉ gửi cột front_lang khi ĐÃ chạy migration 028 (tránh 400 "column not found").
+      var langColOk = typeof fcLangColReady === 'function' && fcLangColReady();
+      var withLang = function (row) { if (langColOk) row.front_lang = frontLang || null; return row; };
       var today = new Date().toISOString().split('T')[0];
       if (cardId) {
         var c = d.cards.find(function (x) { return x.id === cardId; });
         if (c) Object.assign(c, data);
+        if (c && typeof fcSetCardLang === 'function') fcSetCardLang(c, deckId, frontLang);
         if (_db && _dbUserId && c && c.dbId) {
-          _db.from('flashcards').update({ front: front, back: back, difficulty: data.difficulty }).eq('id', c.dbId)
+          _db.from('flashcards').update(withLang({ front: front, back: back, difficulty: data.difficulty })).eq('id', c.dbId)
             .then(function (r) { if (r.error) showToast('Lỗi lưu thẻ: ' + r.error.message, 'error'); });
         }
         d.lastUpdated = today;
         showToast('Đã cập nhật thẻ.', 'success');
         closeModal(); openDeckDetail(deckId);
       } else if (_db && _dbUserId && d.dbId) {
-        _db.from('flashcards').insert({ deck_id: d.dbId, owner_id: _dbUserId, front: front, back: back, difficulty: data.difficulty }).select()
+        _db.from('flashcards').insert(withLang({ deck_id: d.dbId, owner_id: _dbUserId, front: front, back: back, difficulty: data.difficulty })).select()
           .then(function (r) {
             if (r.error) { showToast('Lỗi thêm thẻ: ' + r.error.message, 'error'); return; }
             data.id = nextCardId++;
             data.dbId = (r.data && r.data[0]) ? r.data[0].id : null;
             d.cards.push(data);
+            // Gán sau khi có dbId để khoá localStorage bền qua reload.
+            if (typeof fcSetCardLang === 'function') fcSetCardLang(data, deckId, frontLang);
             d.lastUpdated = today;
             showToast('Đã thêm thẻ mới.', 'success');
             closeModal(); openDeckDetail(deckId);
@@ -404,6 +418,7 @@
       } else {
         data.id = nextCardId++;
         d.cards.push(data);
+        if (typeof fcSetCardLang === 'function') fcSetCardLang(data, deckId, frontLang);
         d.lastUpdated = today;
         showToast('Đã thêm thẻ mới.', 'success');
         closeModal(); openDeckDetail(deckId);

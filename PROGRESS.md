@@ -2,6 +2,37 @@
 
 > App quản lý trung tâm gia sư. Live: https://studyweb-swart.vercel.app
 
+## Flashcard TTS v2: chỉ đọc MẶT TRƯỚC + ngôn ngữ theo TỪNG THẺ (+ Trung phồn thể) ✅ ĐÃ LÀM
+- [x] **CHỈ tự động đọc MẶT TRƯỚC** (27-flashcard-learn.js `fcOnFlip`): lật sang **mặt sau → IM LẶNG**
+      (`fcStopSpeak()` để cắt luôn câu đang đọc dở). Lật ngược lại về mặt trước thì đọc lại. Mở thẻ /
+      chuyển thẻ (đang hiện mặt trước) vẫn đọc. Muốn nghe mặt sau → bấm nút loa 🔊 thủ công (vẫn còn).
+- [x] **Ngôn ngữ đặt LÚC TẠO/SỬA THẺ** (23-flashcards.js `openCardModal`): thêm ô **"🔊 Ngôn ngữ phát âm
+      (mặt trước)"** — 14 lựa chọn, mặc định "🌐 Tự động nhận diện". `saveCard` lưu qua `fcSetCardLang`.
+      **Thứ tự ưu tiên khi đọc**: ngôn ngữ của **THẺ** → ngôn ngữ của **BỘ THẺ** → tự nhận diện nội dung.
+- [x] **Thêm Trung PHỒN THỂ**: `zh-TW` (Đài Loan) + `zh-HK` (Hồng Kông), cạnh `zh-CN` (giản thể). Mã
+      BCP-47 truyền thẳng vào `utterance.lang` của Web Speech API. Danh sách đầy đủ: `auto, en-US, en-GB,
+      vi-VN, ja-JP, ko-KR, zh-CN, zh-TW, zh-HK, fr-FR, de-DE, es-ES, ru-RU, th-TH`.
+- [x] **Tự dò giản thể ↔ phồn thể** khi để "auto" (`_fcDetectChinese`): đếm chữ CHỈ CÓ ở một bên
+      (這/这, 學/学, 國/国, 會/会…) — nhiều phồn thể hơn → `zh-TW`, còn lại → `zh-CN` (phổ biến hơn).
+      Chữ dùng chung không đoán được → muốn chắc thì đặt ngôn ngữ cho thẻ.
+- [x] **Lưu ngôn ngữ ĐI THEO THẺ** — migration **`028_flashcard_front_lang.sql`** (`flashcards.front_lang
+      TEXT`): GV đặt 1 lần, **mọi HS mở thẻ đều đọc đúng giọng**. Client tự **dò cột** (`'front_lang' in c`
+      ngay trên dữ liệu đã tải — 0 query thêm, không sinh 400); **CHƯA chạy 028 vẫn chạy bình thường**,
+      tự fallback lưu `localStorage` theo máy (khoá theo **dbId** — id số trong RAM đổi mỗi lần tải nên
+      không dùng làm khoá được).
+- [x] **Learn Mode không bị ảnh hưởng**: câu hỏi CHÍNH LÀ mặt trước nên vẫn được đọc (đúng quy tắc, dùng
+      mã lang của thẻ); **bỏ tự đọc đáp án** sau khi trả lời (đáp án = mặt sau) — nút loa trong khối phản
+      hồi vẫn còn để nghe thủ công. Thuật toán Leitner/trắc nghiệm/tự luận/tiến trình giữ nguyên 100%.
+      `lang` của ô nhập tự luận đổi sang ngôn ngữ **đáp án** (gợi ý bàn phím/IME đúng hơn).
+- Verify (live): mở thẻ→đọc mặt trước / lật sang mặt sau→**0 lần đọc** / lật lại→đọc lại / thẻ mới→đọc;
+      4 ca nhận diện Trung (giản, phồn, chữ chung, hỗn hợp) đúng; modal có 14 lựa chọn + 2 mục phồn thể,
+      thẻ mới mặc định `auto`; lưu `zh-TW`/`zh-HK` → phát đúng mã; ưu tiên **thẻ > bộ thẻ > tự nhận diện**
+      đúng cả 4 nhánh; localStorage lưu đúng `{"<dbId>":"zh-TW"}`; Learn Mode đọc câu hỏi (zh-TW) nhưng
+      **KHÔNG đọc đáp án**, chạy trọn buổi 4 thẻ → 12 lượt → thuộc hết, box→dạng câu hỏi đúng; tắt toggle
+      → 0 lần đọc. `node --check` 3 module + `tsc --noEmit` sạch, **0 lỗi console**.
+- **⚠️ Việc thủ công (tuỳ chọn)**: chạy `028_flashcard_front_lang.sql` trên Supabase để ngôn ngữ đi theo
+      thẻ cho MỌI người dùng. Chưa chạy → vẫn dùng được nhưng cấu hình chỉ nằm trên máy đang dùng.
+
 ## Flashcard: Tự động phát âm (TTS) + Chế độ Học kiểu Quizlet ✅ ĐÃ LÀM
 **Module MỚI `public/js/27-flashcard-learn.js`** (nạp sau 26-pomodoro, trước 25-init) — độc lập, tự có
 helper localStorage/plain-text; 23-flashcards.js chỉ gọi 3 hook (`fcOnFlip`, `fcStudyToolsHtml`,

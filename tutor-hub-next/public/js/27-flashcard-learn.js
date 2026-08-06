@@ -39,19 +39,39 @@
     // ============================================================
     // (1) TEXT-TO-SPEECH
     // ============================================================
+    // Mã BCP-47 dùng THẲNG cho Web Speech API (utterance.lang).
     var FC_TTS_LANGS = [
-      { code: 'auto', label: '🌐 Tự động' },
-      { code: 'en-US', label: 'English (US)' },
-      { code: 'en-GB', label: 'English (UK)' },
-      { code: 'vi-VN', label: 'Tiếng Việt' },
-      { code: 'ja-JP', label: '日本語' },
-      { code: 'ko-KR', label: '한국어' },
-      { code: 'zh-CN', label: '中文' },
-      { code: 'fr-FR', label: 'Français' },
-      { code: 'de-DE', label: 'Deutsch' },
-      { code: 'es-ES', label: 'Español' },
-      { code: 'ru-RU', label: 'Русский' }
+      { code: 'auto', label: '🌐 Tự động nhận diện' },
+      { code: 'en-US', label: 'English (US) — en-US' },
+      { code: 'en-GB', label: 'English (UK) — en-GB' },
+      { code: 'vi-VN', label: 'Tiếng Việt — vi-VN' },
+      { code: 'ja-JP', label: '日本語 Tiếng Nhật — ja-JP' },
+      { code: 'ko-KR', label: '한국어 Tiếng Hàn — ko-KR' },
+      { code: 'zh-CN', label: '简体中文 Trung (Giản thể) — zh-CN' },
+      { code: 'zh-TW', label: '繁體中文 Trung (Phồn thể, Đài Loan) — zh-TW' },
+      { code: 'zh-HK', label: '繁體中文 Trung (Phồn thể, Hồng Kông) — zh-HK' },
+      { code: 'fr-FR', label: 'Français — fr-FR' },
+      { code: 'de-DE', label: 'Deutsch — de-DE' },
+      { code: 'es-ES', label: 'Español — es-ES' },
+      { code: 'ru-RU', label: 'Русский — ru-RU' },
+      { code: 'th-TH', label: 'ไทย Tiếng Thái — th-TH' }
     ];
+
+    // Phân biệt Trung PHỒN THỂ (zh-TW) với GIẢN THỂ (zh-CN) khi để "tự động".
+    // Rất nhiều chữ dùng chung nên chỉ dò được qua các chữ CHỈ CÓ ở một bên;
+    // hoà/không thấy chữ đặc trưng → mặc định giản thể (phổ biến hơn).
+    // Muốn chắc chắn thì đặt ngôn ngữ cho thẻ lúc tạo (zh-TW / zh-HK).
+    var FC_ZH_TRAD = '這個灣學國說們時會對開關麼樣點認為語讀寫聽萬與東車馬鳥魚門長風飛見親愛體齊龍龜歲雞';
+    var FC_ZH_SIMP = '这个湾学国说们时会对开关么样点认为语读写听万与东车马鸟鱼门长风飞见亲爱体齐龙龟岁鸡';
+    function _fcDetectChinese(s) {
+      var trad = 0, simp = 0;
+      for (var i = 0; i < s.length; i++) {
+        var ch = s.charAt(i);
+        if (FC_ZH_TRAD.indexOf(ch) >= 0) trad++;
+        else if (FC_ZH_SIMP.indexOf(ch) >= 0) simp++;
+      }
+      return trad > simp ? 'zh-TW' : 'zh-CN';
+    }
 
     function _fcTtsSupported() { return typeof window !== 'undefined' && 'speechSynthesis' in window && typeof window.SpeechSynthesisUtterance === 'function'; }
     function fcAutoSpeakOn() { return _fcLsGet(_fcPk('th_fc_autospeak'), true) !== false; }
@@ -72,7 +92,7 @@
       if (/[฀-๿]/.test(s)) return 'th-TH';                    // Thai
       if (/[Ѐ-ӿ]/.test(s)) return 'ru-RU';                    // Cyrillic
       if (/[؀-ۿ]/.test(s)) return 'ar-SA';                    // Arabic
-      if (/[一-鿿]/.test(s)) return 'zh-CN';                    // Hán tự (không kèm kana)
+      if (/[一-鿿]/.test(s)) return _fcDetectChinese(s);         // Hán tự (không kèm kana)
       // Tiếng Việt — CHỈ dùng ký tự RIÊNG của tiếng Việt, không dùng nguyên âm
       // có dấu dùng chung (à á è é ó ú…) vì Pháp/Tây Ban Nha/Ý cũng có →
       // trước đây "très"/"estás" bị nhận nhầm là tiếng Việt.
@@ -88,6 +108,43 @@
     function fcLangFor(text, deckId) {
       var cfg = deckId != null ? fcDeckLang(deckId) : 'auto';
       return (cfg && cfg !== 'auto') ? cfg : fcDetectLang(text);
+    }
+
+    // ── Ngôn ngữ THEO TỪNG THẺ (đặt lúc tạo/sửa thẻ) ─────────────
+    // Lưu ở cột `flashcards.front_lang` (migration 028) để ngôn ngữ ĐI THEO THẺ
+    // — GV đặt 1 lần, mọi HS mở đều đọc đúng giọng. Chưa chạy 028 thì tự
+    // fallback về localStorage của MÁY hiện tại (khoá theo dbId nên bền qua
+    // reload; id số trong RAM đổi mỗi lần tải nên KHÔNG dùng làm khoá).
+    function fcLangColReady() { return _fcLsGet(_fcPk('th_fc_langcol'), null) === true; }
+    function fcSetLangColReady(ok) { _fcLsSet(_fcPk('th_fc_langcol'), !!ok); }
+    function _fcCardKey(card) { return String((card && (card.dbId || card.id)) || ''); }
+    function _fcCardLangMap(deckId) { return _fcLsGet(_fcPk('th_fc_cardlang_' + deckId), {}) || {}; }
+    function fcCardLang(card, deckId) {
+      if (card && card.lang) return card.lang;                       // từ DB (front_lang)
+      var m = _fcCardLangMap(deckId);
+      return m[_fcCardKey(card)] || '';                              // fallback máy hiện tại
+    }
+    // Gọi từ saveCard (23-flashcards.js) — luôn ghi localStorage để chạy được cả
+    // khi chưa có cột DB; có cột thì saveCard ghi thêm vào DB.
+    function fcSetCardLang(card, deckId, code) {
+      if (!card) return;
+      card.lang = (code && code !== 'auto') ? code : '';
+      var m = _fcCardLangMap(deckId);
+      if (card.lang) m[_fcCardKey(card)] = card.lang; else delete m[_fcCardKey(card)];
+      _fcLsSet(_fcPk('th_fc_cardlang_' + deckId), m);
+    }
+    // THỨ TỰ ƯU TIÊN: ngôn ngữ của THẺ → ngôn ngữ của BỘ THẺ → tự nhận diện.
+    function fcLangForCard(card, deckId, text) {
+      var cl = fcCardLang(card, deckId);
+      if (cl && cl !== 'auto') return cl;
+      return fcLangFor(text != null ? text : (card ? card.front : ''), deckId);
+    }
+    // <option> cho ô chọn ngôn ngữ trong modal tạo/sửa thẻ.
+    function fcLangOptionsHtml(selected) {
+      var sel = selected || 'auto';
+      return FC_TTS_LANGS.map(function (l) {
+        return '<option value="' + l.code + '"' + (sel === l.code ? ' selected' : '') + '>' + l.label + '</option>';
+      }).join('');
     }
 
     // Danh sách giọng nạp BẤT ĐỒNG BỘ trên Chrome → cache + nghe voiceschanged.
@@ -152,12 +209,18 @@
     }
 
     // HOOK cho 23-flashcards.js: gọi mỗi khi lật thẻ / chuyển sang thẻ mới.
-    // Tự đọc đúng mặt ĐANG hiện, đúng ngôn ngữ của nội dung mặt đó.
+    // QUY TẮC: CHỈ tự động đọc MẶT TRƯỚC. Lật sang mặt sau → IM LẶNG
+    // (muốn nghe mặt sau thì bấm nút loa 🔊 trên mặt đó).
     function fcOnFlip() {
       if (!fcAutoSpeakOn() || typeof studyState === 'undefined' || !studyState) return;
       var card = studyState.cards[studyState.index]; if (!card) return;
-      var text = studyState.flipped ? card.back : card.front;
-      fcSpeakFor(text, studyState.deckId);
+      if (studyState.flipped) { fcStopSpeak(); return; }   // mặt sau: không đọc
+      fcSpeakCardFront(card, studyState.deckId);
+    }
+    // Đọc mặt trước theo ĐÚNG mã lang đã đặt lúc tạo thẻ (nếu có).
+    function fcSpeakCardFront(card, deckId) {
+      if (!card) return;
+      fcSpeak(card.front, fcLangForCard(card, deckId, card.front));
     }
 
     // Nút bật/tắt + chọn ngôn ngữ + nút đọc lại — chèn vào header màn Học.
@@ -172,11 +235,16 @@
         '" onclick="toggleFcAutoSpeak()">' + (on ? '🔊' : '🔇') + ' Tự phát âm</button>' +
         '<select class="filter-select fc-lang-select" aria-label="Ngôn ngữ phát âm của bộ thẻ" onchange="fcSetDeckLang(' + deckId + ',this.value)">' + opts + '</select>';
     }
-    // Nút loa nhỏ đặt trên từng mặt thẻ (đọc thủ công, không phụ thuộc toggle).
-    function fcSpeakBtnHtml(text, deckId, label) {
+    // Nút loa nhỏ đặt trên từng mặt thẻ (đọc THỦ CÔNG — vẫn dùng được cho mặt
+    // sau dù mặt sau không còn tự động đọc). `lang` truyền vào thì đọc theo mã
+    // đó (mặt trước: mã đặt lúc tạo thẻ); bỏ trống thì theo bộ thẻ/tự nhận diện.
+    function fcSpeakBtnHtml(text, deckId, label, lang) {
       if (!_fcTtsSupported()) return '';
+      var call = (lang && lang !== 'auto')
+        ? 'fcSpeak(' + qid(String(text)) + ',' + qid(String(lang)) + ')'
+        : 'fcSpeakFor(' + qid(String(text)) + ',' + deckId + ')';
       return '<button class="fc-tts-btn" title="Phát âm' + (label ? ' ' + label : '') + '" aria-label="Phát âm' + (label ? ' ' + label : '') +
-        '" onclick="event.stopPropagation();fcSpeakFor(' + qid(String(text)) + ',' + deckId + ')">🔊</button>';
+        '" onclick="event.stopPropagation();' + call + '">🔊</button>';
     }
 
     // ============================================================
@@ -284,6 +352,9 @@
       st.mode = _learnModeFor(card, st.deckId, st.total);
       st.choices = st.mode === 'mc' ? _learnBuildChoices(card) : [];
       _learnRender();
+      // Câu hỏi CHÍNH LÀ mặt trước → được tự động đọc (đúng quy tắc "chỉ đọc
+      // mặt trước"); đáp án/mặt sau thì không.
+      if (fcAutoSpeakOn()) fcSpeakCardFront(card, st.deckId);
     }
     // Phương án nhiễu lấy từ mặt sau của các thẻ khác trong bộ (bỏ trùng).
     function _learnBuildChoices(card) {
@@ -388,8 +459,9 @@
         st.queue.splice(Math.min(LEARN_REQUEUE_GAP, st.queue.length), 0, id);
       }
       _learnRender();
-      // Trả lời xong luôn đọc ĐÁP ÁN ĐÚNG (nếu bật) — nghe để nhớ.
-      if (fcAutoSpeakOn()) fcSpeakFor(st.cur.back, st.deckId);
+      // KHÔNG tự đọc đáp án (mặt sau) — theo quy tắc "chỉ tự động đọc mặt
+      // trước". Muốn nghe đáp án thì bấm nút loa 🔊 trong khối phản hồi.
+      fcStopSpeak();
     }
     function learnNext() { if (_learnState && _learnState.answered) _learnNextQuestion(); }
 
@@ -449,7 +521,8 @@
       var st = _learnState; if (!st) return;
       var view = _learnEnsureView();
       var card = st.cur;
-      var qLang = fcLangFor(card.front, st.deckId);
+      // lang cho ô nhập = ngôn ngữ ĐÁP ÁN (mặt sau) — gợi ý bàn phím/IME đúng.
+      var qLang = fcLangFor(card.back, st.deckId);
 
       var html = '<div class="learn-container">' + _learnHeaderHtml() + _learnProgressHtml();
 
@@ -459,7 +532,7 @@
         (st.mode === 'mc' ? 'Trắc nghiệm' : 'Tự luận — gõ đáp án') + '</span>' +
         '<span class="learn-remain">Còn ' + st.queue.length + ' thẻ trong lượt</span></div>' +
         '<div class="learn-question">' + card.front +
-        (_fcTtsSupported() ? fcSpeakBtnHtml(card.front, st.deckId, 'câu hỏi') : '') + '</div>' +
+        (_fcTtsSupported() ? fcSpeakBtnHtml(card.front, st.deckId, 'câu hỏi', fcLangForCard(card, st.deckId, card.front)) : '') + '</div>' +
         (card.hint && !st.answered ? '<div class="learn-hint">💡 ' + escHtml(card.hint) + '</div>' : '');
 
       // Vùng trả lời

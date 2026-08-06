@@ -256,7 +256,10 @@
                 id: nextDeckId++, dbId: d.id, title: d.name, subject: d.subject || '', class: '', tags: [],
                 lastUpdated: (d.updated_at || d.created_at || '').split('T')[0],
                 cards: (d.flashcards || []).map(function (c) {
-                  return { id: nextCardId++, dbId: c.id, front: c.front, back: c.back, hint: '', example: '', difficulty: c.difficulty || 'medium', isFavorite: !!c.is_favorite, rating: c.rating || 0 };
+                  // Dò cột `front_lang` (migration 028) NGAY trên dữ liệu đã tải —
+                  // không tốn query/400. Chưa có cột → fallback localStorage.
+                  if (typeof fcSetLangColReady === 'function') fcSetLangColReady('front_lang' in c);
+                  return { id: nextCardId++, dbId: c.id, front: c.front, back: c.back, hint: '', example: '', difficulty: c.difficulty || 'medium', isFavorite: !!c.is_favorite, rating: c.rating || 0, lang: c.front_lang || '' };
                 })
               };
             });
