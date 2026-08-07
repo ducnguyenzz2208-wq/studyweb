@@ -145,7 +145,7 @@
         ? '<div style="margin-top:14px;"><button class="btn btn-primary" onclick="' + retryFn + '">' + retryLbl + '</button></div>'
         : '';
       return '<div class="empty-state error-state">' +
-        '<span class="empty-state-ic" style="background:rgba(239,68,68,0.12);color:var(--danger);">' + svgIcon('alert-triangle', 26) + '</span>' +
+        '<span class="empty-state-ic" style="background:rgba(239,68,68,0.12);color:var(--fg-danger);">' + svgIcon('alert-triangle', 26) + '</span>' +
         '<div class="empty-state-title">' + title + '</div>' +
         (msg ? '<div class="empty-state-hint">' + escHtml(msg) + '</div>' : '') +
         btn + '</div>';

@@ -127,7 +127,7 @@
       var summary = '<div class="card" style="padding:16px;margin-bottom:14px;border-left:4px solid ' + (totDebt > 0 ? 'var(--danger)' : 'var(--success)') + ';">' +
         (totDebt > 0
           ? '<strong>' + owing + ' học viên còn nợ — tổng ' + _m(totDebt) + '</strong>' +
-            (totOver > 0 ? '<span style="color:var(--danger);font-size:13px;margin-left:8px;">(quá hạn ' + _m(totOver) + ')</span>' : '')
+            (totOver > 0 ? '<span style="color:var(--fg-danger);font-size:13px;margin-left:8px;">(quá hạn ' + _m(totOver) + ')</span>' : '')
           : '<strong>✅ Không còn công nợ.</strong>') +
         '</div>';
 
@@ -139,9 +139,9 @@
             : (u.debt > 0 ? '<span class="badge badge-warning">⚠️ Còn nợ</span>' : '<span class="badge badge-success">✅ Đủ</span>');
           return '<tr>' +
             '<td><strong>' + escHtml(u.name) + '</strong><div style="font-size:11px;color:var(--text-muted);">' + u.count + ' khoản</div></td>' +
-            '<td style="color:var(--success)">' + _m(u.paid) + '</td>' +
-            '<td style="color:var(--warning)">' + _m(u.pending) + '</td>' +
-            '<td style="color:var(--danger)">' + _m(u.overdue) + '</td>' +
+            '<td style="color:var(--fg-success)">' + _m(u.paid) + '</td>' +
+            '<td style="color:var(--fg-warning)">' + _m(u.pending) + '</td>' +
+            '<td style="color:var(--fg-danger)">' + _m(u.overdue) + '</td>' +
             '<td><strong>' + _m(u.debt) + '</strong></td>' +
             '<td>' + st + '</td>' +
             '</tr>';
@@ -329,7 +329,7 @@
         if (q.length < 1) { box.innerHTML = ''; return; }
         if (!_db) return;
         _db.from('profiles').select('name,email,role').ilike('name', '%' + q + '%').limit(8).then(function (r) {
-          if (r.error) { box.innerHTML = '<div style="padding:8px;color:var(--danger);font-size:12px;">' + escHtml(r.error.message) + '</div>'; return; }
+          if (r.error) { box.innerHTML = '<div style="padding:8px;color:var(--fg-danger);font-size:12px;">' + escHtml(r.error.message) + '</div>'; return; }
           if (!r.data || !r.data.length) { box.innerHTML = '<div style="padding:8px;color:var(--text-muted);font-size:12px;">Không tìm thấy tài khoản.</div>'; return; }
           box.innerHTML = r.data.map(function (u) {
             return '<div onclick="payPickAccount(' + qid(u.email || '') + ',' + qid(u.name || '') + ')" style="padding:8px 10px;cursor:pointer;border-bottom:1px solid var(--border);font-size:13px;" onmouseover="this.style.background=\'var(--bg)\'" onmouseout="this.style.background=\'\'">' +

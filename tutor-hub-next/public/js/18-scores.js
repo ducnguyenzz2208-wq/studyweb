@@ -8,7 +8,7 @@
         var avg2 = avgScore(s);
         var g = getGrade(avg2);
         var trend = avg2 >= 80 ? '↑' : avg2 >= 70 ? '→' : '↓';
-        var trendColor = avg2 >= 80 ? 'color:var(--success)' : avg2 >= 70 ? 'color:var(--text-muted)' : 'color:var(--danger)';
+        var trendColor = avg2 >= 80 ? 'color:var(--fg-success)' : avg2 >= 70 ? 'color:var(--text-muted)' : 'color:var(--fg-danger)';
         return '<tr>' +
           '<td><div class="student-row">' +
           '<div class="avatar" style="background:' + COLORS[i % 12] + ';width:28px;height:28px;font-size:11px">' + getInitials(s.name) + '</div>' +

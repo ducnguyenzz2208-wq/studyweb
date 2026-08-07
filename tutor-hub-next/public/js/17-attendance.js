@@ -102,9 +102,9 @@
           '</div></td>' +
           '<td><span class="badge badge-info">' + escHtml(s.class) + '</span></td>' +
           '<td><strong>' + pct + '%</strong></td>' +
-          '<td style="color:var(--success)">' + h.present + '</td>' +
-          '<td style="color:var(--danger)">' + h.absent + '</td>' +
-          '<td style="color:var(--warning)">' + h.late + '</td>' +
+          '<td style="color:var(--fg-success)">' + h.present + '</td>' +
+          '<td style="color:var(--fg-danger)">' + h.absent + '</td>' +
+          '<td style="color:var(--fg-warning)">' + h.late + '</td>' +
           '<td><div class="attend-dots">' + dots + '</div></td>' +
           markCell +
           '</tr>';

@@ -45,12 +45,12 @@
       var overdueN = payments.filter(function (p) { return p.status === 'Overdue'; }).length;
       var kpiEl = document.getElementById('reportKPIs');
       kpiEl.innerHTML = [
-        { num: totalStudents, label: 'Tổng học viên', change: activeCount + ' active (30 ngày)', up: true, color: 'var(--accent)' },
-        showMath && { num: avgMath + '%', label: 'Điểm TB Toán', change: 'trên ' + totalStudents + ' HV', up: avgMath >= 70, color: 'var(--accent2)' },
-        showEng && { num: avgEng + '%', label: 'Điểm TB Anh', change: 'trên ' + totalStudents + ' HV', up: avgEng >= 70, color: 'var(--accent3)' },
-        { num: realAvgAtt + '%', label: 'Chuyên cần', change: attendanceRecords.length + ' lượt điểm danh', up: realAvgAtt >= 80, color: 'var(--accent4)' },
-        { num: atRiskCount, label: 'HV cần chú ý', change: atRiskCount ? 'điểm/chuyên cần thấp' : 'không có 🎉', up: atRiskCount === 0, color: 'var(--danger)' },
-        { num: paid + '/' + payments.length, label: 'Khoản đã thu', change: overdueN + ' quá hạn', up: overdueN === 0, color: 'var(--success)' },
+        { num: totalStudents, label: 'Tổng học viên', change: activeCount + ' active (30 ngày)', up: true, color: 'var(--fg-info)' },
+        showMath && { num: avgMath + '%', label: 'Điểm TB Toán', change: 'trên ' + totalStudents + ' HV', up: avgMath >= 70, color: 'var(--fg-purple)' },
+        showEng && { num: avgEng + '%', label: 'Điểm TB Anh', change: 'trên ' + totalStudents + ' HV', up: avgEng >= 70, color: 'var(--fg-success)' },
+        { num: realAvgAtt + '%', label: 'Chuyên cần', change: attendanceRecords.length + ' lượt điểm danh', up: realAvgAtt >= 80, color: 'var(--fg-warning)' },
+        { num: atRiskCount, label: 'HV cần chú ý', change: atRiskCount ? 'điểm/chuyên cần thấp' : 'không có 🎉', up: atRiskCount === 0, color: 'var(--fg-danger)' },
+        { num: paid + '/' + payments.length, label: 'Khoản đã thu', change: overdueN + ' quá hạn', up: overdueN === 0, color: 'var(--fg-success)' },
       ].filter(Boolean).map(function (k) {
         return '<div class="report-kpi"><div class="rk-num" style="color:' + k.color + '">' + k.num + '</div><div class="rk-label">' + k.label + '</div><div class="rk-change ' + (k.up ? 'rk-up' : 'rk-down') + '">' + k.change + '</div></div>';
       }).join('');
@@ -204,13 +204,13 @@
         return '<tr><td>' + (i + 1) + '</td><td>' + escHtml(s.name) + '</td><td>' + escHtml(s.class || '') + '</td><td>' + avgScore(s) + '%</td><td>' + getGrade(avgScore(s)) + '</td></tr>';
       }).join('');
       var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Báo cáo tổng hợp — Tutor Hub</title>' +
-        '<style>body{font-family:system-ui,"Segoe UI",sans-serif;color:#1e293b;padding:40px;line-height:1.5;}' +
-        'h1{color:#4f46e5;margin:0 0 4px;}.sub{color:#64748b;margin-bottom:24px;}' +
+        '<style>body{font-family:system-ui,"Segoe UI",sans-serif;color:var(--text);padding:40px;line-height:1.5;}' +
+        'h1{color:var(--fg-info);margin:0 0 4px;}.sub{color:var(--text-muted);margin-bottom:24px;}' +
         '.kpis{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:28px;}' +
         '.kpi{border:1px solid #e2e8f0;border-radius:10px;padding:14px 18px;min-width:130px;}' +
-        '.kpi b{display:block;font-size:22px;color:#4f46e5;}.kpi span{font-size:12px;color:#64748b;}' +
+        '.kpi b{display:block;font-size:22px;color:var(--fg-info);}.kpi span{font-size:12px;color:var(--text-muted);}' +
         'table{width:100%;border-collapse:collapse;margin-top:8px;}th,td{border:1px solid #e2e8f0;padding:8px 10px;text-align:left;font-size:13px;}th{background:#f8fafc;}' +
-        '.footer{margin-top:40px;font-size:11px;color:#94a3b8;text-align:center;}' +
+        '.footer{margin-top:40px;font-size:11px;color:var(--text-muted);text-align:center;}' +
         '@media print{.no-print{display:none;}}</style></head><body>' +
         '<h1>📚 Tutor Hub — Báo cáo tổng hợp</h1>' +
         '<div class="sub">Ngày xuất: ' + _today() + '</div>' +
@@ -290,7 +290,7 @@
       if (!comments.length) return '<div class="empty" style="padding:16px;">Chưa có nhận xét.</div>';
       var canDel = currentUser && (currentUser.role === 'Teacher' || currentUser.role === 'Admin');
       return comments.map(function (c) {
-        var del = canDel ? ' <span onclick="deleteStuComment(' + qid(c.id) + ',' + qid(studentId) + ')" style="cursor:pointer;color:var(--danger);font-size:11px;font-weight:600;">Xóa</span>' : '';
+        var del = canDel ? ' <span onclick="deleteStuComment(' + qid(c.id) + ',' + qid(studentId) + ')" style="cursor:pointer;color:var(--fg-danger);font-size:11px;font-weight:600;">Xóa</span>' : '';
         return '<div style="padding:10px 0;border-bottom:1px solid var(--border);">' +
           '<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted);margin-bottom:4px;gap:8px;">' +
           '<span>👩‍🏫 ' + escHtml(c.teacher) + ' · ' + escHtml(c.date) + '</span>' +

@@ -46,11 +46,11 @@
       var pct = Math.round((doneCount / steps.length) * 100);
       var items = steps.map(function (s) {
         var mark = s.done
-          ? '<span style="color:#10b981;font-weight:700;">✓</span>'
+          ? '<span style="color:var(--fg-success);font-weight:700;">✓</span>'
           : '<span style="color:var(--text-muted);">○</span>';
         var text = s.done
           ? '<span style="color:var(--text-muted);text-decoration:line-through;">' + s.label + '</span>'
-          : '<a href="#" onclick="' + s.fn + ';return false;" style="color:var(--primary,#3b82f6);text-decoration:none;font-weight:600;">' + s.label + ' →</a>';
+          : '<a href="#" onclick="' + s.fn + ';return false;" style="color:var(--fg-info);text-decoration:none;font-weight:600;">' + s.label + ' →</a>';
         return '<div style="display:flex;align-items:center;gap:10px;padding:6px 0;">' + mark + text + '</div>';
       }).join('');
 
@@ -73,7 +73,7 @@
       if (typeof _db === 'undefined' || !_db) return '';
       var loaded = (typeof hasSampleData === 'function') && hasSampleData();
       var action = loaded
-        ? '<a href="#" onclick="clearSampleData();return false;" style="color:var(--danger);text-decoration:none;font-weight:600;">Xoá dữ liệu mẫu</a>'
+        ? '<a href="#" onclick="clearSampleData();return false;" style="color:var(--fg-danger);text-decoration:none;font-weight:600;">Xoá dữ liệu mẫu</a>'
         : '<a href="#" onclick="loadSampleData();return false;" style="color:var(--accent);text-decoration:none;font-weight:600;">Nạp dữ liệu mẫu →</a>';
       var hint = loaded ? 'Đã nạp dữ liệu mẫu để xem thử.' : 'Chưa muốn nhập tay? ';
       return '<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);font-size:13px;color:var(--text-muted);">' +

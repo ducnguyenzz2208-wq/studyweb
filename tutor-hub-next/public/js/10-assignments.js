@@ -37,7 +37,7 @@
         bySubject[subj].forEach(function (c) {
           var active = c.id === currentClassId;
           html += '<div onclick="selectClass(' + qid(c.id) + ')" style="display:flex;align-items:center;justify-content:space-between;gap:6px;padding:8px 10px;border-radius:8px;cursor:pointer;margin-bottom:2px;' +
-            (active ? 'background:var(--primary,#3b82f6);color:#fff;' : '') + '">' +
+            (active ? 'background:var(--accent);color:#fff;' : '') + '">' +
             '<span style="font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">🏫 ' + escHtml(c.name) + '</span>' +
             (isTeacher ? '<button onclick="event.stopPropagation();openMembersModal(' + qid(c.id) + ')" title="Thành viên" style="background:none;border:none;cursor:pointer;font-size:14px;' + (active ? 'color:#fff;' : 'color:var(--text-muted);') + '">👥</button>' : '') +
             '</div>';
@@ -225,7 +225,7 @@
       var attach = '';
       if (a.attachmentUrl) {
         attach = _isImageUrl(a.attachmentUrl)
-          ? '<div style="margin-top:8px;"><a href="' + escAttr(a.attachmentUrl) + '" target="_blank" rel="noopener"><img src="' + escAttr(a.attachmentUrl) + '" style="max-width:100%;max-height:320px;border-radius:8px;cursor:zoom-in;" loading="lazy"></a></div>'
+          ? '<div style="margin-top:8px;"><a href="' + escAttr(a.attachmentUrl) + '" target="_blank" rel="noopener"><img src="' + escAttr(a.attachmentUrl) + '" alt="' + escAttr('Ảnh đính kèm bài tập: ' + (a.title || '')) + '" style="max-width:100%;max-height:320px;border-radius:8px;cursor:zoom-in;" loading="lazy"></a></div>'
           : '<div style="margin-top:8px;"><a class="btn btn-sm btn-ghost" href="' + escAttr(a.attachmentUrl) + '" target="_blank" rel="noopener">📎 Tài liệu / đề bài</a></div>';
       }
       var homework = '<div class="asn-hw">' +
@@ -336,7 +336,7 @@
       // Đề bài (Homework) rút gọn
       var attach = a.attachmentUrl
         ? (_isImageUrl(a.attachmentUrl)
-            ? '<div style="margin-top:8px;"><a href="' + escAttr(a.attachmentUrl) + '" target="_blank" rel="noopener"><img src="' + escAttr(a.attachmentUrl) + '" style="max-width:100%;max-height:260px;border-radius:8px;" loading="lazy"></a></div>'
+            ? '<div style="margin-top:8px;"><a href="' + escAttr(a.attachmentUrl) + '" target="_blank" rel="noopener"><img src="' + escAttr(a.attachmentUrl) + '" alt="' + escAttr('Ảnh đề bài: ' + (a.title || '')) + '" style="max-width:100%;max-height:260px;border-radius:8px;" loading="lazy"></a></div>'
             : '<div style="margin-top:8px;"><a class="btn btn-sm btn-ghost" href="' + escAttr(a.attachmentUrl) + '" target="_blank" rel="noopener">📎 Tài liệu / đề bài</a></div>')
         : '';
       var hwCard = '<div class="card"><div class="asn-sec-head">📄 Đề bài</div>' +
@@ -362,7 +362,7 @@
           var media = '';
           if (mySub.fileUrl) {
             media = _isImageUrl(mySub.fileUrl)
-              ? '<div style="margin-top:8px;"><a href="' + escAttr(mySub.fileUrl) + '" target="_blank" rel="noopener"><img src="' + escAttr(mySub.fileUrl) + '" style="max-width:100%;max-height:300px;border-radius:8px;" loading="lazy"></a></div>'
+              ? '<div style="margin-top:8px;"><a href="' + escAttr(mySub.fileUrl) + '" target="_blank" rel="noopener"><img src="' + escAttr(mySub.fileUrl) + '" alt="Ảnh bài làm bạn đã nộp" style="max-width:100%;max-height:300px;border-radius:8px;" loading="lazy"></a></div>'
               : '<div style="margin-top:6px;"><a href="' + escAttr(mySub.fileUrl) + '" target="_blank" rel="noopener">📎 Tệp đã nộp</a></div>';
           }
           var gradeBlock = (mySub.grade !== null && mySub.grade !== undefined)
@@ -408,25 +408,25 @@
       var media = '';
       if (s.fileUrl) {
         media = _isImageUrl(s.fileUrl)
-          ? '<div style="margin-top:6px;"><a href="' + escAttr(s.fileUrl) + '" target="_blank" rel="noopener"><img src="' + escAttr(s.fileUrl) + '" style="max-width:260px;max-height:240px;border-radius:8px;cursor:zoom-in;display:block;" loading="lazy"></a></div>'
+          ? '<div style="margin-top:6px;"><a href="' + escAttr(s.fileUrl) + '" target="_blank" rel="noopener"><img src="' + escAttr(s.fileUrl) + '" alt="' + escAttr('Ảnh bài nộp của ' + (s.studentName || 'học sinh')) + '" style="max-width:260px;max-height:240px;border-radius:8px;cursor:zoom-in;display:block;" loading="lazy"></a></div>'
           : '<div style="margin-top:4px;"><a href="' + escAttr(s.fileUrl) + '" target="_blank" rel="noopener" style="font-size:12px;">📎 tệp đính kèm</a></div>';
       }
       var gradeBox = '';
       if (s.grade !== null && s.grade !== undefined) {
         gradeBox = '<div style="margin-top:4px;background:var(--bg);border-radius:8px;padding:6px 10px;font-size:13px;">' +
-          '<strong style="color:var(--success);">Điểm: ' + s.grade + '/10</strong>' +
+          '<strong style="color:var(--fg-success);">Điểm: ' + s.grade + '/10</strong>' +
           (s.feedback ? '<div style="color:var(--text-muted);margin-top:2px;">📝 ' + escHtml(s.feedback) + '</div>' : '') + '</div>';
       }
       // Hàng thao tác kiểu Facebook: Sửa · Xóa · (Chấm)
       var acts = [];
       if (isOwner && a.status === 'open') acts.push('<span onclick="focusComposer(' + qid(a.id) + ',' + qid(_fkey(s.folderId)) + ')" style="cursor:pointer;font-weight:600;">Sửa</span>');
-      if (isOwner || isTeacher) acts.push('<span onclick="deleteSubmission(' + qid(s.id) + ')" style="cursor:pointer;font-weight:600;color:var(--danger);">Xóa</span>');
+      if (isOwner || isTeacher) acts.push('<span onclick="deleteSubmission(' + qid(s.id) + ')" style="cursor:pointer;font-weight:600;color:var(--fg-danger);">Xóa</span>');
       if (isTeacher) acts.push('<span onclick="openGradeModal(' + qid(s.id) + ')" style="cursor:pointer;font-weight:600;color:var(--accent);">' + (s.grade != null ? 'Sửa điểm' : 'Chấm điểm') + '</span>');
       var actRow = '<div style="font-size:12px;color:var(--text-muted);margin-top:3px;display:flex;gap:12px;align-items:center;">' +
         '<span>' + escHtml(s.submittedAt || '') + '</span>' + acts.join('') + '</div>';
 
       return '<div style="display:flex;gap:10px;padding:8px 0;">' +
-        '<div style="width:32px;height:32px;border-radius:50%;background:var(--purple,#8b5cf6);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;">' + escHtml((s.studentName || '?').slice(0, 1).toUpperCase()) + '</div>' +
+        '<div style="width:32px;height:32px;border-radius:50%;background:var(--fg-purple);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;">' + escHtml((s.studentName || '?').slice(0, 1).toUpperCase()) + '</div>' +
         '<div style="flex:1;min-width:0;">' +
         '<div style="background:var(--bg);border-radius:12px;padding:8px 12px;">' +
         '<div style="font-weight:600;font-size:13px;">' + escHtml(s.studentName || 'Học sinh') + (isOwner ? ' <span style="font-weight:400;color:var(--text-muted);">(bạn)</span>' : '') + '</div>' +
@@ -937,7 +937,7 @@
           if (mySubmission) {
             var gradeStr = '';
             if (mySubmission.grade !== null && a.gradesPublished) {
-              gradeStr = '<strong style="color:var(--success);">Điểm: ' + mySubmission.grade + '/10</strong>';
+              gradeStr = '<strong style="color:var(--fg-success);">Điểm: ' + mySubmission.grade + '/10</strong>';
               if (mySubmission.feedback) gradeStr += '<div style="margin-top:4px;font-size:12px;color:var(--text-muted);">📝 ' + escHtml(mySubmission.feedback) + '</div>';
             } else if (mySubmission.grade !== null) {
               gradeStr = '<span style="color:var(--text-muted);font-size:13px;">⏳ Chờ giáo viên công bố điểm...</span>';
@@ -957,7 +957,7 @@
           if (childSub) {
             var childGrade = '';
             if (childSub.grade !== null && a.gradesPublished) {
-              childGrade = '<strong style="color:var(--success);">Điểm: ' + childSub.grade + '/10</strong>';
+              childGrade = '<strong style="color:var(--fg-success);">Điểm: ' + childSub.grade + '/10</strong>';
               if (childSub.feedback) childGrade += '<div style="margin-top:4px;font-size:12px;color:var(--text-muted);">📝 ' + escHtml(childSub.feedback) + '</div>';
             } else {
               childGrade = '<span style="font-size:13px;color:var(--text-muted);">Chưa có điểm</span>';

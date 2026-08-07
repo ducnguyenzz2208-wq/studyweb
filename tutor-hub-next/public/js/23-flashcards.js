@@ -60,8 +60,7 @@
 
       var html = '<div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap;">' +
         '<button class="btn btn-ghost" onclick="backToDecks()">← Quay lại</button>' +
-        '<div style="flex:1;min-width:200px;"><h2 style="font-size:22px;font-weight:800;">' + escHtml(d.title) + '</h2>' +
-        '<div style="color:var(--text-muted);font-size:13px;margin-top:2px;">' + escHtml(d.subject) + ' · ' + escHtml(d.class) + ' · ' + d.cards.length + ' thẻ</div></div>' +
+        '<div style="flex:1;min-width:200px;"><h2 class="deck-detail-title">' + escHtml(d.title) + '</h2></div>' +
         '<button class="btn btn-primary" onclick="startStudy(' + d.id + ')">🎯 Học ngay</button>' +
         '<button class="btn btn-primary" onclick="startLearn(' + d.id + ')" title="Ôn tập lặp lại: trắc nghiệm + tự luận, từ sai lặp lại tới khi thuộc">🧠 Chế độ Học</button>' +
         '<button class="btn btn-ghost" onclick="startTest(' + d.id + ')" title="Bài kiểm tra trộn 3 dạng câu hỏi, nộp bài và tính điểm %">📝 Bài kiểm tra</button>' +
@@ -69,32 +68,35 @@
         editBtns +
         '</div>';
 
-      // Stats
-      html += '<div class="kpi-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:20px;">' +
-        '<div class="kpi-card"><div class="kpi-label">Total Cards</div><div class="kpi-value col-blue">' + d.cards.length + '</div></div>' +
-        '<div class="kpi-card"><div class="kpi-label">Difficult</div><div class="kpi-value" style="color:var(--danger)">' + difficult + '</div></div>' +
-        '<div class="kpi-card"><div class="kpi-label">Subject</div><div class="kpi-value" style="font-size:20px;">' + escHtml(d.subject) + '</div></div>' +
-        '<div class="kpi-card"><div class="kpi-label">Class</div><div class="kpi-value" style="font-size:20px;">' + escHtml(d.class) + '</div></div>' +
+      // Thông tin bộ thẻ: MỘT dải gọn thay cho 4 thẻ KPI cỡ lớn.
+      // 4 thẻ cũ vừa chiếm gần hết màn hình đầu, vừa LẶP LẠI y nguyên dòng
+      // phụ đề ngay trên nó (môn · lớp · N thẻ) — giờ chỉ còn một chỗ nói.
+      html += '<div class="deck-detail-meta">' +
+        '<span class="deck-detail-meta-item"><strong>' + d.cards.length + '</strong> thẻ</span>' +
+        (difficult ? '<span class="deck-detail-meta-item"><strong class="col-amber">' + difficult + '</strong> thẻ khó</span>' : '') +
+        '<span class="deck-detail-meta-item">' + escHtml(d.subject) + '</span>' +
+        (d.class ? '<span class="deck-detail-meta-item">' + escHtml(d.class) + '</span>' : '') +
         '</div>';
 
-      // Card list
-      html += '<div class="card"><div class="card-header"><div class="card-title">All Cards</div><span class="badge badge-info">' + d.cards.length + ' total</span></div>';
+      // Danh sách thẻ. Số lượng đã có ở dải thông tin trên nên bỏ badge "N total".
+      html += '<div class="card"><div class="card-header"><div class="card-title">Tất cả thẻ</div></div>';
       if (d.cards.length) {
         html += d.cards.map(function (c, idx) {
           var diffBadge = { easy: 'badge-success', medium: 'badge-warning', hard: 'badge-danger' }[c.difficulty] || 'badge-gray';
+          // Nhãn tiếng Việt — trước đây hiện thẳng giá trị máy ("medium") giữa
+          // một giao diện tiếng Việt.
+          var diffLabel = { easy: 'Dễ', medium: 'Trung bình', hard: 'Khó' }[c.difficulty] || c.difficulty;
           var editCardBtns = editMode ? '<div class="card-list-actions">' +
-            (idx > 0 ? '<button class="btn btn-sm btn-ghost" title="Move Up" onclick="moveCard(' + d.id + ',' + c.id + ',-1)">↑</button>' : '') +
-            (idx < d.cards.length - 1 ? '<button class="btn btn-sm btn-ghost" title="Move Down" onclick="moveCard(' + d.id + ',' + c.id + ',1)">↓</button>' : '') +
-            '<button class="btn btn-sm btn-ghost" onclick="openCardModal(' + d.id + ',' + c.id + ')">✏️</button>' +
-            '<button class="btn btn-sm btn-ghost" onclick="duplicateCard(' + d.id + ',' + c.id + ')">📋</button>' +
-            '<button class="btn btn-sm btn-danger" onclick="deleteCard(' + d.id + ',' + c.id + ')">🗑</button></div>' : '';
+            (idx > 0 ? '<button class="btn btn-sm btn-ghost" title="Chuyển lên" onclick="moveCard(' + d.id + ',' + c.id + ',-1)">↑</button>' : '') +
+            (idx < d.cards.length - 1 ? '<button class="btn btn-sm btn-ghost" title="Chuyển xuống" onclick="moveCard(' + d.id + ',' + c.id + ',1)">↓</button>' : '') +
+            '<button class="btn btn-sm btn-ghost" title="Sửa thẻ" onclick="openCardModal(' + d.id + ',' + c.id + ')">✏️</button>' +
+            '<button class="btn btn-sm btn-ghost" title="Nhân đôi thẻ" onclick="duplicateCard(' + d.id + ',' + c.id + ')">📋</button>' +
+            '<button class="btn btn-sm btn-danger" title="Xoá thẻ" onclick="deleteCard(' + d.id + ',' + c.id + ')">🗑</button></div>' : '';
           return '<div class="card-list-item">' +
-            '<div class="card-num">' + (idx + 1) + '</div>' +
-            '<div class="card-list-content">' +
-            '<div class="card-list-front">' + c.front + '</div>' +
-            '<div class="card-list-back">' + c.back + '</div>' +
-            '<div style="margin-top:4px;"><span class="badge ' + diffBadge + '" style="font-size:10px;">' + c.difficulty + '</span></div>' +
-            '</div>' +
+            '<span class="card-num">' + (idx + 1) + '</span>' +
+            '<div class="card-list-term">' + c.front + '</div>' +
+            '<div class="card-list-def">' + c.back + '</div>' +
+            '<span class="badge ' + diffBadge + ' card-list-diff">' + escHtml(diffLabel) + '</span>' +
             editCardBtns +
             '</div>';
         }).join('');

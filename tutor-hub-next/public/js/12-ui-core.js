@@ -1,11 +1,58 @@
     // ============================================================
-    // MATHJAX HELPER
+    // MATHJAX — NẠP THEO NHU CẦU (lazy)
+    // ------------------------------------------------------------
+    // Trước đây MathJax (~1MB) nằm ở <script> trong <head> nên MỌI lần mở app
+    // đều tải, kể cả khi người dùng chỉ xem bộ thẻ Tiếng Anh/Tiếng Trung không
+    // có một công thức nào. Nay chỉ nạp khi thực sự thấy cú pháp LaTeX trong
+    // nội dung sắp render. Bộ thẻ không có công thức → 0 byte MathJax.
     // ============================================================
+    var MATHJAX_SRC = 'https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js';
+    var _mjState = 'idle';        // idle | loading | ready | failed
+    var _mjWaiting = [];          // các target chờ nạp xong để typeset
+
+    // Có cú pháp LaTeX hay không: \( \) · \[ \] · $$…$$ · $…$
+    function hasMathSyntax(text) {
+      var s = String(text == null ? '' : text);
+      return /\\\(|\\\)|\\\[|\\\]|\$\$/.test(s) || /\$[^$\n]+\$/.test(s);
+    }
+
+    function _mjTypeset(target) {
+      if (!target || !window.MathJax || !MathJax.typesetPromise) return;
+      MathJax.typesetPromise([target]).catch(function () { });
+    }
+
+    function loadMathJax(cb) {
+      if (_mjState === 'ready') { if (cb) cb(); return; }
+      if (cb) _mjWaiting.push(cb);
+      if (_mjState === 'loading' || _mjState === 'failed') return;
+      _mjState = 'loading';
+      var s = document.createElement('script');
+      s.id = 'MathJax-script'; s.async = true; s.src = MATHJAX_SRC;
+      s.onload = function () {
+        // startup.promise đảm bảo MathJax đã sẵn sàng trước khi typeset.
+        var go = function () {
+          _mjState = 'ready';
+          var q = _mjWaiting; _mjWaiting = [];
+          q.forEach(function (f) { try { f(); } catch (e) { } });
+        };
+        if (window.MathJax && MathJax.startup && MathJax.startup.promise) MathJax.startup.promise.then(go).catch(go);
+        else go();
+      };
+      s.onerror = function () {
+        _mjState = 'failed'; _mjWaiting = [];
+        console.warn('Không tải được MathJax — công thức sẽ hiện ở dạng LaTeX thô.');
+      };
+      document.head.appendChild(s);
+    }
+
+    // Giữ NGUYÊN chữ ký cũ: mọi module đang gọi typesetMath(el) không phải sửa.
     function typesetMath(el) {
-      if (window.MathJax && MathJax.typesetPromise) {
-        const target = el ? (typeof el === 'string' ? document.getElementById(el) : el) : document.body;
-        if (target) MathJax.typesetPromise([target]).catch(function () { });
-      }
+      var target = el ? (typeof el === 'string' ? document.getElementById(el) : el) : document.body;
+      if (!target) return;
+      if (_mjState === 'ready') { _mjTypeset(target); return; }
+      // Chưa nạp: chỉ nạp khi vùng này thật sự có công thức.
+      if (!hasMathSyntax(target.textContent || '')) return;
+      loadMathJax(function () { _mjTypeset(target); });
     }
 
     // ============================================================
@@ -206,7 +253,10 @@
     // ============================================================
     // MOCK DATA
     // ============================================================
-    var COLORS = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#06b6d4', '#ec4899', '#84cc16', '#f97316', '#6366f1', '#14b8a6', '#e879f9'];
+    // Bảng màu avatar/nhãn. Bộ cũ (#3b82f6, #10b981, #f59e0b…) là màu TÔ bão
+    // hoà: chữ trắng trên nó chỉ đạt 2.1–4.2:1, tức chữ tên viết tắt đọc
+    // không rõ và nhìn "kẹo ngọt". Bộ này tối hơn ~25%, chữ trắng đều ≥4.6:1.
+    var COLORS = ['#3371d6', '#8457ea', '#0c855d', '#a26807', '#d53d3d', '#047f94', '#cb3e84', '#53810e', '#bd5711', '#6164ec', '#0e8376', '#a556b1'];
     var nextStudentId = 13;
     var nextClassId = 5;
     var nextAssignmentId = 3;
@@ -515,10 +565,29 @@
     // ============================================================
     // THEME
     // ============================================================
+    // Đổi data-theme và ĐẢM BẢO mọi giá trị màu được tính lại ngay.
+    // Vì sao cần hàm này: rất nhiều phần tử (kể cả `body`) có `transition`
+    // trên background/color, mà các giá trị đó lấy từ biến CSS. Khi biến đổi
+    // giá trị, trình duyệt KHÔNG khởi động transition cho property phụ thuộc
+    // var() → property giữ nguyên giá trị cũ và chỉ đúng lại sau khi tải lại
+    // trang. Kết quả: bấm đổi giao diện xong thì nền vẫn theme cũ trong khi
+    // thẻ đã đổi → chữ sáng trên thẻ trắng, gần như không đọc được.
+    // Cách sửa: tắt transition trong đúng 1 frame lúc hoán theme, buộc reflow
+    // để giá trị mới được áp, rồi bật transition lại.
+    function applyTheme(dark) {
+      var root = document.documentElement;
+      root.classList.add('theme-instant');
+      root.setAttribute('data-theme', dark ? 'dark' : '');
+      void root.offsetWidth;                       // buộc tính lại style ngay
+      requestAnimationFrame(function () {
+        requestAnimationFrame(function () { root.classList.remove('theme-instant'); });
+      });
+    }
     function toggleTheme() {
       isDark = !isDark;
-      document.documentElement.setAttribute('data-theme', isDark ? 'dark' : '');
-      document.getElementById('themeBtn').innerHTML = svgIcon(isDark ? 'sun' : 'moon', 19);
+      applyTheme(isDark);
+      var tb = document.getElementById('themeBtn');
+      if (tb) tb.innerHTML = svgIcon(isDark ? 'sun' : 'moon', 19);
       var t = document.getElementById('darkModeToggle');
       if (t) { if (isDark) t.classList.add('on'); else t.classList.remove('on'); }
       try { localStorage.setItem('th_dark', isDark ? '1' : '0'); } catch (e) { }

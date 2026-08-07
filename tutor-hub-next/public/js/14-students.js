@@ -192,22 +192,22 @@
         var emailInp = document.getElementById('mStudentEmail');
         if (nameInp && acc.name) nameInp.value = acc.name;
         if (emailInp && acc.email) emailInp.value = acc.email;
-        if (out) out.innerHTML = '<span style="color:var(--success);">✓ Đã điền: <strong>' + escHtml(acc.name || '') + '</strong> — ' + escHtml(acc.email || '') + (acc.role ? ' (' + escHtml(acc.role) + ')' : '') + '</span>';
+        if (out) out.innerHTML = '<span style="color:var(--fg-success);">✓ Đã điền: <strong>' + escHtml(acc.name || '') + '</strong> — ' + escHtml(acc.email || '') + (acc.role ? ' (' + escHtml(acc.role) + ')' : '') + '</span>';
       }
 
       if (q.indexOf('@') !== -1) {
         _db.rpc('find_account', { _email: q }).then(function (r) {
-          if (r.error) { if (out) out.innerHTML = '<span style="color:var(--danger);">Lỗi: ' + escHtml(r.error.message) + '</span>'; return; }
-          if (!r.data || !r.data.length) { if (out) out.innerHTML = '<span style="color:var(--danger);">Không tìm thấy tài khoản với email này.</span>'; return; }
+          if (r.error) { if (out) out.innerHTML = '<span style="color:var(--fg-danger);">Lỗi: ' + escHtml(r.error.message) + '</span>'; return; }
+          if (!r.data || !r.data.length) { if (out) out.innerHTML = '<span style="color:var(--fg-danger);">Không tìm thấy tài khoản với email này.</span>'; return; }
           _fill(r.data[0]);
         });
       } else {
         _db.rpc('find_account_by_name', { _q: q }).then(function (r) {
           if (r.error) {
-            if (out) out.innerHTML = '<span style="color:var(--danger);">Chưa bật tra cứu theo tên (cần chạy migration 018) — hãy nhập email. ' + escHtml(r.error.message) + '</span>';
+            if (out) out.innerHTML = '<span style="color:var(--fg-danger);">Chưa bật tra cứu theo tên (cần chạy migration 018) — hãy nhập email. ' + escHtml(r.error.message) + '</span>';
             return;
           }
-          if (!r.data || !r.data.length) { if (out) out.innerHTML = '<span style="color:var(--danger);">Không tìm thấy tài khoản nào khớp tên này.</span>'; return; }
+          if (!r.data || !r.data.length) { if (out) out.innerHTML = '<span style="color:var(--fg-danger);">Không tìm thấy tài khoản nào khớp tên này.</span>'; return; }
           _fill(r.data[0]);
           if (r.data.length > 1 && out) out.innerHTML += ' <span style="color:var(--text-muted);">(+' + (r.data.length - 1) + ' kết quả khác, đã chọn khớp nhất)</span>';
         });

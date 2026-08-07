@@ -67,7 +67,7 @@
       var sample = _importRows.slice(0, 5).map(function (r) {
         return '<tr><td>' + escHtml(r.name) + '</td><td>' + escHtml(r.email || '—') + '</td><td>' + escHtml(r.class || '—') + '</td></tr>';
       }).join('');
-      pv.innerHTML = '<div style="margin:6px 0;color:var(--success);font-weight:600;">Sẽ nhập ' + _importRows.length + ' học sinh:</div>' +
+      pv.innerHTML = '<div style="margin:6px 0;color:var(--fg-success);font-weight:600;">Sẽ nhập ' + _importRows.length + ' học sinh:</div>' +
         '<div style="overflow-x:auto;"><table><thead><tr><th>Tên</th><th>Email</th><th>Lớp</th></tr></thead><tbody>' + sample +
         (_importRows.length > 5 ? '<tr><td colspan="3" style="color:var(--text-muted);">… và ' + (_importRows.length - 5) + ' dòng nữa</td></tr>' : '') +
         '</tbody></table></div>';
