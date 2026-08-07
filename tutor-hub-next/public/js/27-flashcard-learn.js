@@ -232,27 +232,99 @@
       try { _fcVoiceCache = window.speechSynthesis.getVoices() || []; } catch (e) { _fcVoiceCache = []; }
       return _fcVoiceCache;
     }
-    // Chọn giọng tốt nhất cho 1 ngôn ngữ + giới tính mong muốn:
-    //   1) Lọc theo ngôn ngữ (khớp đúng dialect, rồi mới nới về khớp base — vd 'en').
-    //   2) Trong nhóm đó, ưu tiên giọng khớp GIỚI TÍNH yêu cầu; KHÔNG có giọng nào
-    //      khớp giới tính → bỏ qua tiêu chí này (fallback êm, không lỗi).
-    //   3) Xếp hạng theo CHẤT LƯỢNG (Natural/Neural/Online/Google) — chọn cao nhất.
-    // Không có giọng nào khớp ngôn ngữ → trả null, browser tự dùng giọng chuẩn
-    // theo `utterance.lang` (fallback mặc định của trình duyệt, không lỗi app).
+    // Chờ danh sách giọng sẵn sàng rồi mới đọc. Đã có giọng → gọi lại NGAY
+    // (đồng bộ, không làm trễ luồng thường). Chưa có → chờ `voiceschanged`,
+    // tối đa 1.2s rồi vẫn đọc bằng giọng mặc định (thà trễ còn hơn sai giọng).
+    var _fcVoiceWaiters = [];
+    function _fcEnsureVoices(cb) {
+      if (!_fcTtsSupported() || _fcVoices().length) { cb(); return; }
+      var done = false;
+      var fire = function () { if (done) return; done = true; cb(); };
+      _fcVoiceWaiters.push(fire);
+      setTimeout(fire, 1200);
+    }
+    function _fcFlushVoiceWaiters() {
+      var list = _fcVoiceWaiters; _fcVoiceWaiters = [];
+      list.forEach(function (f) { try { f(); } catch (e) { } });
+    }
+    // Máy KHÔNG có giọng nào cho ngôn ngữ này → trình duyệt sẽ đọc bằng giọng
+    // mặc định (thường là tiếng Anh), nghe sai hẳn tiếng. Đây là giới hạn của
+    // HĐH/trình duyệt chứ không phải lỗi app → báo 1 LẦN cho mỗi ngôn ngữ mỗi
+    // phiên để người dùng biết đường cài voice pack, không spam mỗi thẻ.
+    var _fcWarnedLangs = {};
+    var FC_LANG_VN_NAME = {
+      vi: 'tiếng Việt', zh: 'tiếng Trung', ja: 'tiếng Nhật', ko: 'tiếng Hàn',
+      en: 'tiếng Anh', fr: 'tiếng Pháp', de: 'tiếng Đức', es: 'tiếng Tây Ban Nha',
+      ru: 'tiếng Nga', th: 'tiếng Thái', ar: 'tiếng Ả Rập'
+    };
+    function _fcWarnMissingVoice(lang) {
+      var base = _fcLangBase(lang);
+      if (!base || _fcWarnedLangs[base]) return;
+      _fcWarnedLangs[base] = 1;
+      var name = FC_LANG_VN_NAME[base] || lang;
+      try {
+        showToast('Máy chưa cài giọng đọc ' + name + ' (' + lang + ') — đang đọc tạm bằng giọng mặc định. Cài thêm giọng trong Cài đặt hệ điều hành để nghe đúng tiếng.', 'warning');
+      } catch (e) { }
+    }
+    // ── Chuẩn hoá mã ngôn ngữ để so khớp giọng ───────────────────
+    // Trình duyệt/HĐH báo `voice.lang` rất lộn xộn: 'zh_TW' (Android, gạch
+    // dưới), 'cmn-Hans-CN' (giọng Quan thoại của Google), 'yue-HK' (Quảng
+    // Đông), 'zh-Hant-TW' (có subtag hệ chữ). So khớp thô theo 'zh-tw' sẽ
+    // TRƯỢT hết các dạng này → rơi về giọng mặc định (tiếng Anh).
+    function _fcNormLang(code) {
+      var s = String(code || '').toLowerCase().replace(/_/g, '-');
+      return s.replace(/^cmn/, 'zh').replace(/^yue/, 'zh'); // cmn/yue đều là tiếng Trung
+    }
+    function _fcLangBase(code) { return _fcNormLang(code).split('-')[0]; }
+    // Mã vùng, bỏ qua subtag hệ chữ: 'zh-hant-tw' → 'tw'.
+    function _fcLangRegion(code) {
+      var p = _fcNormLang(code).split('-');
+      for (var i = p.length - 1; i >= 1; i--) if (!/^(hans|hant|latn|cyrl)$/.test(p[i])) return p[i];
+      return '';
+    }
+    // Hệ chữ Trung: phồn thể (hant) hay giản thể (hans) — suy từ subtag hoặc vùng.
+    function _fcLangScript(code) {
+      var s = _fcNormLang(code);
+      if (s.indexOf('hant') >= 0) return 'hant';
+      if (s.indexOf('hans') >= 0) return 'hans';
+      var r = _fcLangRegion(s);
+      if (r === 'tw' || r === 'hk' || r === 'mo') return 'hant';
+      if (r === 'cn' || r === 'sg') return 'hans';
+      return '';
+    }
+    // Điểm khớp NGÔN NGỮ giữa giọng và mã mong muốn. <0 = khác ngôn ngữ (loại).
+    function _fcVoiceLangScore(voiceLang, want) {
+      if (_fcLangBase(voiceLang) !== _fcLangBase(want)) return -1;
+      if (_fcNormLang(voiceLang) === _fcNormLang(want)) return 100;   // khớp tuyệt đối
+      var score = 50;                                                  // cùng ngôn ngữ (vd zh)
+      if (_fcLangRegion(voiceLang) && _fcLangRegion(voiceLang) === _fcLangRegion(want)) score += 30;
+      var vs = _fcLangScript(voiceLang), ws = _fcLangScript(want);
+      if (vs && ws) score += (vs === ws) ? 20 : -10;                    // cùng/khác hệ chữ
+      return score;
+    }
+    // Chọn giọng tốt nhất cho 1 ngôn ngữ + giới tính mong muốn.
+    // Loại thẳng giọng KHÁC ngôn ngữ; mọi biến thể cùng ngôn ngữ đều được giữ
+    // (zh-TW, zh_TW, zh-HK, cmn-Hans-CN, yue-HK… đều là 'zh') → luôn đọc đúng tiếng.
+    // Xếp hạng bằng ĐIỂM TỔNG HỢP, có trọng số theo đúng thứ tự quan trọng:
+    //   ngôn ngữ/vùng/hệ chữ (×10)  >  đúng giới tính (+25)  >  chất lượng giọng.
+    // Vì sao KHÔNG lọc cứng theo giới tính trước: khi xin 'zh-HK' giọng nữ mà
+    // máy có giọng Quảng Đông HK (không đoán được giới tính) và một giọng nữ
+    // Đài Loan, lọc cứng sẽ chọn giọng Đài Loan → SAI vùng tiếng. Đọc đúng tiếng
+    // quan trọng hơn đúng giới tính; giới tính chỉ phân thắng bại khi ngang ngôn ngữ.
+    // Không có giọng nào cùng ngôn ngữ → trả null; `fcSpeak` vẫn đọc bằng giọng
+    // mặc định theo `utterance.lang` và báo 1 lần để người dùng biết cần cài voice.
     function _fcPickVoice(lang, gender) {
       var voices = _fcVoices(); if (!voices.length) return null;
-      var want = String(lang || '').toLowerCase().replace('_', '-');
-      var base = want.split('-')[0];
-      var norm = function (v) { return String(v.lang || '').toLowerCase().replace('_', '-'); };
-      var exact = voices.filter(function (v) { return norm(v) === want; });
-      var partial = voices.filter(function (v) { return norm(v).split('-')[0] === base; });
-      var pool = exact.length ? exact : partial;
-      if (!pool.length) return null;
-      if (gender === 'male' || gender === 'female') {
-        var byGender = pool.filter(function (v) { return _fcVoiceGender(v) === gender; });
-        if (byGender.length) pool = byGender;
-      }
-      return pool.slice().sort(function (a, b) { return _fcVoiceQuality(b) - _fcVoiceQuality(a); })[0];
+      var wantG = (gender === 'male' || gender === 'female') ? gender : null;
+      var best = null, bestScore = -1;
+      voices.forEach(function (v) {
+        var ls = _fcVoiceLangScore(v.lang, lang);
+        if (ls < 0) return;                                   // khác ngôn ngữ → loại
+        var score = ls * 10 + _fcVoiceQuality(v);
+        if (wantG && _fcVoiceGender(v) === wantG) score += 25;
+        if (score > bestScore) { bestScore = score; best = v; }
+      });
+      return best;
     }
 
     // Đọc 1 đoạn văn bản. Tự huỷ câu đang đọc để không chồng tiếng.
@@ -263,13 +335,23 @@
       var say = _fcPlainText(text);
       if (!say) { showToast('Mặt thẻ này không có chữ để đọc (chỉ có hình/công thức).', 'info'); return; }
       if (say.length > 400) say = say.slice(0, 400); // chống đọc lê thê
+      // Cắt tiếng đang đọc NGAY (kể cả khi phải chờ nạp giọng bên dưới).
+      try { window.speechSynthesis.cancel(); } catch (e0) { }
+      // Chrome nạp danh sách giọng BẤT ĐỒNG BỘ: câu đầu tiên sau khi tải trang
+      // thường gặp getVoices() rỗng → không gán được giọng đúng ngôn ngữ →
+      // đọc bằng giọng mặc định (tiếng Anh). Chờ giọng sẵn sàng rồi mới đọc.
+      _fcEnsureVoices(function () { _fcSpeakNow(say, lang, gender); });
+    }
+    function _fcSpeakNow(say, lang, gender) {
       try {
-        window.speechSynthesis.cancel();
         var u = new window.SpeechSynthesisUtterance(say);
-        u.lang = lang || fcDetectLang(say);
+        // 'auto'/rỗng KHÔNG phải mã hợp lệ → phải tự nhận diện, nếu không
+        // utterance.lang='auto' làm trình duyệt rơi về giọng mặc định.
+        u.lang = (lang && lang !== 'auto') ? lang : fcDetectLang(say);
         var pref = fcVoiceGenderPref();
         var g = gender || (pref !== 'auto' ? pref : _fcGenderToggle);
         var v = _fcPickVoice(u.lang, g);
+        if (!v) _fcWarnMissingVoice(u.lang);
         // Gán voice trong try RIÊNG: nếu object giọng "hỏng" (một số trình
         // duyệt/thiết bị trả voice không hợp lệ), lỗi ở đây KHÔNG được làm
         // rớt luôn cả câu nói — phải rơi về giọng chuẩn của u.lang mà vẫn đọc.
@@ -388,15 +470,25 @@
       return arr;
     }
 
-    // Thẻ chỉ hỏi TỰ LUẬN được khi đáp án gõ được: có chữ, không phải ảnh,
-    // không quá dài. Ảnh/công thức → luôn hỏi trắc nghiệm (không thể gõ).
+    // Có công thức LaTeX trong nội dung hay không (\( \) · \[ \] · $…$ · $$…$$).
+    function _fcHasMath(s) {
+      var t = String(s || '');
+      return /\\\(|\\\[|\$\$|\$[^$\n]*\$/.test(t);
+    }
+    // Thẻ chỉ hỏi TỰ LUẬN được khi đáp án GÕ ĐƯỢC: có chữ, không phải ảnh,
+    // KHÔNG chứa công thức, và không quá dài. Ảnh/công thức → luôn trắc nghiệm.
+    // Lưu ý phần công thức: đáp án kiểu `\(x = 2\) or \(x = 3\)` sau khi lột
+    // LaTeX chỉ còn chữ "or" → bản cũ tưởng gõ được và bắt học sinh gõ "or"
+    // (vô nghĩa, gần như luôn sai). Có LaTeX là ép trắc nghiệm.
     function _learnTypeable(card) {
       var a = _fcPlainText(card.back);
-      return !!a && !_fcHasImage(card.back) && a.length <= 60;
+      return !!a && !_fcHasImage(card.back) && !_fcHasMath(card.back) && a.length <= 60;
     }
-    function _learnModeFor(card, deckId, poolSize) {
+    function _learnModeFor(card, deckId) {
       var box = _learnBoxOf(deckId, card.id);
-      if (box <= 0) return poolSize >= 2 ? 'mc' : (_learnTypeable(card) ? 'written' : 'mc');
+      // box 0 LUÔN trắc nghiệm được — `_learnBuildChoices` bảo đảm đủ 4 ô kể cả
+      // khi bộ thẻ ít thẻ (mượn bộ khác / ô giữ chỗ).
+      if (box <= 0) return 'mc';
       return _learnTypeable(card) ? 'written' : 'mc';
     }
 
@@ -459,32 +551,77 @@
       if (!card) { st.queue.shift(); _learnNextQuestion(); return; }
       st.cur = card;
       st.answered = false; st.lastCorrect = false; st.closeMatch = false;
-      st.mode = _learnModeFor(card, st.deckId, st.total);
+      st.mode = _learnModeFor(card, st.deckId);
       st.choices = st.mode === 'mc' ? _learnBuildChoices(card) : [];
       _learnRender();
       // Câu hỏi CHÍNH LÀ mặt trước → được tự động đọc (đúng quy tắc "chỉ đọc
       // mặt trước"); đáp án/mặt sau thì không.
       if (fcAutoSpeakOn()) fcSpeakCardFront(card, st.deckId);
     }
-    // Phương án nhiễu lấy từ mặt sau của các thẻ khác trong bộ (bỏ trùng).
+    // Thẻ có nội dung hiển thị được hay không. LƯU Ý: KHÔNG dùng `_fcPlainText`
+    // để xét — thẻ Toán mặt sau là LaTeX thuần (vd `\(3x^2\)`) sẽ cho chuỗi
+    // RỖNG sau khi lột LaTeX, nên bản cũ loại sạch thẻ Toán khỏi pool nhiễu →
+    // trắc nghiệm chỉ còn 1 ô. Ở đây chỉ cần mặt sau có ký tự bất kỳ.
+    function _fcCardHasContent(html) { return !!String(html == null ? '' : html).trim(); }
+    // Khoá chống trùng: ưu tiên chữ thuần; LaTeX/ảnh (chữ thuần rỗng) thì so
+    // theo chính chuỗi HTML đã chuẩn hoá.
+    function _learnChoiceKey(back) {
+      var t = _fcPlainText(back);
+      return t ? ('t:' + t.toLowerCase()) : ('h:' + String(back || '').replace(/\s+/g, ' ').trim().toLowerCase());
+    }
+    // Mượn đáp án nhiễu từ bộ thẻ KHÁC khi bộ hiện tại quá ít thẻ — ưu tiên bộ
+    // CÙNG MÔN để phương án nhiễu còn hợp lý (Toán lẫn Toán, không lẫn từ vựng).
+    // id dạng chuỗi 'x<deck>_<card>' → không bao giờ trùng id số của đáp án đúng.
+    function _learnBorrowDistractors(deckId, seen, count) {
+      var out = [];
+      if (count <= 0 || typeof flashcardDecks === 'undefined') return out;
+      var cur = flashcardDecks.find(function (d) { return d.id === deckId; });
+      var subject = cur ? cur.subject : '';
+      var decks = flashcardDecks.filter(function (d) { return d.id !== deckId && d.cards && d.cards.length; })
+        .sort(function (a, b) { return (b.subject === subject ? 1 : 0) - (a.subject === subject ? 1 : 0); });
+      decks.forEach(function (d) {
+        d.cards.forEach(function (c) {
+          if (!_fcCardHasContent(c.back)) return;
+          var key = _learnChoiceKey(c.back);
+          if (seen[key]) return;
+          seen[key] = 1;
+          out.push({ id: 'x' + d.id + '_' + c.id, html: c.back, text: _fcPlainText(c.back) });
+        });
+      });
+      _fcShuffle(out);
+      return out.slice(0, count);
+    }
+    // LUÔN trả về đủ LEARN_MC_CHOICES (4) ô: 1 đáp án đúng + 3 nhiễu, vị trí
+    // đáp án đúng được xáo ngẫu nhiên trong 4 ô (lưới 2x2).
     function _learnBuildChoices(card) {
       var st = _learnState;
-      var correct = { id: card.id, html: card.back, text: _fcPlainText(card.back) };
-      var seen = {}; seen[correct.text.toLowerCase()] = 1;
+      var mk = function (c) { return { id: c.id, html: c.back, text: _fcPlainText(c.back) }; };
+      var correct = mk(card);
+      var seen = {}; seen[_learnChoiceKey(card.back)] = 1;
+      var need = LEARN_MC_CHOICES - 1;
+
+      // 1) Nhiễu từ CHÍNH bộ thẻ đang học.
       var pool = [];
       Object.keys(st.byId).forEach(function (k) {
-        var c = st.byId[k]; if (c.id === card.id) return;
-        var txt = _fcPlainText(c.back);
-        var key = txt.toLowerCase();
-        if (!txt && !_fcHasImage(c.back)) return;
-        if (key && seen[key]) return;
-        if (key) seen[key] = 1;
-        pool.push({ id: c.id, html: c.back, text: txt });
+        var c = st.byId[k];
+        if (c.id === card.id || !_fcCardHasContent(c.back)) return;
+        var key = _learnChoiceKey(c.back);
+        if (seen[key]) return;
+        seen[key] = 1;
+        pool.push(mk(c));
       });
       _fcShuffle(pool);
-      var choices = pool.slice(0, Math.max(0, LEARN_MC_CHOICES - 1));
+
+      // 2) Chưa đủ (bộ ít thẻ / nhiều thẻ trùng đáp án) → mượn bộ khác.
+      if (pool.length < need) pool = pool.concat(_learnBorrowDistractors(st.deckId, seen, need - pool.length));
+      // 3) Vẫn chưa đủ (cả app chỉ có vài thẻ) → ô giữ chỗ để lưới luôn 2x2.
+      while (pool.length < need) {
+        pool.push({ id: '__filler' + pool.length, html: '<span class="learn-filler">— không có lựa chọn khác —</span>', text: '' });
+      }
+
+      var choices = pool.slice(0, need);
       choices.push(correct);
-      return _fcShuffle(choices);
+      return _fcShuffle(choices); // xáo vị trí đáp án đúng trong 4 ô
     }
 
     // ── Chấm câu trả lời ─────────────────────────────────────────
@@ -711,5 +848,10 @@
 
     // Danh sách giọng nạp muộn trên Chrome → làm mới cache khi có.
     if (_fcTtsSupported()) {
-      try { window.speechSynthesis.onvoiceschanged = function () { _fcVoiceCache = null; _fcVoices(); }; } catch (e) { }
+      try {
+        window.speechSynthesis.onvoiceschanged = function () {
+          _fcVoiceCache = null; _fcVoices();
+          _fcFlushVoiceWaiters();   // câu đang chờ giọng → đọc ngay với giọng đúng
+        };
+      } catch (e) { }
     }

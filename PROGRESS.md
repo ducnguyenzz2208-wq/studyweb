@@ -2,6 +2,59 @@
 
 > App quản lý trung tâm gia sư. Live: https://studyweb-swart.vercel.app
 
+## Fix: Trắc nghiệm bộ Toán chỉ có 1 ô + TTS chỉ đọc tiếng Anh ✅ ĐÃ LÀM
+### 1) Trắc nghiệm luôn đủ 4 ô (lưới 2x2) cho MỌI môn
+- [x] **Nguyên nhân gốc** (`_learnBuildChoices`): pool đáp án nhiễu lọc bằng
+      `if (!txt && !_fcHasImage(c.back)) return;` với `txt = _fcPlainText(c.back)`. Mặt sau thẻ Toán là
+      **LaTeX thuần** (`\(3x^2\)`) → lột LaTeX xong còn **chuỗi RỖNG** → **5/6 thẻ Toán bị loại sạch**
+      khỏi pool → trắc nghiệm chỉ render **2 ô** (đo thực tế trên bộ "Algebra Fundamentals"). Bộ Tiếng
+      Trung/Anh không dính vì mặt sau là chữ thường.
+- [x] **Fix**: xét "có nội dung" bằng `_fcCardHasContent` (mặt sau có ký tự bất kỳ) thay vì chữ thuần;
+      khoá chống trùng `_learnChoiceKey` dùng chữ thuần, rỗng thì so theo chính chuỗi HTML chuẩn hoá.
+- [x] **Luôn đủ 4 ô** kể cả bộ ít thẻ: thiếu nhiễu → **mượn thẻ từ bộ khác** (`_learnBorrowDistractors`,
+      **ưu tiên bộ CÙNG MÔN** để nhiễu còn hợp lý, id dạng chuỗi `x<deck>_<card>` nên không bao giờ
+      trùng id số của đáp án đúng) → vẫn thiếu thì thêm **ô giữ chỗ** `.learn-filler`.
+      `_learnModeFor` bỏ điều kiện `poolSize >= 2` (box 0 giờ LUÔN trắc nghiệm được).
+- [x] **Xáo vị trí đáp án đúng** trong 4 ô — đã có `_fcShuffle` cuối hàm, verify rải đều vị trí 1→4.
+- [x] **Fix kèm — thẻ Toán bị hỏi TỰ LUẬN vô nghĩa**: `\(x = 2\) or \(x = 3\)` lột LaTeX chỉ còn chữ
+      **"or"** → `_learnTypeable` tưởng gõ được → bắt học sinh gõ "or" (gần như luôn sai). Thêm
+      `_fcHasMath` → có LaTeX là ép trắc nghiệm. Bộ Toán giờ 100% trắc nghiệm; bộ chữ giữ nguyên
+      luồng MC → Tự luận → Tự luận.
+- Verify (live): bộ Toán 11 câu liên tiếp đều **4 ô**, vị trí đáp án đúng rải 1/2/3/4; bộ 2 thẻ → 4 ô
+      (2 nhiễu mượn từ bộ Toán khác, 0 giữ chỗ); bộ 1 thẻ + không còn bộ nào khác → 4 ô (3 giữ chỗ);
+      lưới đúng **2 cột × 2 hàng**, LaTeX render trong ô (5 `mjx-container`), phím tắt 1–4 đủ; chạy trọn
+      buổi Math 18 lượt + English 18 lượt → thuộc hết, Leitner không đổi.
+
+### 2) TTS đọc đúng tiếng (không còn rơi hết về giọng Anh)
+- [x] **Chuẩn hoá mã ngôn ngữ** (`_fcNormLang`/`_fcLangBase`/`_fcLangRegion`/`_fcLangScript`): trình
+      duyệt báo `voice.lang` rất lộn xộn — `zh_TW` (gạch dưới, Android), **`cmn-Hans-CN`** (giọng Quan
+      thoại của Google), **`yue-HK`** (Quảng Đông), `zh-Hant-TW` (có subtag hệ chữ). So khớp thô kiểu cũ
+      (`split('-')[0]`) **TRƯỢT hết** các dạng này → không gán được giọng → đọc bằng giọng mặc định
+      (tiếng Anh). Nay `cmn`/`yue` đều quy về `zh`, bỏ subtag hệ chữ khi lấy mã vùng.
+- [x] **Thang điểm tổng hợp thay vì lọc cứng** (`_fcVoiceLangScore` + `_fcPickVoice`): xếp hạng
+      `ngôn ngữ/vùng/hệ chữ (×10) > đúng giới tính (+25) > chất lượng giọng`. **Vì sao đổi**: bản trước
+      lọc cứng theo giới tính TRƯỚC → xin `zh-HK` giọng nữ mà máy có giọng Quảng Đông HK (không đoán
+      được giới tính) + giọng nữ Đài Loan thì chọn **giọng Đài Loan → sai vùng tiếng**. Giờ đọc đúng
+      tiếng luôn thắng; giới tính chỉ phân định khi ngang ngôn ngữ.
+- [x] **Chờ giọng nạp xong mới đọc** (`_fcEnsureVoices` + flush trong `onvoiceschanged`, timeout 1.2s):
+      Chrome nạp `getVoices()` **bất đồng bộ** — câu ĐẦU TIÊN sau khi tải trang thường gặp danh sách
+      rỗng → không gán được giọng đúng → đọc giọng mặc định. Có giọng sẵn thì gọi lại NGAY (đồng bộ,
+      không làm trễ luồng thường).
+- [x] **Chặn `lang='auto'` lọt vào `utterance.lang`** (không phải mã hợp lệ → trình duyệt rơi về giọng
+      mặc định): `_fcSpeakNow` tự nhận diện khi lang rỗng/'auto'.
+- [x] **Báo trung thực khi máy thiếu giọng** (`_fcWarnMissingVoice`, 1 lần/ngôn ngữ/phiên): máy KHÔNG
+      cài voice pack cho ngôn ngữ đó thì trình duyệt chắc chắn đọc bằng giọng mặc định — đây là giới hạn
+      HĐH/trình duyệt, KHÔNG phải lỗi app. Thay vì im lặng đọc sai tiếng, hiện toast hướng dẫn cài giọng.
+- Verify (live): `utterance.lang` gán đúng từng thẻ (zh-TW/zh-CN/vi-VN/ja-JP); với giọng giả lập đầy đủ →
+      `zh-TW♀`→HsiaoChen(zh-TW) **không** lấy nhầm Xiaoxiao(zh-CN), `zh-TW♂`→Yunjun (mã `zh_TW` gạch dưới
+      vẫn khớp), `zh-HK`→giọng Quảng Đông HK (đúng vùng), `vi-VN♀/♂`→HoaiMy/NamMinh; giọng THẬT của máy
+      → Zira♀(pitch 1.08)/David♂(0.88), rate 0.92; `'auto'` → tự nhận diện ra `ja-JP`/`vi-VN`; thiếu giọng
+      Nhật → hiện đúng 1 cảnh báo. `tsc --noEmit` sạch, `node --check` pass, 0 lỗi console.
+- **⚠️ Lưu ý môi trường**: máy dev chỉ cài 3 giọng Windows tiếng Anh (David/Mark/Zira) nên phần khớp
+      giọng đa ngôn ngữ được kiểm bằng danh sách giọng giả lập đúng quy ước đặt tên thật của
+      Microsoft/Google. Muốn nghe đúng tiếng Việt/Trung/Nhật/Hàn, máy người dùng **phải cài voice pack**
+      tương ứng (Windows: Cài đặt → Thời gian & Ngôn ngữ → Giọng nói) hoặc dùng Edge (có giọng Online).
+
 ## Flashcard TTS v4: bảng mapping giọng theo ngôn ngữ + tinh chỉnh pitch/rate ✅ ĐÃ LÀM
 - [x] **Bảng tên giọng Nữ/Nam theo TỪNG ngôn ngữ** (`FC_VOICE_FEMALE_NAMES`/`FC_VOICE_MALE_NAMES`, thay
       2 regex gộp cũ): vi-VN (HoaiMy♀/NamMinh♂), zh-CN (Xiaoxiao♀/Yunjian,Yunxi♂), zh-HK (HiuGaai,
