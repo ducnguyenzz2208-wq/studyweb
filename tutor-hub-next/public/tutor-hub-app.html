@@ -2725,6 +2725,383 @@
       opacity: .75;
     }
 
+    /* ===== BÀI KIỂM TRA (Test mode) ===== */
+    .test-container {
+      max-width: 780px;
+      margin: 0 auto;
+      padding-bottom: 8px;
+    }
+
+    .test-intro {
+      font-size: 13px;
+      color: var(--text-muted);
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 14px;
+      margin-bottom: 14px;
+    }
+
+    .test-qlist {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .test-q {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--border);
+      border-radius: 12px;
+      padding: 16px 18px;
+      box-shadow: var(--shadow);
+    }
+
+    .test-q.r-ok {
+      border-left-color: var(--success);
+    }
+
+    .test-q.r-bad {
+      border-left-color: var(--danger);
+    }
+
+    .test-qhead {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+
+    .test-qnum {
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--text-muted);
+      letter-spacing: .02em;
+    }
+
+    .test-mark {
+      margin-left: auto;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .test-mark.ok {
+      color: var(--success);
+    }
+
+    .test-mark.bad {
+      color: var(--danger);
+    }
+
+    .test-prompt {
+      font-size: 18px;
+      font-weight: 700;
+      line-height: 1.45;
+      word-break: break-word;
+    }
+
+    .test-choices {
+      margin-top: 12px;
+    }
+
+    .test-choice.picked {
+      border-color: var(--accent);
+      background: color-mix(in srgb, var(--accent) 12%, transparent);
+    }
+
+    .test-choice.chosen-wrong {
+      border-color: var(--danger);
+      background: color-mix(in srgb, var(--danger) 12%, transparent);
+    }
+
+    .test-tf-claim {
+      margin-top: 8px;
+      font-size: 14.5px;
+      color: var(--text-muted);
+      word-break: break-word;
+    }
+
+    .test-tf-def {
+      color: var(--text);
+      font-weight: 700;
+    }
+
+    .test-tf-btns {
+      display: flex;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .test-tf-btn {
+      flex: 1;
+      min-height: 46px;
+      background: var(--bg);
+      border: 1.5px solid var(--border);
+      color: var(--text);
+      font-weight: 700;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+
+    .test-tf-btn.picked {
+      border-color: var(--accent);
+      background: color-mix(in srgb, var(--accent) 14%, transparent);
+    }
+
+    .test-tf-btn.correct {
+      border-color: var(--success);
+      background: color-mix(in srgb, var(--success) 16%, transparent);
+    }
+
+    .test-tf-btn.chosen-wrong {
+      border-color: var(--danger);
+      background: color-mix(in srgb, var(--danger) 14%, transparent);
+    }
+
+    .test-input {
+      margin-top: 12px;
+      font-size: 16px;
+      padding: 11px 14px;
+    }
+
+    .test-written-review {
+      margin-top: 10px;
+      font-size: 14px;
+    }
+
+    .test-answer {
+      margin-top: 10px;
+      font-size: 14px;
+      color: var(--text-muted);
+    }
+
+    .test-answer-val {
+      color: var(--text);
+      font-weight: 700;
+    }
+
+    .test-submit-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 18px;
+      padding-top: 14px;
+      border-top: 1px solid var(--border);
+    }
+
+    .test-progress {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .test-result {
+      text-align: center;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px;
+      margin-bottom: 16px;
+      box-shadow: var(--shadow);
+    }
+
+    .test-score {
+      font-size: 42px;
+      font-weight: 800;
+      line-height: 1.1;
+    }
+
+    .test-result.ok .test-score {
+      color: var(--success);
+    }
+
+    .test-result.mid .test-score {
+      color: var(--warning);
+    }
+
+    .test-result.bad .test-score {
+      color: var(--danger);
+    }
+
+    .test-score-sub {
+      font-size: 13.5px;
+      color: var(--text-muted);
+      margin: 6px 0 12px;
+    }
+
+    /* ===== TRÒ CHƠI GHÉP THẺ (Matching) ===== */
+    .match-container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .match-bar {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 14px;
+      margin-bottom: 10px;
+    }
+
+    .match-stat {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .match-stat strong {
+      color: var(--text);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .match-hint {
+      font-size: 12.5px;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+
+    .match-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+    }
+
+    .match-tile {
+      min-height: 96px;
+      padding: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      background: var(--card-bg);
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      color: var(--text);
+      font-size: 14px;
+      cursor: pointer;
+      overflow: hidden;
+      transition: transform .12s, border-color .15s, background .15s, opacity .3s;
+    }
+
+    .match-tile-body {
+      max-height: 78px;
+      overflow: hidden;
+      word-break: break-word;
+    }
+
+    .match-tile.is-term {
+      font-weight: 700;
+    }
+
+    .match-tile.is-def {
+      color: var(--text-muted);
+    }
+
+    .match-tile:hover:not(:disabled) {
+      border-color: var(--accent);
+      transform: translateY(-2px);
+    }
+
+    .match-tile.picked {
+      border-color: var(--accent);
+      background: color-mix(in srgb, var(--accent) 14%, transparent);
+      transform: translateY(-2px);
+    }
+
+    .match-tile.wrong {
+      border-color: var(--danger);
+      background: color-mix(in srgb, var(--danger) 14%, transparent);
+      animation: matchShake .3s;
+    }
+
+    .match-tile.matched {
+      opacity: .28;
+      border-style: dashed;
+      border-color: var(--success);
+      cursor: default;
+      pointer-events: none;
+    }
+
+    @keyframes matchShake {
+
+      0%,
+      100% {
+        transform: translateX(0);
+      }
+
+      25% {
+        transform: translateX(-5px);
+      }
+
+      75% {
+        transform: translateX(5px);
+      }
+    }
+
+    .match-done {
+      text-align: center;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 18px;
+      margin-bottom: 14px;
+      box-shadow: var(--shadow);
+    }
+
+    .match-done-ic {
+      font-size: 40px;
+    }
+
+    .match-done-title {
+      font-size: 22px;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .match-done-sub {
+      font-size: 13.5px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    .match-done-btns {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      margin-top: 14px;
+      flex-wrap: wrap;
+    }
+
+    @media (max-width: 900px) {
+      .match-grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+
+    @media (max-width: 640px) {
+      .match-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+      }
+
+      .match-tile {
+        min-height: 84px;
+        font-size: 13px;
+      }
+
+      .test-prompt {
+        font-size: 16px;
+      }
+
+      .test-submit-bar .btn {
+        min-height: 44px;
+      }
+    }
+
     .learn-written {
       margin-top: 16px;
     }
@@ -4489,6 +4866,8 @@
       <div id="flashcards-deck-view" style="display:none;"></div>
       <div id="flashcards-study-view" style="display:none;"></div>
       <div id="flashcards-learn-view" style="display:none;"></div>
+      <div id="flashcards-test-view" style="display:none;"></div>
+      <div id="flashcards-match-view" style="display:none;"></div>
     </div>
 
     <!-- MATERIALS -->
@@ -5126,6 +5505,7 @@
   <script src="js/24-materials.js"></script>
   <script src="js/26-pomodoro.js"></script>
   <script src="js/27-flashcard-learn.js"></script>
+  <script src="js/28-flashcard-test-game.js"></script>
   <script src="js/25-init.js"></script>
 </body>
 

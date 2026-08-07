@@ -2,6 +2,62 @@
 
 > App quản lý trung tâm gia sư. Live: https://studyweb-swart.vercel.app
 
+## Flashcard: 2 chế độ mới — Bài kiểm tra (Test) + Trò chơi Ghép thẻ (Matching) ✅ ĐÃ LÀM
+**Module MỚI `public/js/28-flashcard-test-game.js`** (nạp sau 27, trước 25-init) + 2 view container
+`#flashcards-test-view` / `#flashcards-match-view` + 2 nút **📝 Bài kiểm tra** · **🎮 Trò chơi** cạnh
+"🧠 Chế độ Học" trong trang chi tiết bộ thẻ.
+- [x] **Tái sử dụng helper của 27** (không nhân đôi logic): `fcBuildChoices()` (dựng 4 lựa chọn + nhiễu,
+      đã xử lý thẻ LaTeX/ảnh), `_learnCheckWritten()` (chấm tự luận thông minh), `_learnTypeable()`,
+      `_fcPlainText/_fcShuffle/_fcCardHasContent/_learnChoiceKey/_fcLs*/_fcPk`, `fcSpeakBtnHtml()`.
+      **Refactor nhỏ trong 27**: tách `_learnBuildChoices` → `fcBuildChoices(card, cards, deckId, count)`
+      dùng chung cho cả Chế độ Học và Bài kiểm tra (Learn Mode verify lại vẫn nguyên: 18 lượt → thuộc hết).
+
+### 1) Bài kiểm tra (Test Mode)
+- [x] **Tối đa 20 câu**, sinh ngẫu nhiên từ bộ thẻ, **trộn 3 dạng ~40/30/30**: Trắc nghiệm (4 lựa chọn) ·
+      Đúng/Sai (`«Thuật ngữ» có nghĩa là «Định nghĩa» ?` — 50/50 hiện đúng định nghĩa của thẻ hoặc của
+      thẻ khác) · Tự luận ngắn. **Thẻ không gõ được (LaTeX/ảnh/đáp án dài) KHÔNG nhận dạng tự luận** → tự
+      đổi sang trắc nghiệm (bộ Toán verify: 0 câu tự luận).
+- [x] **Làm cả bài trên 1 trang → bấm Nộp bài**: điểm **%** (khối màu theo mức ≥80/≥50/<50), số câu
+      đúng/sai, **đánh dấu ✅/❌ từng câu** + tô sáng đáp án đúng và đáp án đã chọn sai, **hiện đáp án
+      đúng cho mọi câu sai**; nút **Làm lại bài test** + **Đề mới**. Còn câu bỏ trống thì hỏi lại trước
+      khi nộp. Điểm ≥80% có confetti.
+- [x] **Chi tiết triển khai**: chọn đáp án chỉ cập nhật class của ĐÚNG câu đó (`testSetMC/testSetTF`),
+      KHÔNG vẽ lại cả bài → **không mất focus ô đang gõ**; nhãn tiến độ "Đã trả lời n/N" cập nhật riêng
+      qua `_testSyncProgress()`. Test Mode **KHÔNG đụng tiến độ Leitner** của Chế độ Học (2 luồng độc lập).
+- Verify (live): bộ Toán 6 thẻ → 6 câu (4 MC + 2 TF, 0 tự luận), MC luôn 4 lựa chọn, 26 `mjx-container`;
+      bộ 12 thẻ chữ → 12 câu đủ **3 dạng** (6 MC + 3 TF + 3 tự luận); trả lời đúng câu chẵn/sai câu lẻ →
+      **6/12 = 50%** khớp chính xác, 12 nhãn ✅/❌ đúng thứ tự, 6 khối "đáp án đúng"; tự luận chấp nhận
+      HOA và dấu câu/khoảng trắng thừa; bỏ trống → hỏi "Còn 9 câu chưa trả lời".
+
+### 2) Trò chơi Ghép thẻ (Matching Game)
+- [x] **6–8 cặp → lưới 12–16 ô xáo trộn** (`_fcShuffle` trên mảng tile nên thuật ngữ/định nghĩa nằm lộn
+      xộn, verify thứ tự không xen kẽ T/D). Lưới **4 cột** desktop → 3 cột ≤900px → **2 cột** ≤640px.
+- [x] **Bấm 2 ô**: ghép đúng (**cùng thẻ, khác mặt**) → 2 ô mờ đi (`.matched`, `pointer-events:none`,
+      giữ nguyên layout); ghép sai → **nháy đỏ + rung** rồi **đảo lại** (bỏ chọn cả 2) sau 700ms, có
+      `lock` chặn click trong lúc nháy. Bấm lại ô đang chọn để bỏ chọn.
+- [x] **Đồng hồ giây** (`⏱ 0.0s`, cập nhật 100ms) + đếm **cặp đã ghép** và **lượt thử**; xong ván hiện
+      thời gian + confetti + **kỷ lục theo từng bộ thẻ** (`th_fc_match_best_<deckId>` theo tài khoản,
+      báo "Kỷ lục mới 🏆" khi phá).
+- [x] **Dọn tài nguyên**: `fcHideTestGame()` (gọi từ `_hideLearnView` trong 23-flashcards.js) và
+      `_fcOnlyView()` đều **dừng interval đồng hồ + xoá state + dọn DOM** của màn bị ẩn.
+      **Bug tự bắt khi test**: chuyển Bài kiểm tra → Trò chơi thì `_testState` và DOM bài cũ vẫn còn
+      (rác bộ nhớ); đã cho `_fcOnlyView` dọn hẳn state của mọi màn động bị ẩn.
+- Verify (live): bộ 12 thẻ → **8 cặp/16 ô, lưới 4×4**, 8 thuật ngữ + 8 định nghĩa, xáo trộn thật, đồng hồ
+      chạy; ghép sai → 2 ô `.wrong` + `lock=true` + click bị chặn → sau 700ms tự đảo lại; ghép đúng →
+      `matched` +1, 2 ô mờ; ghép hết → màn hoàn thành + kỷ lục lưu đúng + **timer dừng**; thoát/điều
+      hướng sang section khác → timer dừng, state null, DOM dọn (không rò rỉ interval).
+- [x] **Hiển thị đa nội dung**: mọi nội dung chèn RAW HTML rồi gọi `typesetMath()` → bộ Toán 6 cặp/12 ô
+      render 13 `mjx-container`; bộ chữ Trung **phồn thể (學習/謝謝) + giản thể (你好)** và tiếng Việt hiện
+      đúng trong ô ghép. Ô ghép clamp `max-height` + `overflow:hidden` để định nghĩa dài không phá lưới.
+- **Trường hợp biên**: bộ 2 thẻ → 2 cặp/4 ô (không lỗi); bộ 1 thẻ → chặn kèm thông báo rõ
+      ("Cần ít nhất 2 thẻ đủ 2 mặt"); bộ ít hơn 10 thẻ → bài test lấy hết số thẻ có (KHÔNG nhân bản câu
+      hỏi để cố đủ 10 — thà ít câu thật hơn là hỏi lặp).
+- **Ghi chú TTS**: 2 chế độ này KHÔNG tự động đọc (bài test hiện 20 câu cùng lúc, đọc tự động sẽ thành
+      nhiễu); mỗi câu hỏi có **nút loa 🔊 thủ công** đọc đúng mã lang của thẻ. Quy tắc "chỉ tự động đọc
+      mặt trước" ở Học thẻ/Chế độ Học giữ nguyên.
+- `tsc --noEmit` sạch, `node --check` 3 module pass, **0 lỗi console**; mobile 375px: MC 1 cột, nút
+      Đúng/Sai 46px, ô nhập 16px (không bị iOS tự phóng), lưới ghép 2 cột, không tràn ngang.
+
 ## Fix: Trắc nghiệm bộ Toán chỉ có 1 ô + TTS chỉ đọc tiếng Anh ✅ ĐÃ LÀM
 ### 1) Trắc nghiệm luôn đủ 4 ô (lưới 2x2) cho MỌI môn
 - [x] **Nguyên nhân gốc** (`_learnBuildChoices`): pool đáp án nhiễu lọc bằng

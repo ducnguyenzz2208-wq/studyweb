@@ -511,6 +511,7 @@
       document.getElementById('flashcards-list-view').style.display = 'none';
       document.getElementById('flashcards-deck-view').style.display = 'none';
       document.getElementById('flashcards-study-view').style.display = 'none';
+      if (typeof fcHideTestGame === 'function') fcHideTestGame(); // ẩn Bài kiểm tra/Trò chơi + dừng đồng hồ
       _learnEnsureView().style.display = '';
       document.addEventListener('keydown', _learnKeydown);
       _learnNextQuestion();
@@ -591,20 +592,20 @@
       _fcShuffle(out);
       return out.slice(0, count);
     }
-    // LUÔN trả về đủ LEARN_MC_CHOICES (4) ô: 1 đáp án đúng + 3 nhiễu, vị trí
-    // đáp án đúng được xáo ngẫu nhiên trong 4 ô (lưới 2x2).
-    function _learnBuildChoices(card) {
-      var st = _learnState;
+    // LUÔN trả về đủ `count` (mặc định 4) lựa chọn: 1 đáp án đúng + nhiễu, vị
+    // trí đáp án đúng được xáo ngẫu nhiên (lưới 2x2).
+    // DÙNG CHUNG cho Chế độ Học và Bài kiểm tra (28-flashcard-test-game.js).
+    function fcBuildChoices(card, cards, deckId, count) {
+      count = count || LEARN_MC_CHOICES;
       var mk = function (c) { return { id: c.id, html: c.back, text: _fcPlainText(c.back) }; };
       var correct = mk(card);
       var seen = {}; seen[_learnChoiceKey(card.back)] = 1;
-      var need = LEARN_MC_CHOICES - 1;
+      var need = count - 1;
 
       // 1) Nhiễu từ CHÍNH bộ thẻ đang học.
       var pool = [];
-      Object.keys(st.byId).forEach(function (k) {
-        var c = st.byId[k];
-        if (c.id === card.id || !_fcCardHasContent(c.back)) return;
+      (cards || []).forEach(function (c) {
+        if (!c || c.id === card.id || !_fcCardHasContent(c.back)) return;
         var key = _learnChoiceKey(c.back);
         if (seen[key]) return;
         seen[key] = 1;
@@ -613,7 +614,7 @@
       _fcShuffle(pool);
 
       // 2) Chưa đủ (bộ ít thẻ / nhiều thẻ trùng đáp án) → mượn bộ khác.
-      if (pool.length < need) pool = pool.concat(_learnBorrowDistractors(st.deckId, seen, need - pool.length));
+      if (pool.length < need) pool = pool.concat(_learnBorrowDistractors(deckId, seen, need - pool.length));
       // 3) Vẫn chưa đủ (cả app chỉ có vài thẻ) → ô giữ chỗ để lưới luôn 2x2.
       while (pool.length < need) {
         pool.push({ id: '__filler' + pool.length, html: '<span class="learn-filler">— không có lựa chọn khác —</span>', text: '' });
@@ -621,7 +622,12 @@
 
       var choices = pool.slice(0, need);
       choices.push(correct);
-      return _fcShuffle(choices); // xáo vị trí đáp án đúng trong 4 ô
+      return _fcShuffle(choices); // xáo vị trí đáp án đúng trong các ô
+    }
+    function _learnBuildChoices(card) {
+      var st = _learnState;
+      var arr = Object.keys(st.byId).map(function (k) { return st.byId[k]; });
+      return fcBuildChoices(card, arr, st.deckId, LEARN_MC_CHOICES);
     }
 
     // ── Chấm câu trả lời ─────────────────────────────────────────

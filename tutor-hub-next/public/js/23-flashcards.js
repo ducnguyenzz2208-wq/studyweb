@@ -64,6 +64,8 @@
         '<div style="color:var(--text-muted);font-size:13px;margin-top:2px;">' + escHtml(d.subject) + ' · ' + escHtml(d.class) + ' · ' + d.cards.length + ' thẻ</div></div>' +
         '<button class="btn btn-primary" onclick="startStudy(' + d.id + ')">🎯 Học ngay</button>' +
         '<button class="btn btn-primary" onclick="startLearn(' + d.id + ')" title="Ôn tập lặp lại: trắc nghiệm + tự luận, từ sai lặp lại tới khi thuộc">🧠 Chế độ Học</button>' +
+        '<button class="btn btn-ghost" onclick="startTest(' + d.id + ')" title="Bài kiểm tra trộn 3 dạng câu hỏi, nộp bài và tính điểm %">📝 Bài kiểm tra</button>' +
+        '<button class="btn btn-ghost" onclick="startMatchGame(' + d.id + ')" title="Trò chơi ghép thuật ngữ với định nghĩa, tính thời gian">🎮 Trò chơi</button>' +
         editBtns +
         '</div>';
 
@@ -106,10 +108,13 @@
       typesetMath(view);
     }
 
-    // Ẩn màn "Chế độ Học" (27-flashcard-learn.js) khi chuyển view khác.
+    // Ẩn các màn phụ của Flashcard khi chuyển view khác: "Chế độ Học"
+    // (27-flashcard-learn.js) + "Bài kiểm tra"/"Trò chơi" (28-flashcard-test-game.js).
+    // Quan trọng: fcHideTestGame() còn DỪNG đồng hồ trò chơi (tránh interval chạy nền).
     function _hideLearnView() {
       var lv = document.getElementById('flashcards-learn-view');
       if (lv) { lv.style.display = 'none'; lv.innerHTML = ''; }
+      if (typeof fcHideTestGame === 'function') fcHideTestGame();
       if (typeof fcStopSpeak === 'function') fcStopSpeak();
     }
 
