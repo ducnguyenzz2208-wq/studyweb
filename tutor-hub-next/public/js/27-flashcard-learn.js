@@ -56,12 +56,47 @@
       { code: 'zh-CN', label: '简体中文 Trung (Giản thể) — zh-CN · ♀Xiaoxiao ♂Yunjian/Yunxi' },
       { code: 'zh-TW', label: '繁體中文 Trung (Phồn thể, Đài Loan) — zh-TW · ♀HsiaoChen ♂Yunjun' },
       { code: 'zh-HK', label: '繁體中文 Trung (Phồn thể, Hồng Kông) — zh-HK · ♀HiuGaai/HiuMaan ♂WanLung' },
-      { code: 'fr-FR', label: 'Français — fr-FR' },
-      { code: 'de-DE', label: 'Deutsch — de-DE' },
-      { code: 'es-ES', label: 'Español — es-ES' },
-      { code: 'ru-RU', label: 'Русский — ru-RU' },
-      { code: 'th-TH', label: 'ไทย Tiếng Thái — th-TH' }
+      { code: 'fr-FR', label: 'Français — fr-FR · ♀Denise/Eloise ♂Henri' },
+      { code: 'de-DE', label: 'Deutsch — de-DE · ♀Katja/Amala ♂Conrad' },
+      { code: 'es-ES', label: 'Español (España) — es-ES · ♀Elvira ♂Alvaro' },
+      { code: 'es-MX', label: 'Español (México) — es-MX · ♀Dalia ♂Jorge' },
+      { code: 'it-IT', label: 'Italiano — it-IT · ♀Elsa/Isabella ♂Diego' },
+      { code: 'pt-BR', label: 'Português (Brasil) — pt-BR · ♀Francisca ♂Antonio' },
+      { code: 'ru-RU', label: 'Русский — ru-RU · ♀Svetlana/Dariya ♂Dmitry' },
+      { code: 'th-TH', label: 'ไทย Tiếng Thái — th-TH · ♀Premwadee ♂Niwat' },
+      { code: 'id-ID', label: 'Bahasa Indonesia — id-ID · ♀Gadis ♂Ardi' },
+      { code: 'hi-IN', label: 'हिन्दी Tiếng Hindi — hi-IN · ♀Swara ♂Madhur' },
+      { code: 'ar-SA', label: 'العربية Tiếng Ả Rập — ar-SA · ♀Zariyah ♂Hamed' }
     ];
+
+    // Câu mẫu để NGHE THỬ giọng trong bảng cài đặt giọng đọc.
+    var FC_SAMPLE = {
+      'en': 'Hello, this is a sample sentence for the flashcard.',
+      'vi': 'Xin chào, đây là câu đọc thử cho thẻ ghi nhớ.',
+      'ja': 'こんにちは、これは読み上げのテストです。',
+      'ko': '안녕하세요, 이것은 음성 테스트입니다.',
+      'zh': '你好，这是一个朗读测试。',
+      'fr': 'Bonjour, ceci est un exemple de lecture.',
+      'de': 'Hallo, dies ist ein Beispielsatz.',
+      'es': 'Hola, esta es una frase de ejemplo.',
+      'it': 'Ciao, questa è una frase di esempio.',
+      'pt': 'Olá, esta é uma frase de exemplo.',
+      'ru': 'Привет, это пример чтения.',
+      'th': 'สวัสดี นี่คือประโยคตัวอย่าง',
+      'id': 'Halo, ini contoh kalimat.',
+      'hi': 'नमस्ते, यह एक उदाहरण वाक्य है।',
+      'ar': 'مرحبا، هذه جملة تجريبية.'
+    };
+    // Tên tiếng Việt gọn cho từng mã, dùng ở bảng cài đặt giọng.
+    var FC_LANG_SHORT = {
+      'en-US': 'Tiếng Anh (Mỹ)', 'en-GB': 'Tiếng Anh (Anh)', 'vi-VN': 'Tiếng Việt',
+      'ja-JP': 'Tiếng Nhật', 'ko-KR': 'Tiếng Hàn', 'zh-CN': 'Trung (Giản thể)',
+      'zh-TW': 'Trung (Phồn thể, Đài Loan)', 'zh-HK': 'Trung (Phồn thể, Hồng Kông)',
+      'fr-FR': 'Tiếng Pháp', 'de-DE': 'Tiếng Đức', 'es-ES': 'Tiếng Tây Ban Nha',
+      'es-MX': 'Tiếng Tây Ban Nha (Mexico)', 'it-IT': 'Tiếng Ý', 'pt-BR': 'Tiếng Bồ Đào Nha',
+      'ru-RU': 'Tiếng Nga', 'th-TH': 'Tiếng Thái', 'id-ID': 'Tiếng Indonesia',
+      'hi-IN': 'Tiếng Hindi', 'ar-SA': 'Tiếng Ả Rập'
+    };
 
     // Phân biệt Trung PHỒN THỂ (zh-TW) với GIẢN THỂ (zh-CN) khi để "tự động".
     // Rất nhiều chữ dùng chung nên chỉ dò được qua các chữ CHỈ CÓ ở một bên;
@@ -98,35 +133,61 @@
     // `FC_TTS_LANGS` phía trên — sửa/thêm tên ở ĐÂY nếu máy bạn có giọng khác.
     var FC_VOICE_FEMALE_NAMES = [
       'hoaimy',                                   // vi-VN
-      'xiaoxiao', 'yaoyao', 'huihui',             // zh-CN
+      'xiaoxiao', 'xiaoyi', 'yaoyao', 'huihui',   // zh-CN
       'hiugaai', 'hiumaan',                       // zh-HK
-      'hsiaochen',                                // zh-TW
-      'jenny', 'aria', 'zira',                    // en
-      'nanami', 'keiko', 'ayumi', 'haruka', 'yuna', // ja-JP
-      'sunhi', 'heami',                           // ko-KR
+      'hsiaochen', 'hsiaoyu',                     // zh-TW
+      'jenny', 'aria', 'zira', 'michelle', 'ana', 'sonia', 'libby', 'maisie', // en
+      'nanami', 'keiko', 'ayumi', 'haruka', 'yuna', 'mayu', 'shiori', // ja-JP
+      'sunhi', 'heami', 'jimin', 'seoyeon',       // ko-KR
+      'denise', 'eloise', 'jacqueline', 'yvette', 'brigitte', // fr
+      'katja', 'amala', 'elke', 'klarissa', 'louisa', 'maja', 'tanja', // de
+      'elvira', 'dalia', 'paloma', 'abril', 'estrella', 'irene', // es
+      'elsa', 'isabella', 'fabiola', 'fiamma', 'imelda', 'palmira', // it
+      'francisca', 'brenda', 'giovanna', 'leila', 'yara', 'raquel', // pt
+      'svetlana', 'dariya',                       // ru
+      'premwadee', 'achara',                      // th
+      'gadis', 'siti',                            // id
+      'swara', 'ananya', 'kavya',                 // hi
+      'zariyah', 'amany', 'fatima', 'salma',      // ar
       'hazel', 'susan', 'samantha', 'victoria', 'karen', 'moira', 'tessa',
-      'joanna', 'salli', 'kimberly', 'kendra', 'ivy', 'michelle', 'linda',
+      'joanna', 'salli', 'kimberly', 'kendra', 'ivy', 'linda',
       'catherine', 'emma', 'olivia', 'sophie', 'mei'
     ];
     var FC_VOICE_MALE_NAMES = [
       'namminh',                                  // vi-VN
-      'yunjian', 'yunxi', 'kangkang', 'zhiwei', 'liang', // zh-CN
+      'yunjian', 'yunxi', 'yunyang', 'yunxia', 'kangkang', 'zhiwei', 'liang', // zh-CN
       'wanlung',                                  // zh-HK
-      'yunjun',                                   // zh-TW
-      'guy', 'david', 'ryan',                     // en
-      'keita', 'naoki', 'ichiro', 'osamu', 'junsu', // ja-JP (junsu dự phòng)
-      'injoon',                                   // ko-KR
+      'yunjhe', 'yunjun',                         // zh-TW
+      'guy', 'david', 'ryan', 'christopher', 'eric', 'roger', 'steffan', 'thomas', // en
+      'keita', 'naoki', 'ichiro', 'osamu', 'daichi', // ja-JP
+      'injoon', 'bongjin', 'gookmin',             // ko-KR
+      'henri', 'alain', 'claude', 'jerome', 'maurice', 'yves', // fr
+      'conrad', 'bernd', 'christoph', 'kasper', 'killian', 'ralf', // de
+      'alvaro', 'jorge', 'dario', 'elias', 'liberto', 'nil', // es
+      'diego', 'benigno', 'calimero', 'cataldo', 'gianni', // it
+      'antonio', 'donato', 'fabio', 'julio', 'valerio', // pt
+      'dmitry',                                   // ru
+      'niwat',                                    // th
+      'ardi',                                     // id
+      'madhur', 'arjun', 'rehaan',                // hi
+      'hamed', 'shakir', 'ali',                   // ar
       'mark', 'matthew', 'brian', 'daniel', 'george', 'james', 'alex', 'fred',
-      'tom', 'yunyang'
+      'tom'
     ];
-    function _fcNameHasAny(name, list) {
-      for (var i = 0; i < list.length; i++) if (name.indexOf(list[i]) >= 0) return true;
+    // So khớp theo TỪ, không phải chuỗi con. Bắt buộc phải vậy: tên giọng luôn
+    // kèm tên ngôn ngữ, nên khớp chuỗi con sẽ sai nặng —
+    //   'ali' nằm trong "Italian", 'ana' nằm trong "Canada",
+    //   'eric' nằm trong "America"
+    // → mọi giọng Ý sẽ bị coi là Nam. Tách tên thành các từ rồi so bằng nhau.
+    function _fcNameTokens(name) { return String(name || '').toLowerCase().split(/[^a-zà-ỹ]+/).filter(Boolean); }
+    function _fcTokensHitAny(tokens, list) {
+      for (var i = 0; i < tokens.length; i++) if (list.indexOf(tokens[i]) >= 0) return true;
       return false;
     }
     function _fcVoiceGender(voice) {
-      var n = String((voice && voice.name) || '').toLowerCase();
-      if (/\bfemale\b/.test(n) || _fcNameHasAny(n, FC_VOICE_FEMALE_NAMES)) return 'female';
-      if (/\bmale\b/.test(n) || _fcNameHasAny(n, FC_VOICE_MALE_NAMES)) return 'male';
+      var toks = _fcNameTokens((voice && voice.name) || '');
+      if (toks.indexOf('female') >= 0 || _fcTokensHitAny(toks, FC_VOICE_FEMALE_NAMES)) return 'female';
+      if (toks.indexOf('male') >= 0 || _fcTokensHitAny(toks, FC_VOICE_MALE_NAMES)) return 'male';
       return 'unknown';
     }
     // Điểm chất lượng: ưu tiên giọng "Natural"/"Neural"/"Online"/"Google" —
@@ -315,6 +376,13 @@
     // mặc định theo `utterance.lang` và báo 1 lần để người dùng biết cần cài voice.
     function _fcPickVoice(lang, gender) {
       var voices = _fcVoices(); if (!voices.length) return null;
+      // (0) Người dùng đã GHIM giọng cho ngôn ngữ này ở bảng Cài đặt giọng đọc
+      //     → tôn trọng tuyệt đối, không đoán nữa. Tự chọn chỉ là phỏng đoán;
+      //     tai người dùng mới là chuẩn cuối.
+      var pinned = fcPinnedVoice(lang);
+      if (pinned) {
+        for (var p = 0; p < voices.length; p++) if (voices[p].name === pinned) return voices[p];
+      }
       var wantG = (gender === 'male' || gender === 'female') ? gender : null;
       var best = null, bestScore = -1;
       voices.forEach(function (v) {
@@ -358,8 +426,13 @@
         if (v) { try { u.voice = v; } catch (e2) { } }
         // rate 0.9–0.95, pitch Nữ 1.05–1.10 / Nam 0.85–0.90 — lấy điểm GIỮA
         // khoảng cho tự nhiên nhất (biên trên/dưới dễ nghe robot hơn).
+        // QUAN TRỌNG: pitch phải theo GIỌNG THỰC SỰ được dùng, không theo giới
+        // tính vừa yêu cầu. Khi người dùng ghim một giọng nam mà lượt này đang
+        // xin giọng nữ, lấy pitch 1.08 sẽ đẩy giọng nam cao lên nghe rất giả.
+        var actual = v ? _fcVoiceGender(v) : 'unknown';
+        var pitchG = (actual === 'unknown') ? g : actual;
         u.rate = 0.92;
-        u.pitch = (g === 'male') ? 0.88 : 1.08;
+        u.pitch = (pitchG === 'male') ? 0.88 : 1.08;
         u.volume = 1;
         window.speechSynthesis.speak(u);
       } catch (e) { console.warn('TTS lỗi:', e && e.message); }
@@ -405,6 +478,127 @@
       fcSpeak(card.front, fcLangForCard(card, deckId, card.front), gender);
     }
 
+    // ============================================================
+    // CÀI ĐẶT GIỌNG ĐỌC — chọn & nghe thử giọng THẬT của máy
+    // ------------------------------------------------------------
+    // Web Speech API CHỈ dùng được giọng đã cài trên máy: không có cách nào
+    // "tải thêm giọng" bằng JavaScript. Nên thay vì đoán mãi, bảng này cho
+    // người dùng thấy máy mình thực sự có giọng gì cho từng ngôn ngữ, tự nghe
+    // thử, và GHIM giọng mình thích — lựa chọn đó thắng mọi phỏng đoán.
+    // Ngôn ngữ nào máy chưa có giọng thì nói thẳng + chỉ cách cài thêm.
+    // ============================================================
+    function _fcVoiceMap() { return _fcLsGet(_fcPk('th_fc_voicemap'), {}) || {}; }
+    function fcPinnedVoice(lang) {
+      var m = _fcVoiceMap();
+      return m[_fcNormLang(lang)] || '';
+    }
+    function fcPinVoice(lang, voiceName) {
+      var key = _fcNormLang(lang), m = _fcVoiceMap();
+      if (voiceName) m[key] = voiceName; else delete m[key];
+      _fcLsSet(_fcPk('th_fc_voicemap'), m);
+      showToast(voiceName ? ('Đã ghim giọng cho ' + (FC_LANG_SHORT[lang] || lang) + '.') : ('Đã bỏ ghim — tự chọn lại cho ' + (FC_LANG_SHORT[lang] || lang) + '.'), 'success');
+      _fcRenderVoiceRows();
+    }
+    // Các giọng dùng được cho 1 mã ngôn ngữ, xếp giọng tốt nhất lên đầu.
+    function fcVoicesFor(lang) {
+      return _fcVoices()
+        .map(function (v) { return { v: v, s: _fcVoiceLangScore(v.lang, lang) }; })
+        .filter(function (x) { return x.s >= 0; })
+        .sort(function (a, b) { return (b.s - a.s) || (_fcVoiceQuality(b.v) - _fcVoiceQuality(a.v)); })
+        .map(function (x) { return x.v; });
+    }
+    function _fcSampleFor(lang) { return FC_SAMPLE[_fcLangBase(lang)] || FC_SAMPLE.en; }
+    // Nghe thử: đọc câu mẫu bằng ĐÚNG giọng của dòng đó (không qua bộ tự chọn).
+    function fcPreviewVoice(lang, voiceName) {
+      if (!_fcTtsSupported()) { showToast('Trình duyệt không hỗ trợ phát âm.', 'warning'); return; }
+      var voices = _fcVoices(), target = null;
+      for (var i = 0; i < voices.length; i++) if (voices[i].name === voiceName) { target = voices[i]; break; }
+      try {
+        window.speechSynthesis.cancel();
+        var u = new window.SpeechSynthesisUtterance(_fcSampleFor(lang));
+        u.lang = lang;
+        if (target) { try { u.voice = target; } catch (e) { } }
+        var g = target ? _fcVoiceGender(target) : 'unknown';
+        u.rate = 0.92; u.pitch = (g === 'male') ? 0.88 : 1.08; u.volume = 1;
+        window.speechSynthesis.speak(u);
+      } catch (e) { console.warn('preview lỗi:', e && e.message); }
+    }
+    function _fcQualityTag(v) {
+      var q = _fcVoiceQuality(v);
+      if (q >= 4) return '<span class="badge badge-success fc-vq">Tự nhiên</span>';
+      if (q >= 2) return '<span class="badge badge-info fc-vq">Khá</span>';
+      return '<span class="badge badge-gray fc-vq">Cơ bản</span>';
+    }
+    function _fcGenderTag(v) {
+      var g = _fcVoiceGender(v);
+      return g === 'female' ? '♀' : (g === 'male' ? '♂' : '·');
+    }
+    // Chỉ hiện ngôn ngữ ĐANG DÙNG trong app + ngôn ngữ máy có giọng, để bảng
+    // không dài vô ích với 19 dòng phần lớn trống.
+    function _fcRelevantLangs() {
+      var used = {};
+      (typeof flashcardDecks !== 'undefined' ? flashcardDecks : []).forEach(function (d) {
+        var dl = fcDeckLang(d.id); if (dl && dl !== 'auto') used[dl] = 1;
+        (d.cards || []).forEach(function (c) { var cl = fcCardLang(c, d.id); if (cl) used[cl] = 1; });
+      });
+      _fcVoices().forEach(function (v) {
+        // gán giọng của máy về mã chuẩn gần nhất trong danh sách
+        FC_TTS_LANGS.forEach(function (l) { if (l.code !== 'auto' && _fcVoiceLangScore(v.lang, l.code) >= 50) used[l.code] = 1; });
+      });
+      ['en-US', 'vi-VN'].forEach(function (c) { used[c] = 1; });   // luôn hiện 2 mã chính
+      return FC_TTS_LANGS.filter(function (l) { return l.code !== 'auto' && used[l.code]; }).map(function (l) { return l.code; });
+    }
+    function _fcVoiceRowsHtml() {
+      var langs = _fcRelevantLangs();
+      var rows = langs.map(function (code) {
+        var list = fcVoicesFor(code);
+        var pinned = fcPinnedVoice(code);
+        var name = FC_LANG_SHORT[code] || code;
+        if (!list.length) {
+          return '<div class="fc-voice-row missing">' +
+            '<div class="fc-voice-lang">' + escHtml(name) + '<span class="fc-voice-code">' + code + '</span></div>' +
+            '<div class="fc-voice-none">Máy chưa có giọng cho ngôn ngữ này — sẽ đọc bằng giọng mặc định (nghe sai tiếng).</div>' +
+            '</div>';
+        }
+        var opts = '<option value="">Tự chọn (giọng tốt nhất)</option>' + list.map(function (v) {
+          return '<option value="' + escAttr(v.name) + '"' + (pinned === v.name ? ' selected' : '') + '>' +
+            _fcGenderTag(v) + ' ' + escHtml(v.name.replace(/Microsoft |Online \(Natural\) |\(Natural\) /g, '')) + '</option>';
+        }).join('');
+        var top = list[0];
+        return '<div class="fc-voice-row">' +
+          '<div class="fc-voice-lang">' + escHtml(name) + '<span class="fc-voice-code">' + code + '</span></div>' +
+          '<div class="fc-voice-pick">' +
+          '<select class="form-select" aria-label="Giọng cho ' + escAttr(name) + '" onchange="fcPinVoice(' + qid(code) + ',this.value)">' + opts + '</select>' +
+          '<button class="btn btn-sm btn-ghost" title="Nghe thử" onclick="fcPreviewVoice(' + qid(code) + ',this.previousElementSibling.value)">🔊 Thử</button>' +
+          '</div>' +
+          '<div class="fc-voice-meta">' + _fcQualityTag(pinned ? (list.filter(function (v) { return v.name === pinned; })[0] || top) : top) +
+          '<span class="fc-voice-count">' + list.length + ' giọng</span></div>' +
+          '</div>';
+      }).join('');
+      var have = langs.filter(function (c) { return fcVoicesFor(c).length; }).length;
+      return '<div class="fc-voice-summary">Máy đang có giọng cho <strong>' + have + '/' + langs.length + '</strong> ngôn ngữ · tổng <strong>' + _fcVoices().length + '</strong> giọng.</div>' +
+        '<div class="fc-voice-list">' + rows + '</div>';
+    }
+    function _fcRenderVoiceRows() {
+      var box = document.getElementById('fcVoiceBody');
+      if (box) box.innerHTML = _fcVoiceRowsHtml();
+    }
+    function openFcVoiceSettings() {
+      if (!_fcTtsSupported()) { showToast('Trình duyệt không hỗ trợ phát âm.', 'warning'); return; }
+      var render = function () {
+        openModal('<div class="modal-header"><h3>🔊 Cài đặt giọng đọc</h3>' +
+          '<button class="modal-close" onclick="closeModal()" aria-label="Đóng">✕</button></div>' +
+          '<div class="modal-body"><div id="fcVoiceBody">' + _fcVoiceRowsHtml() + '</div>' +
+          '<div class="fc-voice-help">Giọng đọc do <strong>hệ điều hành / trình duyệt</strong> cung cấp — trang web không tải thêm giọng được. ' +
+          'Muốn có giọng tự nhiên cho tiếng Việt, Trung, Nhật, Hàn: mở <strong>Edge</strong> (có sẵn giọng “Online (Natural)”), ' +
+          'hoặc trên Windows vào <em>Cài đặt → Thời gian &amp; Ngôn ngữ → Giọng nói → Thêm giọng</em>.</div>' +
+          '</div><div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal()">Đóng</button></div>', 'modal-lg');
+      };
+      // Chrome nạp giọng bất đồng bộ — chờ có danh sách rồi mới mở bảng.
+      if (_fcVoices().length) render();
+      else { showBusy('Đang lấy danh sách giọng…'); _fcEnsureVoices(function () { hideBusy(); render(); }); }
+    }
+
     // <select> chọn giọng Nam/Nữ/Xen kẽ — dùng chung cho thanh công cụ Học thẻ
     // và header Chế độ Học (Cài đặt Flashcard).
     function fcVoiceGenderSelectHtml() {
@@ -425,7 +619,8 @@
         '" title="' + (on ? 'Đang BẬT tự động phát âm khi lật thẻ — bấm để tắt' : 'Đang TẮT tự động phát âm — bấm để bật') +
         '" onclick="toggleFcAutoSpeak()">' + (on ? '🔊' : '🔇') + ' Tự phát âm</button>' +
         '<select class="filter-select fc-lang-select" aria-label="Ngôn ngữ phát âm của bộ thẻ" onchange="fcSetDeckLang(' + deckId + ',this.value)">' + opts + '</select>' +
-        fcVoiceGenderSelectHtml();
+        fcVoiceGenderSelectHtml() +
+        '<button class="btn btn-sm btn-ghost" title="Chọn & nghe thử giọng đọc theo từng ngôn ngữ" onclick="openFcVoiceSettings()">🔊 Giọng…</button>';
     }
     // Nút loa nhỏ đặt trên từng mặt thẻ (đọc THỦ CÔNG — vẫn dùng được cho mặt
     // sau dù mặt sau không còn tự động đọc). `lang` truyền vào thì đọc theo mã
@@ -766,7 +961,8 @@
         '<button class="btn btn-ghost" onclick="exitLearn()">← Thoát</button>' +
         '<div class="learn-title">🧠 Chế độ Học<span class="learn-deckname">' + escHtml(d ? d.title : '') + '</span></div>' +
         '<div class="learn-tools">' +
-        (_fcTtsSupported() ? '<button class="btn btn-sm ' + (fcAutoSpeakOn() ? 'btn-primary' : 'btn-ghost') + '" id="learnAutoSpeakBtn" aria-pressed="' + (fcAutoSpeakOn() ? 'true' : 'false') + '" onclick="toggleFcAutoSpeak()">' + (fcAutoSpeakOn() ? '🔊' : '🔇') + ' Tự phát âm</button>' + fcVoiceGenderSelectHtml() : '') +
+        (_fcTtsSupported() ? '<button class="btn btn-sm ' + (fcAutoSpeakOn() ? 'btn-primary' : 'btn-ghost') + '" id="learnAutoSpeakBtn" aria-pressed="' + (fcAutoSpeakOn() ? 'true' : 'false') + '" onclick="toggleFcAutoSpeak()">' + (fcAutoSpeakOn() ? '🔊' : '🔇') + ' Tự phát âm</button>' + fcVoiceGenderSelectHtml() +
+          '<button class="btn btn-sm btn-ghost" title="Chọn & nghe thử giọng đọc" onclick="openFcVoiceSettings()">🔊 Giọng…</button>' : '') +
         '<button class="btn btn-sm btn-ghost" title="Học lại từ đầu (xoá tiến độ)" onclick="learnResetProgress()">↺ Đặt lại</button>' +
         '</div></div>';
     }

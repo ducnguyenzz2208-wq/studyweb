@@ -58,6 +58,37 @@
 - `tsc --noEmit` sạch, `node --check` 3 module pass, **0 lỗi console**; mobile 375px: MC 1 cột, nút
       Đúng/Sai 46px, ô nhập 16px (không bị iOS tự phóng), lưới ghép 2 cột, không tràn ngang.
 
+## Flashcard TTS v5: 19 ngôn ngữ + bảng chọn/nghe thử giọng ✅ ĐÃ LÀM
+- [x] **Mở rộng 14 → 19 ngôn ngữ**: thêm `es-MX`, `it-IT`, `pt-BR`, `id-ID`, `hi-IN`, `ar-SA`; bổ sung
+      tên giọng Natural/Neural thật cho từng ngôn ngữ vào bảng Nữ/Nam (Denise/Henri, Katja/Conrad,
+      Elvira/Alvaro, Elsa/Diego, Francisca/Antonio, Premwadee/Niwat, Gadis/Ardi, Swara/Madhur,
+      Zariyah/Hamed…) + 15 câu mẫu để nghe thử theo đúng ngôn ngữ.
+- [x] **BẢNG CÀI ĐẶT GIỌNG ĐỌC mới** (`openFcVoiceSettings`, nút "🔊 Giọng…" ở thanh công cụ Học thẻ và
+      header Chế độ Học): liệt kê **giọng THẬT của máy** theo từng ngôn ngữ (kèm ♀/♂ và nhãn chất lượng
+      Tự nhiên/Khá/Cơ bản), cho **nghe thử** bằng câu mẫu đúng ngôn ngữ, và **GHIM** giọng mình thích —
+      lựa chọn ghim **thắng mọi phỏng đoán** của bộ tự chọn (`_fcPickVoice` kiểm tra ghim trước tiên).
+      Lưu `th_fc_voicemap` theo tài khoản. Ngôn ngữ nào máy chưa có giọng thì nói thẳng + chỉ cách cài.
+      Bảng chỉ hiện ngôn ngữ đang dùng trong app + ngôn ngữ máy có giọng (không dài 19 dòng vô ích).
+- [x] **Fix bug khớp giới tính theo CHUỖI CON** (`_fcVoiceGender`): tên giọng luôn kèm tên ngôn ngữ nên
+      khớp chuỗi con sai nặng — `'ali'` nằm trong **"Italian"** (⇒ mọi giọng Ý thành Nam), `'ana'` nằm
+      trong **"Canada"**, `'eric'` nằm trong **"America"**. Đã đổi sang **khớp theo TỪ** (tách tên thành
+      token rồi so bằng nhau) → nhờ vậy mới thêm an toàn được các tên ngắn như Ali, Ana, Eric.
+- [x] **Fix pitch không khớp giọng thật**: `fcSpeak` lấy pitch theo giới tính *đang yêu cầu*, nên khi
+      người dùng **ghim giọng nam** mà lượt đó xen kẽ đang xin giọng nữ thì giọng nam bị đẩy lên
+      pitch 1.08 → nghe rất giả. Nay pitch suy từ **giọng THỰC SỰ dùng** (`_fcVoiceGender(v)`), chỉ khi
+      không đoán được mới rơi về giới tính yêu cầu.
+- Verify (live): 8/8 ca khớp giới tính đúng, gồm "Elsa - Italian (Italy)"→nữ và "Richard - English
+      (Canada)"→unknown (2 ca trước đây SAI); bảng hiện đúng 3 dòng trên máy test (en-US/en-GB có giọng,
+      vi-VN báo thiếu), summary "2/3 ngôn ngữ · 3 giọng"; ghim Mark rồi xin giọng nữ → vẫn ra Mark và
+      **pitch 0.88** (không còn 1.08); ghim Zira rồi xin nam → Zira + 1.08; bỏ ghim → xen kẽ Zira/David
+      như cũ; nghe thử vi-VN/ja-JP đọc đúng câu mẫu + đúng `lang`; lưu bền localStorage; mobile 375px
+      bảng 1 cột không tràn; hồi quy 5 chế độ Flashcard OK; `tsc` sạch, 0 lỗi console.
+- **⚠️ Giới hạn kỹ thuật (không phải lỗi)**: Web Speech API **chỉ dùng được giọng đã cài trên máy** —
+      trang web KHÔNG thể tải thêm giọng bằng JavaScript. Máy dev chỉ có 3 giọng Windows tiếng Anh
+      (David/Mark/Zira) nên tiếng Việt/Trung/Nhật/Hàn vẫn đọc bằng giọng mặc định ở đó. Muốn giọng tự
+      nhiên: dùng **Edge** (có sẵn giọng "Online (Natural)" cho vi/zh/ja/ko) hoặc Windows → Cài đặt →
+      Thời gian & Ngôn ngữ → Giọng nói → Thêm giọng. Bảng cài đặt mới hiện rõ máy đang thiếu giọng nào.
+
 ## Fix: Trắc nghiệm bộ Toán chỉ có 1 ô + TTS chỉ đọc tiếng Anh ✅ ĐÃ LÀM
 ### 1) Trắc nghiệm luôn đủ 4 ô (lưới 2x2) cho MỌI môn
 - [x] **Nguyên nhân gốc** (`_learnBuildChoices`): pool đáp án nhiễu lọc bằng
