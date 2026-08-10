@@ -509,7 +509,22 @@
       var parsed = [];
       lines.forEach(function (line) {
         var p = _parseBulkLine(line);
-        if (p && p.front && p.back) parsed.push({ front: p.front, back: p.back });
+        if (p && p.front && p.back) {
+          var f = p.front;
+          // Tự động thêm IPA vào sau từ tiếng Anh khi nhập hàng loạt
+          if (typeof fcDetectLang === 'function' && typeof fcGetPhonetic === 'function') {
+            if (fcDetectLang(f) === 'en-US') {
+              var phon = fcGetPhonetic(f, 'en-US');
+              if (phon && phon.type === 'ipa') {
+                // Kiểm tra xem từ đã có IPA chưa để tránh thêm trùng lặp
+                if (f.indexOf('/' + phon.text + '/') === -1) {
+                  f = f + ' /' + phon.text + '/';
+                }
+              }
+            }
+          }
+          parsed.push({ front: f, back: p.back });
+        }
       });
       if (!parsed.length) {
         showToast('Không nhận diện được thẻ nào. Dùng định dạng: Mặt trước | Mặt sau', 'error');

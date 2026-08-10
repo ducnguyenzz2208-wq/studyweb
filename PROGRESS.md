@@ -3,15 +3,19 @@
 > App quản lý trung tâm gia sư. Live: https://studyweb-swart.vercel.app
 
 ## Flashcard: Phiên âm IPA (Tiếng Anh) & Pinyin (Tiếng Trung) + Nhận diện câu trả lời gần đúng ✅ ĐÃ LÀM
-- [x] **Module MỚI `public/js/29-flashcard-phonetics.js`**: Tự động nhận diện ngôn ngữ và sinh phiên âm IPA chuẩn cho từ Tiếng Anh (ví dụ: `Dog` -> `/dɒɡ/`, `Water` -> `/ˈwɔː.tər/`, `Environment` -> `/ɪnˈvaɪ.rən.mənt/`) và Pinyin kèm dấu thanh điệu cho Tiếng Trung (ví dụ: `你好` -> `nǐ hǎo`, `水` -> `shuǐ`, `狗` -> `gǒu`).
+- [x] **Module MỚI `public/js/29-flashcard-phonetics.js`**: Tự động nhận diện ngôn ngữ và sinh phiên âm IPA chuẩn cho từ Tiếng Anh (ví dụ: `Dog` -> `/dɒɡ/`). Đã loại bỏ tính năng tự nhận diện Pinyin tiếng Trung theo yêu cầu để tập trung thử nghiệm IPA.
 - [x] **Hiển thị linh hoạt ở tất cả các chế độ**:
   - Danh sách thẻ (`openDeckDetail` trong `23-flashcards.js`)
   - Thẻ lật khi Học ngay (`renderStudyCard` trong `23-flashcards.js`)
   - Chế độ Học (`_learnRender` trong `27-flashcard-learn.js`)
   - Bài kiểm tra (`_renderTest` trong `28-flashcard-test-game.js`)
   - Màn hình xem trước khi Tạo/Sửa thẻ (`updateCardPreview` trong `23-flashcards.js`).
+- [x] **Tính năng Nhập hàng loạt (Bulk Import)**:
+  - Tự động thêm IPA vào sau mặt chữ của thẻ Tiếng Anh ngay khi nhập hàng loạt (`Apple` -> `Apple /ˈæp.l̩/`).
+  - Sửa lỗi hiển thị trùng lặp: Nếu văn bản đã chứa ký hiệu IPA thì hệ thống sẽ không hiển thị thêm phonetic badge (phù hiệu âm thanh) tự động nữa.
+  - Cải tiến tính năng phát hiện ngôn ngữ `fcDetectLang` trong `27-flashcard-learn.js`: Nhận diện chuẩn xác các nguyên âm có dấu đặc trưng của tiếng Việt (ví dụ: `Máy tính`) để tránh tình trạng hiển thị nhầm phiên âm tiếng Anh (IPA) cho tiếng Việt.
 - [x] **Nhận diện câu trả lời gần đúng (Fuzzy Answer Matching)**: Nâng cấp thuật toán `_learnCheckWritten` trong `27-flashcard-learn.js`:
-  - Tự động loại bỏ các lượng từ / từ chỉ loại tiếng Việt (`con`, `cái`, `quả`, `trái`, `chiếc`, `bức`, `cây`, `bông`, `ngôi`, `căn`, `cuốn`, `quyển`, `bài`, `tấm`, `lá`, `viên`, `toà`, `người`, `sự`, `việc`, `đồ`, `vị`...) và mạo từ tiếng Anh (`a`, `an`, `the`, `to`).
+  - Tự động loại bỏ các lượng từ / từ chỉ loại tiếng Việt (`con`, `cái`, `quả`...) và mạo từ tiếng Anh (`a`, `an`, `the`, `to`).
   - Đánh giá câu trả lời `"chó"` đối với đáp án `"Con chó"` (hoặc ngược lại) là **ĐÚNG**.
   - Hỗ trợ so khớp trùng khớp cụm từ con (sub-phrase / token overlap) và mở rộng sai số gõ nhầm theo độ dài từ (Levenshtein edit distance).
 

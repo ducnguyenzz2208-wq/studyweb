@@ -233,10 +233,8 @@
       if (/[一-鿿]/.test(s)) return _fcDetectChinese(s);         // Hán tự (không kèm kana)
       // Tiếng Việt — CHỈ dùng ký tự RIÊNG của tiếng Việt, không dùng nguyên âm
       // có dấu dùng chung (à á è é ó ú…) vì Pháp/Tây Ban Nha/Ý cũng có →
-      // trước đây "très"/"estás" bị nhận nhầm là tiếng Việt.
-      //   U+1EA0–U+1EF9: ạ ả ấ ầ ậ ắ ặ ẹ ẻ ế ề ệ ỉ ị ọ ỏ ố ộ ớ ờ ợ ụ ủ ứ ừ ự ỳ ỵ ỹ…
-      //   ă Ă (0102/0103) · đ Đ (0110/0111) · ơ Ơ (01A0/01A1) · ư Ư (01AF/01B0)
-      if (/[Ạ-ỹĂăĐđƠơƯư]/.test(s)) return 'vi-VN';
+      // trước đây "très"/"estás" bị nhận nhầm là tiếng Việt. Nhưng để chính xác hơn cho thẻ flashcard:
+      if (/[Ạ-ỹĂăĐđƠơƯưÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚÝàáâãèéêìíòóôõùúýĂăĐđĨĩŨũƠơƯưẠ-ỹ]/i.test(s)) return 'vi-VN';
       if (/[äöüßÄÖÜ]/.test(s)) return 'de-DE';
       if (/[ñÑ¿¡]/.test(s)) return 'es-ES';
       if (/[çœëïûÿèêîôàâùÇŒ]/i.test(s)) return 'fr-FR';

@@ -203,10 +203,10 @@
       return ipa ? { type: 'ipa', lang: resolvedLang, text: ipa } : null;
     }
 
-    if (resolvedLang.indexOf('zh') === 0 || /[一-鿿]/.test(plain)) {
-      var pinyin = getChineseTextPinyin(plain);
-      return pinyin ? { type: 'pinyin', lang: resolvedLang, text: pinyin } : null;
-    }
+    // if (resolvedLang.indexOf('zh') === 0 || /[一-鿿]/.test(plain)) {
+    //   var pinyin = getChineseTextPinyin(plain);
+    //   return pinyin ? { type: 'pinyin', lang: resolvedLang, text: pinyin } : null;
+    // }
 
     return null;
   }
@@ -225,6 +225,9 @@
 
     var phon = fcGetPhonetic(text, resolvedLang);
     if (!phon || !phon.text) return '';
+
+    // Tránh hiển thị badge nếu text đã chứa sẵn phiên âm (ví dụ do tính năng Nhập hàng loạt thêm vào)
+    if (text.indexOf('/' + phon.text + '/') !== -1) return '';
 
     var badgeClass = phon.type === 'ipa' ? 'fc-phonetic-ipa' : 'fc-phonetic-pinyin';
     var icon = phon.type === 'ipa' ? '🔤 ' : '🈴 ';
