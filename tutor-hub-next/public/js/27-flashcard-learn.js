@@ -828,6 +828,19 @@
     // ── Chấm câu trả lời ─────────────────────────────────────────
     // So khớp tự luận "thông minh": bỏ dấu câu/khoảng trắng thừa, chấp nhận
     // nhiều đáp án ngăn bởi "/" hoặc ";", và tha lỗi gõ nhầm 1 ký tự.
+    var _FC_STOP_WORDS_RE = /^(con|cái|quả|trái|chiếc|bức|cây|bông|ngôi|căn|cuốn|quyển|bài|tấm|lá|viên|toà|tờ|hạt|sợi|mẩu|người|sự|việc|đồ|vị|chú|anh|chị|ông|bà|cô|thầy|em|bác|cậu|bộ|loại|thẻ|a|an|the|to)\s+/gi;
+
+    function _learnStripClassifiers(str) {
+      if (!str) return '';
+      var s = String(str).trim();
+      var prev;
+      do {
+        prev = s;
+        s = s.replace(_FC_STOP_WORDS_RE, '').trim();
+      } while (s !== prev);
+      return s;
+    }
+
     function _learnNorm(s) {
       return _fcPlainText(s).toLowerCase()
         .replace(/[.,!?;:"'`""''«»。、！？…]/g, ' ')
@@ -840,14 +853,25 @@
       // bỏ phần trong ngoặc: "hello (informal)" → cũng chấp nhận "hello"
       var noParen = _learnNorm(String(back).replace(/\([^)]*\)/g, ' '));
       if (noParen) all.push(noParen);
+
+      // Thêm dạng đã lọc từ chỉ loại/lượng từ (ví dụ "Con chó" -> "chó")
+      var strippedAll = [];
+      all.forEach(function (a) {
+        if (a) {
+          strippedAll.push(a);
+          var strp = _learnStripClassifiers(a);
+          if (strp && strp !== a) strippedAll.push(strp);
+        }
+      });
+
       var uniq = {}, out = [];
-      all.forEach(function (a) { if (a && !uniq[a]) { uniq[a] = 1; out.push(a); } });
+      strippedAll.forEach(function (a) { if (a && !uniq[a]) { uniq[a] = 1; out.push(a); } });
       return out;
     }
     function _levenshtein(a, b) {
       if (a === b) return 0;
       if (!a.length) return b.length; if (!b.length) return a.length;
-      if (Math.abs(a.length - b.length) > 2) return 99; // đủ xa → khỏi tính
+      if (Math.abs(a.length - b.length) > 3) return 99; // đủ xa → khỏi tính
       var prev = [], cur = [], i, j;
       for (j = 0; j <= b.length; j++) prev[j] = j;
       for (i = 1; i <= a.length; i++) {
@@ -860,13 +884,42 @@
       return prev[b.length];
     }
     function _learnCheckWritten(input, back) {
-      var given = _learnNorm(input);
-      if (!given) return { ok: false, close: false };
+      var rawGiven = _learnNorm(input);
+      if (!rawGiven) return { ok: false, close: false };
+      var givenStripped = _learnStripClassifiers(rawGiven);
+
       var alts = _learnAlternatives(back);
-      for (var i = 0; i < alts.length; i++) if (alts[i] === given) return { ok: true, close: false };
-      // gõ gần đúng: sai ≤1 ký tự (đáp án ≥4 ký tự) → tính đúng + nhắc chính tả
+      
+      // 1. Chính xác tuyệt đối (gốc hoặc đã lọc từ chỉ loại/mạo từ)
+      for (var i = 0; i < alts.length; i++) {
+        var alt = alts[i];
+        if (alt === rawGiven || alt === givenStripped) return { ok: true, close: false };
+      }
+
+      // 2. Chấp nhận dạng từ con / chứa từ khoá chính (sub-phrase / token overlap)
+      // Ví dụ: người dùng gõ "chó", đáp án "con chó" hoặc ngược lại
+      for (var j = 0; j < alts.length; j++) {
+        var a = alts[j];
+        var aStrp = _learnStripClassifiers(a);
+        if (a === givenStripped || aStrp === rawGiven || aStrp === givenStripped) return { ok: true, close: true };
+        
+        if (rawGiven.length >= 2 && a.length >= 2) {
+          if (a.indexOf(rawGiven) >= 0 || rawGiven.indexOf(a) >= 0 ||
+              aStrp.indexOf(givenStripped) >= 0 || givenStripped.indexOf(aStrp) >= 0) {
+            return { ok: true, close: true };
+          }
+        }
+      }
+
+      // 3. gõ gần đúng theo khoảng cách Levenshtein (sai ≤1-2 ký tự tuỳ độ dài)
       for (var k = 0; k < alts.length; k++) {
-        if (alts[k].length >= 4 && _levenshtein(alts[k], given) <= 1) return { ok: true, close: true };
+        var targetAlt = alts[k];
+        var maxDist = targetAlt.length >= 8 ? 2 : (targetAlt.length >= 4 ? 1 : 0);
+        if (maxDist > 0) {
+          if (_levenshtein(targetAlt, rawGiven) <= maxDist || _levenshtein(targetAlt, givenStripped) <= maxDist) {
+            return { ok: true, close: true };
+          }
+        }
       }
       return { ok: false, close: false };
     }
@@ -981,6 +1034,7 @@
         (st.mode === 'mc' ? 'Trắc nghiệm' : 'Tự luận — gõ đáp án') + '</span>' +
         '<span class="learn-remain">Còn ' + st.queue.length + ' thẻ trong lượt</span></div>' +
         '<div class="learn-question">' + card.front +
+        (typeof fcPhoneticBadgeHtml === 'function' ? fcPhoneticBadgeHtml(card.front, st.deckId, card) : '') +
         (_fcTtsSupported() ? fcSpeakBtnHtml(card.front, st.deckId, 'câu hỏi', fcLangForCard(card, st.deckId, card.front)) : '') + '</div>' +
         (card.hint && !st.answered ? '<div class="learn-hint">💡 ' + escHtml(card.hint) + '</div>' : '');
 
@@ -1015,6 +1069,7 @@
           (st.lastCorrect ? (st.closeMatch ? '✅ Gần đúng — chú ý chính tả!' : '✅ Chính xác!') : '❌ Chưa đúng — đáp án đúng là:') +
           '</div>' +
           '<div class="learn-fb-answer">' + card.back +
+          (typeof fcPhoneticBadgeHtml === 'function' ? fcPhoneticBadgeHtml(card.back, st.deckId, card) : '') +
           (_fcTtsSupported() ? fcSpeakBtnHtml(card.back, st.deckId, 'đáp án') : '') + '</div>' +
           (card.example ? '<div class="learn-fb-example">📝 ' + card.example + '</div>' : '') +
           (st.lastCorrect ? '' : '<div class="learn-fb-note">Thẻ này sẽ xuất hiện lại trong lượt tới cho tới khi bạn thuộc.</div>') +

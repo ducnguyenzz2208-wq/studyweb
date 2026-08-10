@@ -248,9 +248,12 @@
         (review ? '<span class="test-mark ' + (q.correct ? 'ok' : 'bad') + '">' + (q.correct ? (q.close ? '✅ Gần đúng' : '✅ Đúng') : '❌ Sai') + '</span>' : '') +
         '</div>';
 
+      var phoneticFront = (typeof fcPhoneticBadgeHtml === 'function') ? fcPhoneticBadgeHtml(card.front, st.deckId, card) : '';
+      var phoneticBack = (typeof fcPhoneticBadgeHtml === 'function') ? fcPhoneticBadgeHtml(card.back, st.deckId, card) : '';
+
       var body = '';
       if (q.type === 'mc') {
-        body = '<div class="test-prompt">' + card.front + speaker + '</div>' +
+        body = '<div class="test-prompt">' + card.front + phoneticFront + speaker + '</div>' +
           '<div class="learn-choices test-choices">' + q.choices.map(function (ch, k) {
             var cls = 'learn-choice test-choice' + (a === k ? ' picked' : '');
             if (review) {
@@ -263,7 +266,7 @@
               '<span class="learn-choice-body">' + ch.html + '</span></button>';
           }).join('') + '</div>';
       } else if (q.type === 'tf') {
-        body = '<div class="test-prompt">' + card.front + speaker + '</div>' +
+        body = '<div class="test-prompt">' + card.front + phoneticFront + speaker + '</div>' +
           '<div class="test-tf-claim">có nghĩa là: <span class="test-tf-def">' + q.shown + '</span></div>' +
           '<div class="test-tf-btns">' +
           ['true', 'false'].map(function (v) {
@@ -278,7 +281,7 @@
           }).join('') + '</div>';
       } else {
         var val = a != null ? String(a) : '';
-        body = '<div class="test-prompt">' + card.front + speaker + '</div>' +
+        body = '<div class="test-prompt">' + card.front + phoneticFront + speaker + '</div>' +
           (review
             ? '<div class="test-written-review"><div class="test-your">Bạn trả lời: <strong>' + (val ? escHtml(val) : '<em>(bỏ trống)</em>') + '</strong></div></div>'
             : '<input class="form-input test-input" id="testIn' + i + '" autocomplete="off" spellcheck="false" ' +
@@ -287,7 +290,7 @@
 
       // Khi đã nộp: luôn hiện đáp án đúng để học lại.
       var answer = review && !q.correct
-        ? '<div class="test-answer">Đáp án đúng: <span class="test-answer-val">' + card.back + '</span></div>'
+        ? '<div class="test-answer">Đáp án đúng: <span class="test-answer-val">' + card.back + phoneticBack + '</span></div>'
         : '';
 
       return '<div class="test-q' + (review ? (q.correct ? ' r-ok' : ' r-bad') : '') + '" id="testQ' + i + '">' + head + body + answer + '</div>';

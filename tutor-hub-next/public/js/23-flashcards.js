@@ -94,8 +94,8 @@
             '<button class="btn btn-sm btn-danger" title="Xoá thẻ" onclick="deleteCard(' + d.id + ',' + c.id + ')">🗑</button></div>' : '';
           return '<div class="card-list-item">' +
             '<span class="card-num">' + (idx + 1) + '</span>' +
-            '<div class="card-list-term">' + c.front + '</div>' +
-            '<div class="card-list-def">' + c.back + '</div>' +
+            '<div class="card-list-term">' + c.front + (typeof fcPhoneticBadgeHtml === 'function' ? fcPhoneticBadgeHtml(c.front, d.id, c) : '') + '</div>' +
+            '<div class="card-list-def">' + c.back + (typeof fcPhoneticBadgeHtml === 'function' ? fcPhoneticBadgeHtml(c.back, d.id, c) : '') + '</div>' +
             '<span class="badge ' + diffBadge + ' card-list-diff">' + escHtml(diffLabel) + '</span>' +
             editCardBtns +
             '</div>';
@@ -168,13 +168,13 @@
         '<div class="flashcard' + (studyState.flipped ? ' flipped' : '') + '" id="studyFlashcard">' +
         '<div class="flashcard-face">' +
         '<div class="flashcard-label">Front' + (typeof fcSpeakBtnHtml === 'function' ? fcSpeakBtnHtml(card.front, studyState.deckId, 'mặt trước', fcLangForCard(card, studyState.deckId, card.front)) : '') + '</div>' +
-        '<div class="flashcard-text">' + card.front + '</div>' +
+        '<div class="flashcard-text">' + card.front + (typeof fcPhoneticBadgeHtml === 'function' ? fcPhoneticBadgeHtml(card.front, studyState.deckId, card) : '') + '</div>' +
         (card.hint ? '<div class="flashcard-hint">💡 ' + escHtml(card.hint) + '</div>' : '') +
         '<div style="margin-top:16px;font-size:11px;color:var(--text-muted);">Click to flip</div>' +
         '</div>' +
         '<div class="flashcard-face flashcard-back">' +
         '<div class="flashcard-label">Back' + (typeof fcSpeakBtnHtml === 'function' ? fcSpeakBtnHtml(card.back, studyState.deckId, 'mặt sau') : '') + '</div>' +
-        '<div class="flashcard-text">' + card.back + '</div>' +
+        '<div class="flashcard-text">' + card.back + (typeof fcPhoneticBadgeHtml === 'function' ? fcPhoneticBadgeHtml(card.back, studyState.deckId, card) : '') + '</div>' +
         (card.example ? '<div class="flashcard-example">📝 ' + card.example + '</div>' : '') +
         '<div style="margin-top:12px;"><span class="badge ' + ({ easy: 'badge-success', medium: 'badge-warning', hard: 'badge-danger' }[card.difficulty] || 'badge-gray') + '">' + card.difficulty + '</span></div>' +
         '</div>' +
@@ -373,8 +373,8 @@
       var preview = document.getElementById('cardMathPreview');
       if (!front || !back || !preview) return;
       var content = '';
-      if (front.value.trim()) content += '<div class="math-preview-label">Front Preview</div><div class="math-preview">' + front.value + '</div>';
-      if (back.value.trim()) content += '<div class="math-preview-label" style="margin-top:8px;">Back Preview</div><div class="math-preview">' + back.value + '</div>';
+      if (front.value.trim()) content += '<div class="math-preview-label">Front Preview</div><div class="math-preview">' + front.value + (typeof fcPhoneticBadgeHtml === 'function' ? fcPhoneticBadgeHtml(front.value) : '') + '</div>';
+      if (back.value.trim()) content += '<div class="math-preview-label" style="margin-top:8px;">Back Preview</div><div class="math-preview">' + back.value + (typeof fcPhoneticBadgeHtml === 'function' ? fcPhoneticBadgeHtml(back.value) : '') + '</div>';
       preview.innerHTML = content;
       typesetMath(preview);
     }
