@@ -1040,6 +1040,7 @@
         '<div class="learn-done-title">Bạn đã thuộc hết bộ thẻ này!</div>' +
         '<div class="learn-done-sub">Đúng <strong>' + st.stats.correct + '</strong> · Sai <strong>' + st.stats.wrong + '</strong> · Độ chính xác <strong>' + acc + '%</strong></div>' +
         '<div class="learn-done-btns">' +
+        '<button class="btn btn-warning" onclick="startTest(' + st.deckId + ', true)">📝 Làm bài trắc nghiệm</button>' +
         '<button class="btn btn-primary" onclick="learnResetProgress()">↺ Học lại từ đầu</button>' +
         '<button class="btn btn-ghost" onclick="exitLearn()">Về bộ thẻ</button>' +
         '</div></div></div>';

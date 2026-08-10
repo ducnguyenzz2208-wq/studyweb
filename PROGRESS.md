@@ -2,6 +2,10 @@
 
 > App quản lý trung tâm gia sư. Live: https://studyweb-swart.vercel.app
 
+## Flashcard: Liên kết bài kiểm tra trắc nghiệm sau phần học ✅ ĐÃ LÀM
+- [x] Thêm nút "📝 Làm bài trắc nghiệm" vào màn hình hoàn thành của Chế độ Học (`27-flashcard-learn.js`). Nút này cho phép chuyển thẳng sang làm bài kiểm tra trắc nghiệm ngẫu nhiên để ôn lại những từ vừa học.
+- [x] Sửa Bài kiểm tra (`28-flashcard-test-game.js`) để hỗ trợ cờ `mcOnly`, bắt buộc 100% câu hỏi là trắc nghiệm ngẫu nhiên, đáp ứng yêu cầu từ Unit 1.html.
+
 ## Flashcard: 2 chế độ mới — Bài kiểm tra (Test) + Trò chơi Ghép thẻ (Matching) ✅ ĐÃ LÀM
 **Module MỚI `public/js/28-flashcard-test-game.js`** (nạp sau 27, trước 25-init) + 2 view container
 `#flashcards-test-view` / `#flashcards-match-view` + 2 nút **📝 Bài kiểm tra** · **🎮 Trò chơi** cạnh

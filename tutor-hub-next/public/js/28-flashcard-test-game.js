@@ -67,12 +67,12 @@
     // {deckId, questions:[{type,cardId,card,choices?,shown?,expected?,correct?,close?}],
     //  answers:{qi:value}, submitted:bool}
 
-    function startTest(deckId) {
+    function startTest(deckId, mcOnly) {
       var d = _fcDeck(deckId);
       var cards = _fcUsableCards(d);
       if (!cards.length) { showToast('Bộ thẻ chưa có thẻ đủ 2 mặt để làm bài kiểm tra.', 'warning'); return; }
       _matchStopTimer();
-      _testState = { deckId: deckId, questions: _testBuildQuestions(d, cards), answers: {}, submitted: false };
+      _testState = { deckId: deckId, mcOnly: mcOnly, questions: _testBuildQuestions(d, cards, mcOnly), answers: {}, submitted: false };
       _fcOnlyView('flashcards-test-view');
       _renderTest();
       try { _fcEnsureView('flashcards-test-view').scrollIntoView({ block: 'start' }); } catch (e) { }
@@ -80,13 +80,13 @@
     // Trộn 3 dạng câu hỏi: ~40% trắc nghiệm · ~30% đúng/sai · ~30% tự luận.
     // Thẻ KHÔNG gõ được (LaTeX/ảnh/đáp án dài) không nhận dạng tự luận → đổi
     // sang trắc nghiệm (nếu không sẽ bắt học sinh gõ công thức, gần như luôn sai).
-    function _testBuildQuestions(deck, cards) {
+    function _testBuildQuestions(deck, cards, mcOnly) {
       var pool = cards.slice(); _fcShuffle(pool);
       var picked = pool.slice(0, Math.min(FC_TEST_MAX, pool.length));
       var all = deck.cards || [];
       var qs = picked.map(function (card, i) {
         var r = i % 10;
-        var type = r < 4 ? 'mc' : (r < 7 ? 'tf' : 'written');
+        var type = mcOnly ? 'mc' : (r < 4 ? 'mc' : (r < 7 ? 'tf' : 'written'));
         if (type === 'written' && !_learnTypeable(card)) type = 'mc';
         var q = { type: type, cardId: card.id, card: card };
         if (type === 'mc') q.choices = fcBuildChoices(card, all, deck.id, 4);
@@ -178,7 +178,7 @@
       var total = st.questions.length;
       return { correct: c, wrong: total - c, total: total, pct: total ? Math.round(c / total * 100) : 0 };
     }
-    function retakeTest() { var id = _testState ? _testState.deckId : null; if (id != null) startTest(id); }
+    function retakeTest() { var st = _testState; if (st && st.deckId != null) startTest(st.deckId, st.mcOnly); }
     function exitTest() {
       var id = _testState ? _testState.deckId : null;
       _testState = null;

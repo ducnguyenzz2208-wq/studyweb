@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trạm Từ Vựng — Unit 1: Local Community</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Work+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --cream: #F7F1E4;
+    --paper: #FDFAF3;
+    --ink: #2B241C;
+    --ink-soft: #6b5f4f;
+    --clay: #A34433;
+    --clay-dark: #7E3327;
+    --jade: #3D6B54;
+    --jade-dark: #2C4E3E;
+    --bronze: #C08A2E;
+    --indigo: #2F4858;
+    --line: #E4D9C2;
+    --wrong: #B23A2E;
+    --right: #2C6E4F;
+    --radius: 18px;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    min-height:100vh;
+    background:
+      radial-gradient(circle at 12% 8%, rgba(163,68,51,0.07), transparent 40%),
+      radial-gradient(circle at 88% 92%, rgba(61,107,84,0.08), transparent 45%),
+      var(--cream);
+    font-family:'Work Sans', sans-serif;
+    color:var(--ink);
+    display:flex;
+    align-items:flex-start;
+    justify-content:center;
+    padding:32px 16px 60px;
+  }
+
+  .stage{
+    width:100%;
+    max-width:620px;
+  }
+
+  /* ---------- Header ---------- */
+  .masthead{
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    gap:12px;
+    margin-bottom:22px;
+    padding-bottom:14px;
+    border-bottom:2px solid var(--ink);
+  }
+  .masthead .eyebrow{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    letter-spacing:0.14em;
+    text-transform:uppercase;
+    color:var(--clay-dark);
+    margin:0 0 4px;
+  }
+  .masthead h1{
+    font-family:'Fraunces', serif;
+    font-weight:700;
+    font-size:clamp(24px,5.5vw,32px);
+    margin:0;
+    line-height:1.05;
+  }
+  .masthead .unit-badge{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    text-align:right;
+    color:var(--ink-soft);
+    white-space:nowrap;
+  }
+
+  /* ---------- Thread progress ---------- */
+  .thread-wrap{
+    margin-bottom:26px;
+  }
+  .thread-track{
+    position:relative;
+    height:10px;
+    border-radius:99px;
+    background:repeating-linear-gradient(
+      90deg,
+      var(--line) 0px, var(--line) 5px,
+      transparent 5px, transparent 9px
+    );
+    overflow:hidden;
+  }
+  .thread-fill{
+    height:100%;
+    border-radius:99px;
+    background:linear-gradient(90deg, var(--jade), var(--clay));
+    width:0%;
+    transition:width .5s cubic-bezier(.4,0,.2,1);
+  }
+  .thread-meta{
+    display:flex;
+    justify-content:space-between;
+    margin-top:8px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    color:var(--ink-soft);
+  }
+  .thread-meta .score{color:var(--clay-dark); font-weight:500;}
+
+  /* ---------- Card ---------- */
+  .card{
+    background:var(--paper);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    box-shadow: 0 1px 2px rgba(43,36,28,0.04), 0 12px 28px -18px rgba(43,36,28,0.35);
+    padding:32px 28px 26px;
+    position:relative;
+    overflow:hidden;
+  }
+  .card::before{
+    content:"";
+    position:absolute;
+    top:0; left:0; right:0;
+    height:4px;
+    background:linear-gradient(90deg, var(--clay), var(--bronze), var(--jade), var(--indigo));
+  }
+
+  .qtag{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    letter-spacing:.1em;
+    text-transform:uppercase;
+    color:var(--bronze);
+    margin:0 0 10px;
+  }
+
+  .word{
+    font-family:'Fraunces', serif;
+    font-weight:700;
+    font-size:clamp(30px, 8vw, 42px);
+    line-height:1.05;
+    margin:0 0 8px;
+    color:var(--ink);
+  }
+
+  .ipa{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:15px;
+    color:var(--indigo);
+    background:#EEF3F1;
+    display:inline-block;
+    padding:3px 10px;
+    border-radius:8px;
+    margin-bottom:22px;
+  }
+
+  .prompt{
+    font-size:13px;
+    color:var(--ink-soft);
+    margin:0 0 14px;
+  }
+
+  .choices{
+    display:grid;
+    gap:10px;
+  }
+
+  .choice{
+    text-align:left;
+    font-family:'Work Sans', sans-serif;
+    font-size:16px;
+    font-weight:500;
+    color:var(--ink);
+    background:var(--cream);
+    border:1.5px solid var(--line);
+    border-radius:12px;
+    padding:14px 16px;
+    cursor:pointer;
+    transition: border-color .15s, background .15s, transform .1s;
+    display:flex;
+    align-items:center;
+    gap:12px;
+  }
+  .choice .letter{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    color:var(--ink-soft);
+    border:1px solid var(--line);
+    background:var(--paper);
+    width:22px;height:22px;
+    border-radius:6px;
+    display:flex;align-items:center;justify-content:center;
+    flex-shrink:0;
+  }
+  .choice:hover:not(:disabled){
+    border-color:var(--bronze);
+    background:#FBF3E1;
+    transform:translateY(-1px);
+  }
+  .choice:disabled{cursor:default;}
+  .choice.correct{
+    background:#E5F1E9;
+    border-color:var(--right);
+    color:var(--jade-dark);
+  }
+  .choice.correct .letter{border-color:var(--right); color:var(--right);}
+  .choice.wrong{
+    background:#FBEAE7;
+    border-color:var(--wrong);
+    color:var(--wrong);
+  }
+  .choice.wrong .letter{border-color:var(--wrong); color:var(--wrong);}
+  .choice.dim{opacity:.45;}
+
+  .feedback{
+    margin-top:16px;
+    min-height:22px;
+    font-size:14px;
+    font-weight:500;
+  }
+  .feedback.right{color:var(--right);}
+  .feedback.wrong{color:var(--wrong);}
+
+  .next-btn{
+    margin-top:18px;
+    width:100%;
+    font-family:'Fraunces', serif;
+    font-weight:600;
+    font-size:16px;
+    padding:13px;
+    border-radius:12px;
+    border:none;
+    background:var(--ink);
+    color:var(--paper);
+    cursor:pointer;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .2s, background .15s;
+  }
+  .next-btn.show{opacity:1; pointer-events:auto;}
+  .next-btn:hover{background:var(--clay-dark);}
+
+  /* ---------- Result screen ---------- */
+  .result{
+    text-align:center;
+    padding:20px 8px 6px;
+  }
+  .result .stamp{
+    width:96px;height:96px;
+    margin:0 auto 18px;
+    border-radius:50%;
+    border:2.5px solid var(--clay);
+    display:flex;align-items:center;justify-content:center;
+    font-family:'Fraunces', serif;
+    font-weight:700;
+    font-size:15px;
+    color:var(--clay-dark);
+    transform:rotate(-6deg);
+  }
+  .result h2{
+    font-family:'Fraunces', serif;
+    font-size:26px;
+    margin:0 0 6px;
+  }
+  .result p{color:var(--ink-soft); font-size:15px; margin:0 0 22px;}
+  .result .score-big{
+    font-family:'Fraunces', serif;
+    font-size:52px;
+    font-weight:700;
+    color:var(--ink);
+    margin-bottom:4px;
+  }
+  .result .score-big span{color:var(--clay); font-size:28px; font-weight:600;}
+
+  .restart-btn{
+    font-family:'Fraunces', serif;
+    font-weight:600;
+    font-size:16px;
+    padding:13px 26px;
+    border-radius:12px;
+    border:1.5px solid var(--ink);
+    background:transparent;
+    color:var(--ink);
+    cursor:pointer;
+    transition:background .15s, color .15s;
+  }
+  .restart-btn:hover{background:var(--ink); color:var(--paper);}
+
+  .missed-list{
+    text-align:left;
+    margin-top:26px;
+    border-top:1px dashed var(--line);
+    padding-top:18px;
+  }
+  .missed-list h3{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    letter-spacing:.1em;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+    margin:0 0 12px;
+  }
+  .missed-item{
+    display:flex;
+    justify-content:space-between;
+    gap:10px;
+    padding:9px 0;
+    border-bottom:1px solid var(--line);
+    font-size:14px;
+  }
+  .missed-item b{font-family:'Fraunces', serif; font-weight:600;}
+  .missed-item .meaning{color:var(--jade-dark);}
+
+  footer{
+    text-align:center;
+    margin-top:22px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    color:var(--ink-soft);
+    opacity:.7;
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    .thread-fill, .choice, .next-btn, .restart-btn{transition:none;}
+  }
+</style>
+</head>
+<body>
+<div class="stage">
+
+  <div class="masthead">
+    <div>
+      <p class="eyebrow">Global Success · Tiếng Anh 9</p>
+      <h1>Trạm Từ Vựng</h1>
+    </div>
+    <div class="unit-badge">UNIT 1<br>Local&nbsp;Community</div>
+  </div>
+
+  <div class="thread-wrap">
+    <div class="thread-track"><div class="thread-fill" id="threadFill"></div></div>
+    <div class="thread-meta">
+      <span id="qCounter">Câu 1 / 25</span>
+      <span class="score" id="scoreCounter">Điểm: 0</span>
+    </div>
+  </div>
+
+  <div class="card" id="quizCard">
+    <!-- quiz content injected here -->
+  </div>
+
+  <footer>Chọn nghĩa tiếng Việt đúng cho mỗi từ tiếng Anh</footer>
+</div>
+
+<script>
+const VOCAB = [
+  ["artisan (n)", "/ˌɑːtɪˈzæn/", "thợ làm nghề thủ công"],
+  ["community (n)", "/kəˈmjuːnəti/", "cộng đồng"],
+  ["community helper", "/kəˈmjuːnəti ˈhelpə/", "người phục vụ cộng đồng"],
+  ["craft village", "/ˌkrɑːft ˈvɪlɪdʒ/", "làng nghề thủ công"],
+  ["cut down on", "/kʌt daʊn ɒn/", "cắt giảm"],
+  ["delivery person", "/dɪˈlɪvəri ˈpɜːsn/", "nhân viên giao hàng"],
+  ["electrician (n)", "/ɪˌlekˈtrɪʃn/", "thợ điện"],
+  ["facilities (n, plural)", "/fəˈsɪlətiz/", "cơ sở vật chất"],
+  ["firefighter (n)", "/ˈfaɪəfaɪtə/", "lính cứu hoả"],
+  ["fragrance (n)", "/ˈfreɪɡrəns/", "hương thơm"],
+  ["function (n)", "/ˈfʌŋkʃn/", "chức năng"],
+  ["garbage collector (n)", "/ˈɡɑːbɪdʒ kəlektə/", "nhân viên dọn vệ sinh"],
+  ["get on with", "/ɡet ɒn wɪð/", "có quan hệ tốt với"],
+  ["hand down", "/hænd daʊn/", "truyền lại"],
+  ["handicraft (n)", "/ˈhændikrɑːft/", "sản phẩm thủ công"],
+  ["look around", "/lʊk əˈraʊnd/", "ngắm nghía xung quanh"],
+  ["original (adj)", "/əˈrɪdʒənl/", "nguyên bản"],
+  ["pass down", "/pɑːs daʊn/", "truyền lại"],
+  ["police officer (n)", "/pəˈliːs ɒfɪsə/", "công an"],
+  ["pottery (n)", "/ˈpɒtəri/", "đồ gốm"],
+  ["preserve (v)", "/prɪˈzɜːv/", "bảo tồn"],
+  ["run out of", "/rʌn aʊt əv/", "hết, cạn kiệt"],
+  ["speciality (n)", "/ˌspeʃiˈæləti/", "đặc sản"],
+  ["suburb (n)", "/ˈsʌbɜːb/", "vùng ngoại ô"],
+  ["tourist attraction", "/ˈtʊərɪst əˈtrækʃn/", "điểm du lịch"]
+];
+
+let order = [];
+let current = 0;
+let score = 0;
+let missed = [];
+let locked = false;
+
+function shuffle(arr){
+  const a = arr.slice();
+  for(let i = a.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function buildOrder(){
+  order = shuffle(VOCAB.map((_, i) => i));
+}
+
+function pickChoices(correctIdx){
+  const others = VOCAB.filter((_, i) => i !== correctIdx).map(v => v[2]);
+  const distractors = shuffle(others).slice(0, 3);
+  const choices = shuffle([VOCAB[correctIdx][2], ...distractors]);
+  return choices;
+}
+
+function render(){
+  const card = document.getElementById('quizCard');
+  const idx = order[current];
+  const [word, ipa, meaning] = VOCAB[idx];
+  const choices = pickChoices(idx);
+  locked = false;
+
+  card.innerHTML = `
+    <p class="qtag">Từ tiếp theo</p>
+    <p class="word">${word}</p>
+    <span class="ipa">${ipa}</span>
+    <p class="prompt">Nghĩa tiếng Việt đúng là gì?</p>
+    <div class="choices" id="choicesWrap"></div>
+    <p class="feedback" id="feedback"></p>
+    <button class="next-btn" id="nextBtn">Câu tiếp theo →</button>
+  `;
+
+  const wrap = document.getElementById('choicesWrap');
+  const letters = ['A','B','C','D'];
+  choices.forEach((c, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'choice';
+    btn.innerHTML = `<span class="letter">${letters[i]}</span><span>${c}</span>`;
+    btn.addEventListener('click', () => selectAnswer(btn, c, meaning, word));
+    wrap.appendChild(btn);
+  });
+
+  document.getElementById('nextBtn').addEventListener('click', nextQuestion);
+  updateProgress();
+}
+
+function selectAnswer(btn, chosen, correctMeaning, word){
+  if(locked) return;
+  locked = true;
+  const buttons = document.querySelectorAll('.choice');
+  const feedback = document.getElementById('feedback');
+
+  buttons.forEach(b => {
+    const label = b.querySelector('span:last-child').textContent;
+    b.disabled = true;
+    if(label === correctMeaning){
+      b.classList.add('correct');
+    } else if(b === btn){
+      b.classList.add('wrong');
+    } else {
+      b.classList.add('dim');
+    }
+  });
+
+  if(chosen === correctMeaning){
+    score++;
+    feedback.textContent = 'Chính xác!';
+    feedback.className = 'feedback right';
+  } else {
+    missed.push([word, correctMeaning]);
+    feedback.textContent = `Chưa đúng — nghĩa đúng là "${correctMeaning}"`;
+    feedback.className = 'feedback wrong';
+  }
+
+  document.getElementById('scoreCounter').textContent = `Điểm: ${score}`;
+  document.getElementById('nextBtn').classList.add('show');
+}
+
+function nextQuestion(){
+  current++;
+  if(current >= order.length){
+    renderResult();
+  } else {
+    render();
+  }
+}
+
+function updateProgress(){
+  document.getElementById('qCounter').textContent = `Câu ${current + 1} / ${order.length}`;
+  document.getElementById('threadFill').style.width = `${(current / order.length) * 100}%`;
+}
+
+function renderResult(){
+  document.getElementById('threadFill').style.width = '100%';
+  document.getElementById('qCounter').textContent = `Câu ${order.length} / ${order.length}`;
+  const card = document.getElementById('quizCard');
+  const pct = Math.round((score / order.length) * 100);
+
+  let verdict;
+  if(pct === 100) verdict = 'Xuất sắc — thuộc làu cả bài!';
+  else if(pct >= 80) verdict = 'Rất tốt — gần như trọn vẹn!';
+  else if(pct >= 60) verdict = 'Khá ổn — ôn thêm vài từ nữa nhé.';
+  else verdict = 'Cần luyện tập thêm — thử lại nào!';
+
+  let missedHtml = '';
+  if(missed.length){
+    missedHtml = `
+      <div class="missed-list">
+        <h3>Từ cần ôn lại</h3>
+        ${missed.map(([w, m]) => `
+          <div class="missed-item">
+            <b>${w}</b>
+            <span class="meaning">${m}</span>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  card.innerHTML = `
+    <div class="result">
+      <div class="stamp">${pct}%</div>
+      <h2>${verdict}</h2>
+      <p>Unit 1 · Local Community</p>
+      <div class="score-big">${score}<span> / ${order.length}</span></div>
+      <button class="restart-btn" id="restartBtn">Chơi lại</button>
+      ${missedHtml}
+    </div>
+  `;
+
+  document.getElementById('restartBtn').addEventListener('click', startGame);
+}
+
+function startGame(){
+  buildOrder();
+  current = 0;
+  score = 0;
+  missed = [];
+  document.getElementById('scoreCounter').textContent = 'Điểm: 0';
+  render();
+}
+
+startGame();
+</script>
+</body>
+</html>
