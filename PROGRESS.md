@@ -2,6 +2,9 @@
 
 > App quản lý trung tâm gia sư. Live: https://studyweb-swart.vercel.app
 
+> [!IMPORTANT]
+> **Quy tắc làm việc:** Sau mỗi lần hoàn thành tính năng, **luôn tự động commit và push (deploy)** toàn bộ thay đổi lên repository GitHub tại địa chỉ `https://github.com/ducnguyenzz2208-wq/studyweb`.
+
 ## Flashcard: Phiên âm IPA (Tiếng Anh) & Pinyin (Tiếng Trung) + Nhận diện câu trả lời gần đúng ✅ ĐÃ LÀM
 - [x] **Module MỚI `public/js/29-flashcard-phonetics.js`**: Tự động nhận diện ngôn ngữ và sinh phiên âm IPA chuẩn cho từ Tiếng Anh (ví dụ: `Dog` -> `/dɒɡ/`). Đã loại bỏ tính năng tự nhận diện Pinyin tiếng Trung theo yêu cầu để tập trung thử nghiệm IPA.
 - [x] **Hiển thị linh hoạt ở tất cả các chế độ**:

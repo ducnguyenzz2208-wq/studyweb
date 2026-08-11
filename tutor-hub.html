@@ -1559,6 +1559,32 @@
       border-color: var(--warning);
     }
 
+    /* NEW STUDY MODES CSS */
+    .study-mode-mcq { display: flex; flex-direction: column; gap: 10px; width: 100%; margin-top: 20px; }
+    .mcq-btn { background: var(--bg); border: 2px solid var(--border); padding: 16px; border-radius: 12px; font-size: 16px; cursor: pointer; text-align: left; transition: all 0.2s; color: var(--text); }
+    .mcq-btn:hover { border-color: var(--accent); background: rgba(59,130,246,0.05); }
+    .mcq-btn.correct { background: rgba(16,185,129,0.1); border-color: var(--success); color: var(--success); }
+    .mcq-btn.wrong { background: rgba(239,68,68,0.1); border-color: var(--danger); color: var(--danger); }
+    
+    .study-mode-written { margin-top: 20px; display: flex; flex-direction: column; gap: 10px; width: 100%; }
+    .written-input { width: 100%; padding: 16px; font-size: 16px; border: 2px solid var(--border); border-radius: 12px; background: var(--bg); color: var(--text); outline: none; }
+    .written-input:focus { border-color: var(--accent); }
+    
+    .study-mode-match { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; width: 100%; margin-top: 20px; }
+    .match-item { background: var(--bg); border: 2px solid var(--border); padding: 16px; border-radius: 12px; cursor: pointer; text-align: center; font-size: 15px; user-select: none; transition: all 0.2s; }
+    .match-item.selected { border-color: var(--accent); background: rgba(59,130,246,0.1); }
+    .match-item.matched { opacity: 0; pointer-events: none; }
+    .match-item.wrong { border-color: var(--danger); animation: shake 0.4s; }
+    
+    .audio-btn { position: absolute; top: 16px; right: 16px; background: rgba(0,0,0,0.05); border: none; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 18px; color: var(--text); transition: 0.2s; z-index: 5; }
+    .audio-btn:hover { background: var(--accent); color: #fff; transform: scale(1.1); }
+    [data-theme="dark"] .audio-btn { background: rgba(255,255,255,0.1); }
+    [data-theme="dark"] .audio-btn:hover { background: var(--accent); color: #fff; }
+    
+    .study-result-overlay { position: absolute; inset: 0; background: rgba(255,255,255,0.9); border-radius: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 10; font-size: 24px; font-weight: bold; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
+    [data-theme="dark"] .study-result-overlay { background: rgba(15,23,42,0.9); }
+    .study-result-overlay.show { opacity: 1; pointer-events: auto; }
+
     .difficulty-bar {
       display: flex;
       gap: 6px;
@@ -6553,7 +6579,42 @@
     function startStudy(deckId) {
       var d = flashcardDecks.find(function (x) { return x.id === deckId; });
       if (!d || !d.cards.length) { showToast('No cards to study.', 'warning'); return; }
-      studyState = { deckId: deckId, index: 0, flipped: false, shuffled: false, cards: d.cards.slice() };
+      var html = '<div class="modal-header"><h3>Tùy chọn học tập</h3><button class="modal-close" onclick="closeModal()">✕</button></div>' +
+        '<div class="modal-body">' +
+        '<p style="margin-bottom:12px;color:var(--text-muted);font-size:14px;">Chọn các chế độ bạn muốn áp dụng cho phiên học này:</p>' +
+        '<label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><input type="checkbox" id="mStudyFlashcard" checked> Thẻ ghi nhớ (Cơ bản)</label>' +
+        '<label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><input type="checkbox" id="mStudyMCQ" checked> Trắc nghiệm</label>' +
+        '<label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><input type="checkbox" id="mStudyWritten"> Tự luận</label>' +
+        '<label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><input type="checkbox" id="mStudyMatch"> Ghép từ</label>' +
+        '</div>' +
+        '<div class="modal-footer">' +
+        '<button class="btn btn-ghost" onclick="closeModal()">Hủy</button>' +
+        '<button class="btn btn-primary" onclick="confirmStartStudy(' + deckId + ')">Bắt đầu Học</button>' +
+        '</div>';
+      openModal(html);
+    }
+
+    function confirmStartStudy(deckId) {
+      var modes = [];
+      if (document.getElementById('mStudyFlashcard').checked) modes.push('flashcard');
+      if (document.getElementById('mStudyMCQ').checked) modes.push('mcq');
+      if (document.getElementById('mStudyWritten').checked) modes.push('written');
+      if (document.getElementById('mStudyMatch').checked) modes.push('match');
+      
+      if (!modes.length) { showToast('Vui lòng chọn ít nhất một chế độ học.', 'warning'); return; }
+      closeModal();
+      
+      var d = flashcardDecks.find(function (x) { return x.id === deckId; });
+      if (!d || !d.cards.length) { showToast('Không có thẻ nào để học.', 'warning'); return; }
+      
+      var queue = [];
+      d.cards.forEach(function(c) {
+         var mode = modes[Math.floor(Math.random() * modes.length)];
+         queue.push({ card: c, mode: mode });
+      });
+      queue.sort(function() { return Math.random() - 0.5; });
+      
+      studyState = { deckId: deckId, index: 0, queue: queue, d: d, modes: modes };
       document.getElementById('flashcards-list-view').style.display = 'none';
       document.getElementById('flashcards-deck-view').style.display = 'none';
       document.getElementById('flashcards-study-view').style.display = '';
@@ -6562,89 +6623,209 @@
 
     function renderStudyCard() {
       if (!studyState) return;
-      var d = flashcardDecks.find(function (x) { return x.id === studyState.deckId; });
-      var cards = studyState.cards;
-      var card = cards[studyState.index];
+      var queueItem = studyState.queue[studyState.index];
+      var card = queueItem.card;
+      var mode = queueItem.mode;
+      var d = studyState.d;
       var view = document.getElementById('flashcards-study-view');
 
-      var html = '<div class="study-container">' +
+      var html = '<div class="study-container" style="position:relative;">' +
         '<div class="study-header">' +
         '<button class="btn btn-ghost" onclick="exitStudy()">← Exit Study</button>' +
-        '<div class="study-progress">Card <strong>' + (studyState.index + 1) + '</strong> of <strong>' + cards.length + '</strong></div>' +
+        '<div class="study-progress">Card <strong>' + (studyState.index + 1) + '</strong> of <strong>' + studyState.queue.length + '</strong></div>' +
         '<div style="display:flex;gap:6px;">' +
         '<button class="btn btn-sm btn-ghost" onclick="shuffleCards()" title="Shuffle">🔀</button>' +
         '<button class="btn btn-sm ' + (card.difficulty === 'hard' ? 'btn-danger' : 'btn-ghost') + '" onclick="toggleDifficult()" title="Mark Difficult">⭐</button>' +
         '</div>' +
         '</div>' +
         '<div style="background:var(--bg);border-radius:10px;height:6px;margin-bottom:20px;overflow:hidden;">' +
-        '<div style="height:100%;background:var(--accent);border-radius:10px;width:' + ((studyState.index + 1) / cards.length * 100) + '%;transition:width 0.3s;"></div>' +
-        '</div>' +
-        '<div class="flashcard-wrapper" onclick="flipStudyCard()">' +
-        '<div class="flashcard' + (studyState.flipped ? ' flipped' : '') + '" id="studyFlashcard">' +
-        '<div class="flashcard-face">' +
-        '<div class="flashcard-label">Front</div>' +
-        '<div class="flashcard-text">' + card.front + '</div>' +
-        (card.hint ? '<div class="flashcard-hint">💡 ' + escHtml(card.hint) + '</div>' : '') +
-        '<div style="margin-top:16px;font-size:11px;color:var(--text-muted);">Click to flip</div>' +
-        '</div>' +
-        '<div class="flashcard-face flashcard-back">' +
-        '<div class="flashcard-label">Back</div>' +
-        '<div class="flashcard-text">' + card.back + '</div>' +
-        (card.example ? '<div class="flashcard-example">📝 ' + card.example + '</div>' : '') +
-        '<div style="margin-top:12px;"><span class="badge ' + ({ easy: 'badge-success', medium: 'badge-warning', hard: 'badge-danger' }[card.difficulty] || 'badge-gray') + '">' + card.difficulty + '</span></div>' +
-        '</div>' +
-        '</div>' +
-        '</div>' +
-        '<div class="study-controls">' +
+        '<div style="height:100%;background:var(--accent);border-radius:10px;width:' + ((studyState.index + 1) / studyState.queue.length * 100) + '%;transition:width 0.3s;"></div>' +
+        '</div>';
+
+      var audioBtn = '<button class="audio-btn" onclick="event.stopPropagation(); playCardAudio(\'' + card.front.replace(/'/g, "\\'") + '\', \'' + (d.frontLang || 'vi-VN') + '\')">🔊</button>';
+      var diffBadge = '<span class="badge ' + ({ easy: 'badge-success', medium: 'badge-warning', hard: 'badge-danger' }[card.difficulty] || 'badge-gray') + '">' + card.difficulty + '</span>';
+
+      if (mode === 'flashcard') {
+        html += '<div class="flashcard-wrapper" onclick="flipStudyCard()">' +
+          '<div class="flashcard' + (queueItem.flipped ? ' flipped' : '') + '" id="studyFlashcard">' +
+          '<div class="flashcard-face">' + audioBtn +
+          '<div class="flashcard-label">Front</div>' +
+          '<div class="flashcard-text">' + card.front + '</div>' +
+          (card.hint ? '<div class="flashcard-hint">💡 ' + escHtml(card.hint) + '</div>' : '') +
+          '<div style="margin-top:16px;font-size:11px;color:var(--text-muted);">Click to flip</div>' +
+          '</div>' +
+          '<div class="flashcard-face flashcard-back">' +
+          '<div class="flashcard-label">Back</div>' +
+          '<div class="flashcard-text">' + card.back + '</div>' +
+          (card.example ? '<div class="flashcard-example">📝 ' + card.example + '</div>' : '') +
+          '<div style="margin-top:12px;">' + diffBadge + '</div>' +
+          '</div>' +
+          '</div>' +
+          '</div>';
+      } else if (mode === 'mcq') {
+        var options = [card.back];
+        var others = d.cards.filter(function(c) { return c.id !== card.id; }).sort(function(){return Math.random()-0.5;}).slice(0, 3);
+        others.forEach(function(c){ options.push(c.back); });
+        while(options.length < 4) { options.push("Lựa chọn ảo " + options.length); }
+        options.sort(function(){return Math.random()-0.5;});
+        
+        html += '<div style="background:var(--card-bg);border:2px solid var(--border);border-radius:16px;padding:32px;position:relative;min-height:300px;display:flex;flex-direction:column;align-items:center;">' +
+          audioBtn + '<div class="flashcard-label">Câu hỏi Trắc nghiệm</div><div class="flashcard-text" style="margin-bottom:20px;">' + card.front + '</div>' +
+          '<div class="study-mode-mcq">';
+        options.forEach(function(opt, idx) {
+            html += '<button class="mcq-btn" onclick="submitMCQ(this, \'' + opt.replace(/'/g, "\\'") + '\', \'' + card.back.replace(/'/g, "\\'") + '\')">' + opt + '</button>';
+        });
+        html += '</div><div id="studyOverlay" class="study-result-overlay"></div></div>';
+      } else if (mode === 'written') {
+        html += '<div style="background:var(--card-bg);border:2px solid var(--border);border-radius:16px;padding:32px;position:relative;min-height:300px;display:flex;flex-direction:column;align-items:center;justify-content:center;">' +
+          audioBtn + '<div class="flashcard-label">Câu hỏi Tự luận</div><div class="flashcard-text" style="margin-bottom:20px;">' + card.front + '</div>' +
+          '<div class="study-mode-written">' +
+          '<input type="text" class="written-input" id="writtenAns" placeholder="Nhập đáp án của bạn..." onkeypress="if(event.key===\'Enter\') submitWritten(\'' + card.back.replace(/'/g, "\\'") + '\')">' +
+          '<button class="btn btn-primary" onclick="submitWritten(\'' + card.back.replace(/'/g, "\\'") + '\')" style="align-self:flex-end;">Kiểm tra</button>' +
+          '</div><div id="studyOverlay" class="study-result-overlay"></div></div>';
+      } else if (mode === 'match') {
+        var pairs = [card];
+        var others2 = d.cards.filter(function(c) { return c.id !== card.id; }).sort(function(){return Math.random()-0.5;}).slice(0, 3);
+        pairs = pairs.concat(others2);
+        var matchItems = [];
+        pairs.forEach(function(p){ 
+            matchItems.push({ text: p.front, type: 'front', id: p.id });
+            matchItems.push({ text: p.back, type: 'back', id: p.id });
+        });
+        matchItems.sort(function(){return Math.random()-0.5;});
+        
+        studyState.matchPairs = pairs.length;
+        studyState.matchMatched = 0;
+        studyState.matchSelected = null;
+        
+        html += '<div style="background:var(--card-bg);border:2px solid var(--border);border-radius:16px;padding:32px;position:relative;min-height:300px;">' +
+          '<div class="flashcard-label" style="text-align:center;">Ghép Từ</div>' +
+          '<div class="study-mode-match">';
+        matchItems.forEach(function(item, idx) {
+            html += '<div class="match-item" id="mItem_' + idx + '" onclick="selectMatch(' + idx + ', ' + item.id + ', \'' + item.type + '\')">' + item.text + '</div>';
+        });
+        html += '</div><div id="studyOverlay" class="study-result-overlay"></div></div>';
+      }
+
+      html += '<div class="study-controls" style="margin-top:24px;">' +
         '<button class="study-btn" onclick="prevStudyCard()" title="Previous"' + (studyState.index === 0 ? ' disabled style="opacity:0.3"' : '') + '>◀</button>' +
-        '<button class="study-btn" onclick="flipStudyCard()" title="Flip">🔄</button>' +
-        '<button class="study-btn" onclick="nextStudyCard()" title="Next"' + (studyState.index >= cards.length - 1 ? ' disabled style="opacity:0.3"' : '') + '>▶</button>' +
+        (mode === 'flashcard' ? '<button class="study-btn" onclick="flipStudyCard()" title="Flip">🔄</button>' : '') +
+        '<button class="study-btn" onclick="nextStudyCard()" title="Next"' + (studyState.index >= studyState.queue.length - 1 ? ' disabled style="opacity:0.3"' : '') + '>▶</button>' +
         '</div>' +
         '</div>';
       view.innerHTML = html;
       typesetMath(view);
+      
+      if (mode === 'flashcard' && !queueItem.flipped) {
+         playCardAudio(card.front, d.frontLang);
+      }
+    }
+
+    function submitMCQ(btn, selected, correct) {
+       var overlay = document.getElementById('studyOverlay');
+       if (selected === correct) {
+           btn.classList.add('correct');
+           overlay.style.color = 'var(--success)';
+           overlay.innerHTML = '✅ Chính xác!';
+           overlay.classList.add('show');
+           setTimeout(function() { overlay.classList.remove('show'); nextStudyCard(); }, 1000);
+       } else {
+           btn.classList.add('wrong');
+           overlay.style.color = 'var(--danger)';
+           overlay.innerHTML = '❌ Sai rồi!<br><span style="font-size:16px;margin-top:8px;color:var(--text);">Đáp án đúng: ' + correct + '</span>';
+           overlay.classList.add('show');
+           setTimeout(function() { overlay.classList.remove('show'); nextStudyCard(); }, 2500);
+       }
+    }
+
+    function submitWritten(correct) {
+       var input = document.getElementById('writtenAns').value.trim();
+       if(!input) return;
+       var overlay = document.getElementById('studyOverlay');
+       if (input.toLowerCase() === correct.toLowerCase()) {
+           overlay.style.color = 'var(--success)';
+           overlay.innerHTML = '✅ Chính xác!';
+           overlay.classList.add('show');
+           setTimeout(function() { overlay.classList.remove('show'); nextStudyCard(); }, 1000);
+       } else {
+           overlay.style.color = 'var(--danger)';
+           overlay.innerHTML = '❌ Sai rồi!<br><span style="font-size:16px;margin-top:8px;color:var(--text);">Đáp án đúng: ' + correct + '</span>';
+           overlay.classList.add('show');
+           setTimeout(function() { overlay.classList.remove('show'); nextStudyCard(); }, 2500);
+       }
+    }
+
+    function selectMatch(domIdx, cardId, type) {
+       var el = document.getElementById('mItem_' + domIdx);
+       if (!studyState.matchSelected) {
+           studyState.matchSelected = { domIdx: domIdx, id: cardId, type: type };
+           el.classList.add('selected');
+       } else {
+           if (studyState.matchSelected.domIdx === domIdx) {
+               el.classList.remove('selected');
+               studyState.matchSelected = null;
+               return;
+           }
+           var prevEl = document.getElementById('mItem_' + studyState.matchSelected.domIdx);
+           if (studyState.matchSelected.id === cardId && studyState.matchSelected.type !== type) {
+               el.classList.add('matched');
+               prevEl.classList.add('matched');
+               studyState.matchMatched++;
+               if (studyState.matchMatched >= studyState.matchPairs) {
+                   var overlay = document.getElementById('studyOverlay');
+                   overlay.style.color = 'var(--success)';
+                   overlay.innerHTML = '✅ Hoàn thành!';
+                   overlay.classList.add('show');
+                   setTimeout(function() { overlay.classList.remove('show'); nextStudyCard(); }, 1000);
+               }
+           } else {
+               el.classList.add('wrong');
+               prevEl.classList.remove('selected');
+               prevEl.classList.add('wrong');
+               setTimeout(function() { el.classList.remove('wrong'); prevEl.classList.remove('wrong'); }, 400);
+           }
+           studyState.matchSelected = null;
+       }
     }
 
     function flipStudyCard() {
       if (!studyState) return;
-      studyState.flipped = !studyState.flipped;
+      var queueItem = studyState.queue[studyState.index];
+      if (queueItem.mode !== 'flashcard') return;
+      queueItem.flipped = !queueItem.flipped;
       var fc = document.getElementById('studyFlashcard');
-      if (fc) fc.classList.toggle('flipped', studyState.flipped);
+      if (fc) fc.classList.toggle('flipped', queueItem.flipped);
+      if (queueItem.flipped) {
+         playCardAudio(queueItem.card.back, studyState.d.backLang);
+      }
     }
 
     function nextStudyCard() {
-      if (!studyState || studyState.index >= studyState.cards.length - 1) return;
+      if (!studyState || studyState.index >= studyState.queue.length - 1) return;
       studyState.index++;
-      studyState.flipped = false;
+      if (studyState.queue[studyState.index].mode === 'flashcard') studyState.queue[studyState.index].flipped = false;
       renderStudyCard();
     }
 
     function prevStudyCard() {
       if (!studyState || studyState.index <= 0) return;
       studyState.index--;
-      studyState.flipped = false;
+      if (studyState.queue[studyState.index].mode === 'flashcard') studyState.queue[studyState.index].flipped = false;
       renderStudyCard();
     }
 
     function shuffleCards() {
       if (!studyState) return;
-      for (var i = studyState.cards.length - 1; i > 0; i--) {
-        var j = Math.floor(Math.random() * (i + 1));
-        var temp = studyState.cards[i];
-        studyState.cards[i] = studyState.cards[j];
-        studyState.cards[j] = temp;
-      }
+      studyState.queue.sort(function() { return Math.random() - 0.5; });
       studyState.index = 0;
-      studyState.flipped = false;
-      showToast('Cards shuffled!', 'info');
+      showToast('Đã trộn thẻ!', 'info');
       renderStudyCard();
     }
 
     function toggleDifficult() {
       if (!studyState) return;
-      var card = studyState.cards[studyState.index];
-      var d = flashcardDecks.find(function (x) { return x.id === studyState.deckId; });
-      var realCard = d.cards.find(function (c) { return c.id === card.id; });
+      var card = studyState.queue[studyState.index].card;
+      var realCard = studyState.d.cards.find(function (c) { return c.id === card.id; });
       if (realCard) {
         realCard.difficulty = realCard.difficulty === 'hard' ? 'medium' : 'hard';
         card.difficulty = realCard.difficulty;
@@ -6839,7 +7020,7 @@
         '</div>' +
         '<div class="modal-footer">' +
         '<button class="btn btn-ghost" onclick="closeModal()">' + t('btn.cancel') + '</button>' +
-        '<button class="btn btn-primary" onclick="bulkImport(' + deckId + ')">' + t('bulk.btn') + '</button>' +
+        '<button class="btn btn-primary" onclick="bulkImport(' + deckId + ')">Tiếp tục ➔</button>' +
         '</div>';
       openModal(html);
     }
@@ -6855,25 +7036,82 @@
       return { front: line.slice(0, idx).trim(), back: line.slice(idx + sep.length).trim() };
     }
 
+    var tempBulkCards = [];
     function bulkImport(deckId) {
       var text = document.getElementById('mBulkText').value.trim();
       if (!text) { showToast('Chưa có nội dung để nhập.', 'error'); return; }
-      var d = flashcardDecks.find(function (x) { return x.id === deckId; });
-      if (!d) return;
       var lines = text.split('\n').map(function (l) { return l.trim(); }).filter(Boolean);
-      var count = 0;
+      tempBulkCards = [];
       lines.forEach(function (line) {
         var parsed = _parseBulkLine(line);
         if (parsed && parsed.front && parsed.back) {
-          d.cards.push({ id: nextCardId++, front: parsed.front, back: parsed.back, hint: '', example: '', difficulty: 'medium' });
-          count++;
+          tempBulkCards.push(parsed);
         }
+      });
+      if (!tempBulkCards.length) { showToast('Không tìm thấy thẻ hợp lệ nào.', 'error'); return; }
+      closeModal();
+      setTimeout(function() { openLanguageSelectionModal(deckId); }, 200);
+    }
+
+    function openLanguageSelectionModal(deckId) {
+      var d = flashcardDecks.find(function(x) { return x.id === deckId; });
+      if (!d) return;
+      var html = '<div class="modal-header"><h3>Chọn ngôn ngữ Audio</h3><button class="modal-close" onclick="closeModal()">✕</button></div>' +
+        '<div class="modal-body">' +
+        '<p style="color:var(--text-muted);font-size:13px;margin-bottom:16px;">Tính năng đọc tự động sẽ được áp dụng dựa trên ngôn ngữ bạn chọn. Tính năng này giống với cách Quizlet tự động nhận diện audio.</p>' +
+        '<div class="form-row">' +
+        '<div class="form-group"><label>Ngôn ngữ Mặt trước (Thuật ngữ)</label>' + _buildLangSelect('mFrontLang', d.frontLang || 'vi-VN') + '</div>' +
+        '<div class="form-group"><label>Ngôn ngữ Mặt sau (Định nghĩa)</label>' + _buildLangSelect('mBackLang', d.backLang || 'en-US') + '</div>' +
+        '</div>' +
+        '</div>' +
+        '<div class="modal-footer">' +
+        '<button class="btn btn-ghost" onclick="closeModal()">Hủy</button>' +
+        '<button class="btn btn-primary" onclick="confirmBulkImport(' + deckId + ')">Hoàn tất Nhập</button>' +
+        '</div>';
+      openModal(html);
+    }
+
+    function _buildLangSelect(id, defaultVal) {
+      var options = [
+        {val: 'vi-VN', text: 'Tiếng Việt'}, {val: 'en-US', text: 'English (US)'}, {val: 'en-GB', text: 'English (UK)'},
+        {val: 'fr-FR', text: 'Français'}, {val: 'es-ES', text: 'Español'},
+        {val: 'ja-JP', text: '日本語'}, {val: 'ko-KR', text: '한국어'},
+        {val: 'zh-CN', text: '中文'}
+      ];
+      var select = '<select class="form-select" id="' + id + '">';
+      options.forEach(function(o) {
+        select += '<option value="' + o.val + '"' + (defaultVal === o.val ? ' selected' : '') + '>' + o.text + '</option>';
+      });
+      select += '</select>';
+      return select;
+    }
+
+    function confirmBulkImport(deckId) {
+      var frontLang = document.getElementById('mFrontLang').value;
+      var backLang = document.getElementById('mBackLang').value;
+      var d = flashcardDecks.find(function(x) { return x.id === deckId; });
+      if (!d) return;
+      d.frontLang = frontLang;
+      d.backLang = backLang;
+      
+      var count = 0;
+      tempBulkCards.forEach(function (parsed) {
+        d.cards.push({ id: nextCardId++, front: parsed.front, back: parsed.back, hint: '', example: '', difficulty: 'medium' });
+        count++;
       });
       d.lastUpdated = new Date().toISOString().split('T')[0];
       if (count) persistDeck(d);
-      showToast('Đã nhập ' + count + ' thẻ.', count ? 'success' : 'error');
+      showToast('Đã nhập ' + count + ' thẻ và thiết lập ngôn ngữ.', 'success');
       closeModal();
-      if (count) openDeckDetail(deckId);
+      openDeckDetail(deckId);
+    }
+
+    function playCardAudio(text, lang) {
+      if (!window.speechSynthesis) return;
+      window.speechSynthesis.cancel();
+      var msg = new SpeechSynthesisUtterance(text);
+      msg.lang = lang || 'vi-VN';
+      window.speechSynthesis.speak(msg);
     }
 
     // ============================================================
