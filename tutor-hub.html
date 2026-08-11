@@ -2963,10 +2963,6 @@
         <span class="edit-badge" id="editBadge" style="display:none;">✏️ Edit Mode</span>
       </div>
       <div class="topbar-actions">
-        <div class="lang-switch">
-          <button class="lang-btn active" id="langBtnEn" onclick="setLang('en')">EN</button>
-          <button class="lang-btn" id="langBtnVi" onclick="setLang('vi')">VI</button>
-        </div>
         <button class="btn btn-ghost edit-mode-btn" id="editModeBtn" onclick="toggleEditMode()"
           title="Toggle Edit Mode">✏️ <span id="editModeBtnLabel">Edit Mode</span></button>
         <button class="theme-btn" onclick="toggleTheme()" title="Toggle theme" id="themeBtn">🌙</button>
@@ -3179,7 +3175,10 @@
             <h2>Flashcards</h2>
             <p>Study sets and flashcard decks for all subjects.</p>
           </div>
-          <button class="btn btn-primary edit-only" onclick="openDeckModal()">+ New Deck</button>
+          <div style="display:flex; gap:8px;">
+            <button class="btn btn-ghost" onclick="openFlashcardGuide()">💡 Hướng dẫn</button>
+            <button class="btn btn-primary edit-only" onclick="openDeckModal()">+ New Deck</button>
+          </div>
         </div>
         <div class="filter-bar">
           <div class="search-box">
@@ -3726,7 +3725,7 @@
     // STATE
     // ============================================================
     var currentUser = null;
-    var currentLang = 'en';
+    var currentLang = 'vi';
     var currentSection = 'dashboard';
 
     // ── SUPABASE INTEGRATION ─────────────────────────────────────
@@ -4071,36 +4070,6 @@
     // TRANSLATIONS
     // ============================================================
     var T = {
-      en: {
-        'nav.dashboard': 'Dashboard', 'nav.students': 'Students', 'nav.classes': 'Classes',
-        'nav.homework': 'Homework', 'nav.attendance': 'Attendance', 'nav.scores': 'Scores',
-        'nav.payments': 'Payments', 'nav.schedule': 'Schedule', 'nav.materials': 'Materials',
-        'nav.flashcards': 'Flashcards', 'nav.reports': 'Reports', 'nav.assignments': 'Assignments', 'nav.users': 'User Management',
-        'nav.subjects': 'Subjects', 'nav.parent-portal': 'Parent Portal', 'nav.student-portal': 'Student Portal', 'nav.settings': 'Settings',
-        'login.subtitle': 'Sign in to your account', 'login.email': 'Email Address', 'login.password': 'Password',
-        'login.btn': 'Sign In', 'login.demo': 'Quick Demo Login', 'login.error': 'Invalid email or password',
-        'greeting.morning': 'Good morning', 'greeting.afternoon': 'Good afternoon', 'greeting.evening': 'Good evening',
-        'notif.title': 'Notifications', 'notif.markAll': 'Mark all read', 'notif.empty': 'No notifications',
-        'sched.title': 'Schedule', 'sched.subtitle': 'Upcoming and past tutoring sessions.',
-        'sched.all': 'All', 'sched.upcoming': 'Upcoming', 'sched.completed': 'Completed', 'sched.canceled': 'Canceled',
-        'reports.title': 'Reports & Analytics',
-        'settings.language': 'Language', 'settings.theme': 'Appearance', 'settings.editMode': 'Edit Mode',
-        'btn.logout': 'Logout', 'btn.add': 'Add', 'btn.edit': 'Edit', 'btn.delete': 'Delete', 'btn.save': 'Save', 'btn.cancel': 'Cancel',
-        'profile.account': 'Account Info', 'profile.activity': 'Recent Activity', 'profile.preferences': 'Preferences',
-        'editmode.on': 'Edit Mode ON', 'editmode.off': 'Edit Mode',
-        'welcome.stat.students': 'Students', 'welcome.stat.classes': 'Classes', 'welcome.stat.homework': 'Pending HW',
-        'qa.addStudent': 'Add Student', 'qa.addHomework': 'Add Homework', 'qa.addClass': 'Add Class',
-        'qa.viewReports': 'View Reports', 'qa.addMaterial': 'Add Material', 'qa.addDeck': 'Add Flashcard Deck',
-        'assign.create': 'New Assignment', 'assign.submit': 'Submit Work', 'assign.grade': 'Grade',
-        'assign.feedback': 'Feedback', 'assign.deadline': 'Due Date', 'assign.nowork': 'No assignments.',
-        'assign.viewSubs': 'View Submissions', 'assign.mySubmit': 'My Submissions',
-        'attend.markSession': 'Mark Attendance', 'attend.allClass': 'All Classes',
-        'bulk.title': 'Bulk Import Cards', 'bulk.label': 'Paste cards below',
-        'bulk.hint': 'Format: Front | Back  or  Front - Back  (one per line). Supports LaTeX.',
-        'bulk.btn': 'Import', 'bulk.placeholder': 'Vocabulary | Definition\nQuestion | Answer',
-        'users.title': 'User Management', 'users.pending': 'Pending', 'users.approve': 'Set Role',
-        'users.noUsers': 'No users loaded. Click Reload.',
-      },
       vi: {
         'nav.dashboard': 'Tổng quan', 'nav.students': 'Học sinh', 'nav.classes': 'Lớp học',
         'nav.homework': 'Bài tập', 'nav.attendance': 'Điểm danh', 'nav.scores': 'Điểm số',
@@ -4134,13 +4103,11 @@
     };
 
     function t(key) {
-      return (T[currentLang] && T[currentLang][key]) || (T['en'] && T['en'][key]) || key;
+      return (T['vi'] && T['vi'][key]) || key;
     }
 
     function setLang(lang) {
-      currentLang = lang;
-      document.getElementById('langBtnEn').className = 'lang-btn' + (lang === 'en' ? ' active' : '');
-      document.getElementById('langBtnVi').className = 'lang-btn' + (lang === 'vi' ? ' active' : '');
+      currentLang = 'vi';
       // Update login screen text
       var sub = document.getElementById('loginSubtitle');
       if (sub) sub.textContent = t('login.subtitle');
@@ -4542,10 +4509,6 @@
 
       // Preferences
       html += '<div class="pp-section"><h4>' + t('profile.preferences') + '</h4>';
-      html += '<div class="pp-pref-row"><span>Ngôn ngữ</span><div class="pp-lang-btns">';
-      html += '<button class="pp-lang-btn' + (currentLang === 'en' ? ' active' : '') + '" onclick="setLang(\'en\');renderProfilePanel()">EN</button>';
-      html += '<button class="pp-lang-btn' + (currentLang === 'vi' ? ' active' : '') + '" onclick="setLang(\'vi\');renderProfilePanel()">VI</button>';
-      html += '</div></div>';
       html += '<div class="pp-pref-row"><span>Giao diện tối</span><button class="toggle' + (isDark ? ' on' : '') + '" onclick="toggleTheme();renderProfilePanel()"></button></div>';
       if (u.role === 'Teacher' || u.role === 'Admin') {
         html += '<div class="pp-pref-row"><span>Chế độ sửa</span><button class="toggle' + (editMode ? ' on' : '') + '" onclick="toggleEditMode();renderProfilePanel()"></button></div>';
@@ -6847,6 +6810,22 @@
     // ============================================================
     // FLASHCARDS — DECK MODAL (Create/Edit)
     // ============================================================
+    function openFlashcardGuide() {
+      var html = '<div class="modal-header"><h3>Hướng dẫn sử dụng Thẻ học</h3><button class="modal-close" onclick="closeModal()">✕</button></div>' +
+        '<div class="modal-body" style="line-height:1.6;color:var(--text);">' +
+        '<p>Chào mừng bạn đến với tính năng Thẻ học (Flashcard)! Dưới đây là các bước để bắt đầu:</p>' +
+        '<ol style="padding-left:20px;margin-top:10px;margin-bottom:16px;">' +
+        '<li style="margin-bottom:8px;"><strong>Tạo bộ thẻ:</strong> Nhấn nút <code>+ New Deck</code> để tạo chủ đề từ vựng hoặc khái niệm mới.</li>' +
+        '<li style="margin-bottom:8px;"><strong>Thêm thẻ:</strong> Bạn có thể thêm từng thẻ thủ công, hoặc dùng tính năng <code>Nhập hàng loạt</code> để sao chép danh sách từ vựng/khái niệm của bạn vào nhanh chóng.</li>' +
+        '<li style="margin-bottom:8px;"><strong>Ngôn ngữ & Âm thanh:</strong> Khi nhập hàng loạt, hãy chọn ngôn ngữ tương ứng để hệ thống tự động phát âm chuẩn xác từ vựng cho bạn qua tính năng Text-to-Speech.</li>' +
+        '<li style="margin-bottom:8px;"><strong>Chế độ Học:</strong> Nhấn <code>Học ngay</code> để bắt đầu. Bạn có thể chọn luyện tập bằng <em>Thẻ ghi nhớ (lật mặt)</em>, <em>Trắc nghiệm</em>, <em>Tự luận</em>, hoặc trò chơi <em>Ghép từ</em> tuỳ sở thích!</li>' +
+        '</ol>' +
+        '<p><em>Mẹo:</em> Hãy đánh dấu sao (⭐) vào các thẻ khó để hệ thống ưu tiên lặp lại nhiều hơn nhé!</p>' +
+        '</div>' +
+        '<div class="modal-footer"><button class="btn btn-primary" onclick="closeModal()">Đã hiểu</button></div>';
+      openModal(html);
+    }
+
     function openDeckModal(id) {
       var d = id ? flashcardDecks.find(function (x) { return x.id === id; }) : null;
       var title = d ? 'Sửa bộ thẻ' : 'Tạo bộ thẻ mới';

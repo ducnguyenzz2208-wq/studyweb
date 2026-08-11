@@ -5,6 +5,10 @@
 > [!IMPORTANT]
 > **Quy tắc làm việc:** Sau mỗi lần hoàn thành tính năng, **luôn tự động commit và push (deploy)** toàn bộ thay đổi lên repository GitHub tại địa chỉ `https://github.com/ducnguyenzz2208-wq/studyweb`.
 
+## Flashcard: Chuyển ngôn ngữ mặc định & Hướng dẫn sử dụng ✅ ĐÃ LÀM
+- [x] **Ngôn ngữ mặc định**: Xóa bỏ các bản dịch Tiếng Anh (EN) và cố định ngôn ngữ hệ thống sang Tiếng Việt (VI). 
+- [x] **Hướng dẫn sử dụng**: Thêm nút "💡 Hướng dẫn" vào màn hình quản lý Thẻ học để hiển thị popup hướng dẫn cách tạo thẻ, nhập hàng loạt, thiết lập Text-to-Speech và giới thiệu các chế độ học.
+
 ## Flashcard: Phiên âm IPA (Tiếng Anh) & Pinyin (Tiếng Trung) + Nhận diện câu trả lời gần đúng ✅ ĐÃ LÀM
 - [x] **Module MỚI `public/js/29-flashcard-phonetics.js`**: Tự động nhận diện ngôn ngữ và sinh phiên âm IPA chuẩn cho từ Tiếng Anh (ví dụ: `Dog` -> `/dɒɡ/`). Đã loại bỏ tính năng tự nhận diện Pinyin tiếng Trung theo yêu cầu để tập trung thử nghiệm IPA.
 - [x] **Hiển thị linh hoạt ở tất cả các chế độ**:
