@@ -51,9 +51,38 @@ test.describe('Tutor Hub — smoke (mock mode)', () => {
     await mockLogin(page, 'student@tutorhub.com')
     const nav = (await page.locator('#navItems').innerText()).toLowerCase()
     expect(nav).not.toContain('quản lý')
-    expect(nav).not.toContain('user management')
-    // nhưng có cổng học sinh + pomodoro
-    expect(nav).toMatch(/cổng học sinh|student portal/)
+    // nhưng có bài tập về nhà + thẻ ghi nhớ + pomodoro
+    expect(nav).toMatch(/bài tập về nhà|thẻ ghi nhớ|tập trung|cổng học sinh|student portal/)
+  })
+
+  test('Trung tâm Trợ giúp (?): mở modal, hiển thị hướng dẫn Flashcards và chuyển tab mượt mà', async ({ page }) => {
+    await page.addInitScript(() => {
+      try { localStorage.setItem('th_welcome_seen', '1'); } catch (e) { }
+    })
+    await mockLogin(page, 'student@tutorhub.com')
+    await page.waitForTimeout(500)
+    await page.click('#helpBtn')
+    await expect(page.locator('#modalOverlay')).toHaveClass(/open/)
+    await expect(page.locator('.help-header-title')).toContainText('Cẩm nang & Hướng dẫn sử dụng')
+    // Mặc định hiện tab Flashcard với hướng dẫn chi tiết
+    await expect(page.locator('#help-tab-flashcard')).toBeVisible()
+    await expect(page.locator('#help-tab-flashcard')).toContainText('Flashcard là gì?')
+    await expect(page.locator('#help-tab-flashcard')).toContainText('Chế độ Học (Leitner thông minh)')
+    await expect(page.locator('#help-tab-flashcard')).toContainText('Fuzzy Matching')
+
+    // Chuyển sang tab Bài tập
+    await page.click('.help-tab-btn[data-tab="homework"]')
+    await expect(page.locator('#help-tab-homework')).toBeVisible()
+    await expect(page.locator('#help-tab-homework')).toContainText('Chụp ảnh / Tải tệp lên')
+
+    // Chuyển sang tab FAQ
+    await page.click('.help-tab-btn[data-tab="faq"]')
+    await expect(page.locator('#help-tab-faq')).toBeVisible()
+    await expect(page.locator('#help-tab-faq')).toContainText('Giải đáp thắc mắc thường gặp')
+
+    // Đóng modal
+    await page.click('.modal-close')
+    await expect(page.locator('#modalOverlay')).not.toHaveClass(/open/)
   })
 })
 

@@ -5,6 +5,32 @@
 > [!IMPORTANT]
 > **Quy tắc làm việc:** Sau mỗi lần hoàn thành tính năng, **luôn tự động commit và push (deploy)** toàn bộ thay đổi lên repository GitHub tại địa chỉ `https://github.com/ducnguyenzz2208-wq/studyweb`.
 
+## Trung tâm Trợ giúp (?) & Cẩm nang Sử dụng cho Học sinh Cấp 2 ✅ ĐÃ LÀM
+- [x] **Nâng cấp nút `?` (`#helpBtn`) góc trên màn hình thành Trung tâm Cẩm nang & Giải đáp thắc mắc**:
+  - Giao diện modal rộng rãi (`help-modal`), hiện đại, hỗ trợ cả Dark Mode và Light Mode.
+  - Phân chia tab mượt mà bằng thanh điều hướng chuyển tab tức thì (`switchHelpTab`).
+  - **Tab 1: 🗂️ Bí kíp Thẻ học (Flashcards) — TRỌNG TÂM**:
+    + Giải thích bản chất Flashcard 2 mặt và phương pháp chủ động ghi nhớ.
+    + Hướng dẫn chi tiết **4 Chế độ học**: 🎯 *Học ngay* (lật thẻ, tự phát âm), 🧠 *Chế độ Học Leitner* (Spaced Repetition từ Hộp 0 trắc nghiệm đến Hộp 1-2 tự luận, sai lặp lại đến khi thuộc 100%), 📝 *Bài kiểm tra Test Mode* (tự trộn 3 dạng đề, chấm %, confetti khi ≥80%), 🎮 *Trò chơi Ghép thẻ Matching Game* (lưới ô chữ, bấm giờ, lưu kỷ lục 🏆).
+    + Tính năng thông minh: Máy chấm tự luận thông minh (Fuzzy Matching - bỏ qua từ loại "con/cái/quả", mạo từ "a/an/the", tha lỗi gõ nhầm nhẹ), Phát âm bản xứ TTS & Phiên âm quốc tế IPA tự động.
+    + Bảng phím tắt máy tính trực quan: `Space`, `←`/`→`, `1-4`, `Enter`, `Esc`.
+  - **Tab 2: 📝 Bài tập & Nộp bài**:
+    + Theo dõi hạn nộp & đếm ngược hạn chót ("Còn 3 ngày", "Quá hạn").
+    + Quy trình 3 bước nộp bài: Xem đề → Chụp ảnh camera vở bài làm / Chọn tệp tải lên → Nộp bài & Cập nhật trước hạn.
+    + Xem điểm số thang 10 & lời phê sửa lỗi của thầy cô.
+  - **Tab 3: ⏱️ Góc tập trung & Tiện ích**:
+    + 🍅 Đồng hồ Pomodoro 25 phút tập trung + 5 phút giải lao.
+    + 🎵 Góc âm nhạc Lo-Fi YouTube Music / SoundCloud thư giãn học tập.
+    + 📅 Lịch học & theo dõi chuyên cần điểm danh.
+    + 🌙 Chế độ Tối (Dark Mode) bảo vệ mắt ban đêm.
+  - **Tab 4: ❓ Hỏi đáp thường gặp (FAQ)**:
+    + 8 câu hỏi - đáp thực tế dành riêng cho học sinh cấp 2.
+    + Ô tìm kiếm từ khóa FAQ tức thì (`filterHelpFaq`), bấm mở/đóng từng câu hỏi dạng accordion.
+- [x] **Kiểm thử toàn diện**:
+  - Unit test `vitest`: 19/19 passed.
+  - E2E smoke test `playwright`: 7/7 passed (bổ sung test mở modal Help, kiểm tra nội dung Flashcard, chuyển tab, đóng modal).
+  - Browser subagent: Đăng nhập học sinh, mở modal, duyệt cả 4 tab, tìm kiếm FAQ, toggle câu hỏi thành công.
+
 ## Flashcard: Chuyển ngôn ngữ mặc định & Hướng dẫn sử dụng ✅ ĐÃ LÀM
 - [x] **Ngôn ngữ mặc định**: Xóa bỏ các bản dịch Tiếng Anh (EN) và cố định ngôn ngữ hệ thống sang Tiếng Việt (VI). 
 - [x] **Hướng dẫn sử dụng**: Thêm nút "💡 Hướng dẫn" vào màn hình quản lý Thẻ học để hiển thị popup hướng dẫn cách tạo thẻ, nhập hàng loạt, thiết lập Text-to-Speech và giới thiệu các chế độ học.

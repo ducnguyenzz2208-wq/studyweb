@@ -1997,6 +1997,293 @@
       border-top: 1px solid var(--border);
     }
 
+    /* ============================================================
+       HELP CENTER / CẨM NANG HƯỚNG DẪN HỌC SINH
+       ============================================================ */
+    .help-modal {
+      max-width: 840px;
+      width: 95vw;
+      max-height: 88vh;
+      display: flex;
+      flex-direction: column;
+      padding: 0;
+    }
+    .help-modal .modal-header {
+      padding: 16px 22px;
+    }
+    .help-modal .modal-body {
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .help-header-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 17px;
+      font-weight: 700;
+    }
+    .help-header-sub {
+      font-size: 12.5px;
+      color: var(--text-muted);
+      font-weight: 400;
+      margin-top: 2px;
+    }
+    .help-tabs-bar {
+      display: flex;
+      gap: 8px;
+      padding: 10px 20px;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      overflow-x: auto;
+      scrollbar-width: thin;
+      flex-shrink: 0;
+    }
+    .help-tab-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      border: 1px solid var(--border);
+      background: var(--card-bg);
+      color: var(--text-muted);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s ease;
+    }
+    .help-tab-btn:hover {
+      color: var(--text);
+      border-color: var(--primary);
+    }
+    .help-tab-btn.active {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
+    }
+    .help-tab-content-wrap {
+      padding: 20px 22px;
+      overflow-y: auto;
+      flex: 1;
+      max-height: calc(88vh - 140px);
+    }
+    .help-tab-pane {
+      display: none;
+      animation: fadeIn 0.25s ease;
+    }
+    .help-tab-pane.active {
+      display: block;
+    }
+    .help-hero-banner {
+      background: linear-gradient(135deg, rgba(99, 102, 241, 0.12), rgba(168, 85, 247, 0.12));
+      border: 1px solid rgba(99, 102, 241, 0.25);
+      border-radius: 14px;
+      padding: 16px 18px;
+      margin-bottom: 18px;
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+    }
+    .help-hero-icon {
+      font-size: 32px;
+      line-height: 1;
+      flex-shrink: 0;
+    }
+    .help-hero-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+    .help-hero-desc {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.55;
+    }
+    .help-grid-2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 14px;
+      margin-bottom: 18px;
+    }
+    .help-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: var(--shadow);
+      transition: all 0.2s ease;
+    }
+    .help-card:hover {
+      border-color: var(--primary);
+      transform: translateY(-2px);
+    }
+    .help-card-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .help-card-title {
+      font-size: 14.5px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--text);
+    }
+    .help-pill {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 20px;
+      background: rgba(99, 102, 241, 0.15);
+      color: var(--primary);
+    }
+    .help-pill.green {
+      background: rgba(34, 197, 94, 0.15);
+      color: #16a34a;
+    }
+    .help-pill.amber {
+      background: rgba(245, 158, 11, 0.15);
+      color: #d97706;
+    }
+    .help-pill.purple {
+      background: rgba(168, 85, 247, 0.15);
+      color: #9333ea;
+    }
+    .help-card-body {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.55;
+    }
+    .help-card-body strong {
+      color: var(--text);
+    }
+    .help-tip-box {
+      background: var(--bg);
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 12.5px;
+      color: var(--text);
+      line-height: 1.5;
+      border-left: 3px solid var(--primary);
+      margin-top: 10px;
+    }
+    .help-steps-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    .help-step-item {
+      display: flex;
+      gap: 14px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 16px;
+      align-items: flex-start;
+    }
+    .help-step-number {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background: var(--primary);
+      color: #fff;
+      font-weight: 700;
+      font-size: 13.5px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .help-step-info {
+      flex: 1;
+    }
+    .help-step-title {
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 4px;
+      color: var(--text);
+    }
+    .help-step-desc {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.55;
+    }
+    .help-kbd {
+      display: inline-block;
+      padding: 2px 6px;
+      font-size: 11px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-weight: 700;
+      line-height: 1.4;
+      color: var(--text);
+      background-color: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+      margin: 0 2px;
+    }
+    .help-kbd-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      font-size: 12.5px;
+    }
+    .help-kbd-table td {
+      padding: 7px 10px;
+      border-bottom: 1px solid var(--border);
+    }
+    .help-faq-search {
+      width: 100%;
+      padding: 10px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--card-bg);
+      color: var(--text);
+      font-size: 13.5px;
+      margin-bottom: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .help-faq-search:focus {
+      border-color: var(--primary);
+    }
+    .help-faq-card {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 14px;
+      margin-bottom: 10px;
+      background: var(--card-bg);
+      transition: border-color 0.2s;
+    }
+    .help-faq-card:hover {
+      border-color: var(--primary);
+    }
+    .help-faq-q {
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .help-faq-a {
+      color: var(--text-muted);
+      margin-top: 8px;
+      line-height: 1.6;
+      font-size: 13px;
+      padding-top: 8px;
+      border-top: 1px dashed var(--border);
+    }
+
     @keyframes fadeIn {
       from {
         opacity: 0

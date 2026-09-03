@@ -121,25 +121,373 @@
       );
     }
 
-    // ── HELP / FAQ ────────────────────────────────────────────────
+    // ── HELP / FAQ & USER GUIDE (DÀNH CHO HỌC SINH CẤP 2) ───────────
+    function switchHelpTab(tabId) {
+      var overlay = document.getElementById('modalOverlay');
+      if (!overlay) return;
+      var tabs = overlay.querySelectorAll('.help-tab-btn');
+      var panes = overlay.querySelectorAll('.help-tab-pane');
+      Array.prototype.forEach.call(tabs, function (btn) {
+        if (btn.getAttribute('data-tab') === tabId) {
+          btn.classList.add('active');
+        } else {
+          btn.classList.remove('active');
+        }
+      });
+      Array.prototype.forEach.call(panes, function (pane) {
+        if (pane.id === 'help-tab-' + tabId) {
+          pane.classList.add('active');
+        } else {
+          pane.classList.remove('active');
+        }
+      });
+    }
+    window.switchHelpTab = switchHelpTab;
+
+    function filterHelpFaq(q) {
+      var query = (q || '').toLowerCase().trim();
+      var cards = document.querySelectorAll('.help-faq-card');
+      Array.prototype.forEach.call(cards, function (card) {
+        var text = card.textContent.toLowerCase();
+        card.style.display = (!query || text.includes(query)) ? '' : 'none';
+      });
+    }
+    window.filterHelpFaq = filterHelpFaq;
+
     function openHelp() {
-      var faqs = [
-        ['Tài khoản mới của tôi chưa vào được?', 'Tài khoản mới cần quản trị viên cấp quyền (Học sinh / Giáo viên / Phụ huynh). Sau khi được duyệt, hãy tải lại trang.'],
-        ['Làm sao thêm học sinh?', 'Vào mục Học sinh → nút "＋ Thêm học sinh". Bạn cũng có thể nhập hàng loạt bằng cách dán danh sách hoặc CSV.'],
-        ['Điểm được tính thế nào?', 'Khi bạn chấm bài trong mục Bài tập, điểm trung bình của học sinh được cập nhật tự động.'],
-        ['Đổi mật khẩu ở đâu?', 'Vào mục Cài đặt → Đổi mật khẩu. Nếu quên, dùng "Quên mật khẩu" ở trang đăng nhập.'],
-        ['Đổi ngôn ngữ / giao diện tối?', 'Vào mục Cài đặt để đổi ngôn ngữ và bật/tắt chế độ tối.'],
-      ];
-      var body = faqs.map(function (f) {
-        return '<details style="border:1px solid var(--border,#e2e8f0);border-radius:10px;padding:10px 14px;margin-bottom:8px;">' +
-          '<summary style="cursor:pointer;font-weight:600;">' + f[0] + '</summary>' +
-          '<div style="color:var(--text-muted);margin-top:8px;line-height:1.5;font-size:14px;">' + f[1] + '</div></details>';
-      }).join('');
-      openModal(
-        '<div class="modal-header"><h3 style="display:flex;align-items:center;gap:8px;">' + svgIcon('help', 18) + 'Trợ giúp</h3><button class="modal-close" onclick="closeModal()">✕</button></div>' +
-        '<div class="modal-body">' + body + '</div>',
-        'modal-sm'
-      );
+      var html =
+        '<div class="modal-header">' +
+          '<div>' +
+            '<div class="help-header-title">' + svgIcon('help', 22) + ' Cẩm nang & Hướng dẫn sử dụng</div>' +
+            '<div class="help-header-sub">Dành cho các bạn học sinh Tutor Hub — Học vui, nhớ lâu, tự tin điểm cao! ✨</div>' +
+          '</div>' +
+          '<button class="modal-close" onclick="closeModal()" aria-label="Đóng">✕</button>' +
+        '</div>' +
+        '<div class="modal-body">' +
+          '<div class="help-tabs-bar">' +
+            '<button class="help-tab-btn active" data-tab="flashcard" onclick="switchHelpTab(\'flashcard\')">' +
+              '🗂️ Bí kíp Thẻ học (Flashcards)' +
+            '</button>' +
+            '<button class="help-tab-btn" data-tab="homework" onclick="switchHelpTab(\'homework\')">' +
+              '📝 Bài tập & Nộp bài' +
+            '</button>' +
+            '<button class="help-tab-btn" data-tab="focus" onclick="switchHelpTab(\'focus\')">' +
+              '⏱️ Góc tập trung & Tiện ích' +
+            '</button>' +
+            '<button class="help-tab-btn" data-tab="faq" onclick="switchHelpTab(\'faq\')">' +
+              '❓ Hỏi đáp thường gặp (FAQ)' +
+            '</button>' +
+          '</div>' +
+
+          '<div class="help-tab-content-wrap">' +
+
+            // ── TAB 1: FLASHCARD (TRỌNG TÂM) ──
+            '<div class="help-tab-pane active" id="help-tab-flashcard">' +
+              '<div class="help-hero-banner">' +
+                '<div class="help-hero-icon">🗂️</div>' +
+                '<div>' +
+                  '<div class="help-hero-title">Flashcard là gì? — Bí quyết ghi nhớ từ siêu tốc!</div>' +
+                  '<div class="help-hero-desc">Mỗi chiếc thẻ gồm 2 mặt: Mặt trước là <strong>Từ vựng / Câu hỏi / Công thức</strong>, lật sang Mặt sau là <strong>Nghĩa / Đáp án / Ví dụ</strong>. Học bằng cách tự nhớ lại rồi lật kiểm tra giúp não bộ ghi nhớ sâu gấp nhiều lần so với chỉ đọc sách thông thường!</div>' +
+                '</div>' +
+              '</div>' +
+
+              '<h4 style="font-size:15px;margin:0 0 12px 0;display:flex;align-items:center;gap:8px;">' +
+                '🚀 4 Chế độ học siêu đỉnh bạn nhất định phải thử:' +
+              '</h4>' +
+
+              '<div class="help-grid-2">' +
+                // Chế độ 1: Học ngay
+                '<div class="help-card">' +
+                  '<div class="help-card-head">' +
+                    '<div class="help-card-title">🎯 1. Học ngay (Lật thẻ cơ bản)</div>' +
+                    '<span class="help-pill green">Làm quen</span>' +
+                  '</div>' +
+                  '<div class="help-card-body">' +
+                    '<p style="margin:0 0 8px 0;">Dành cho khi bạn mới bắt đầu bài học mới:</p>' +
+                    '• Bấm vào thẻ (hoặc phím <span class="help-kbd">Space</span>) để lật xem nghĩa mặt sau.<br>' +
+                    '• Bấm mũi tên <span class="help-kbd">←</span> <span class="help-kbd">→</span> để lướt qua các từ.<br>' +
+                    '• <strong>Tự động đọc:</strong> Mở thẻ là máy tự phát âm giọng chuẩn bản xứ để bạn bắt chước theo ngay.' +
+                  '</div>' +
+                '</div>' +
+
+                // Chế độ 2: Chế độ Học
+                '<div class="help-card">' +
+                  '<div class="help-card-head">' +
+                    '<div class="help-card-title">🧠 2. Chế độ Học (Leitner thông minh)</div>' +
+                    '<span class="help-pill purple">Nhớ lâu ×3</span>' +
+                  '</div>' +
+                  '<div class="help-card-body">' +
+                    '<p style="margin:0 0 8px 0;">Phương pháp lặp lại ngắt quãng (Spaced Repetition):</p>' +
+                    '• <strong>Hộp 0 (Làm quen):</strong> Trắc nghiệm 4 đáp án (bấm số 1, 2, 3, 4).<br>' +
+                    '• <strong>Hộp 1 & 2 (Nhớ sâu):</strong> Tự tay gõ từ vào ô để nhớ chắc từng chữ.<br>' +
+                    '• <strong>Hộp 3:</strong> Chúc mừng, bạn đã thuộc làu từ này!' +
+                    '<div class="help-tip-box">💡 <strong>Sai không sợ:</strong> Nếu trả lời nhầm, máy sẽ hiện ngay đáp án đúng và cho từ đó lặp lại sau 2-3 câu để bạn làm lại tới khi thuộc 100%!</div>' +
+                  '</div>' +
+                '</div>' +
+
+                // Chế độ 3: Bài kiểm tra
+                '<div class="help-card">' +
+                  '<div class="help-card-head">' +
+                    '<div class="help-card-title">📝 3. Bài kiểm tra (Test Mode)</div>' +
+                    '<span class="help-pill amber">Thi thử chấm điểm</span>' +
+                  '</div>' +
+                  '<div class="help-card-body">' +
+                    '<p style="margin:0 0 8px 0;">Tự động sinh đề kiểm tra tổng hợp từ 10 - 20 câu:</p>' +
+                    '• Trộn 3 dạng câu: <strong>Trắc nghiệm</strong> + <strong>Đúng/Sai</strong> + <strong>Điền từ</strong>.<br>' +
+                    '• Làm xong bấm <strong>Nộp bài</strong>: Xem ngay điểm số %, câu đúng tô xanh ✅, câu sai tô đỏ ❌ kèm lời giải chuẩn.<br>' +
+                    '• Đạt điểm từ 80% trở lên sẽ có mưa pháo hoa 🎊 chúc mừng!' +
+                  '</div>' +
+                '</div>' +
+
+                // Chế độ 4: Ghép thẻ
+                '<div class="help-card">' +
+                  '<div class="help-card-head">' +
+                    '<div class="help-card-title">🎮 4. Trò chơi Ghép thẻ (Matching Game)</div>' +
+                    '<span class="help-pill">Đua tốc độ</span>' +
+                  '</div>' +
+                  '<div class="help-card-body">' +
+                    '<p style="margin:0 0 8px 0;">Vừa chơi game vừa ôn tập phản xạ từ vựng:</p>' +
+                    '• Lưới gồm các ô từ và nghĩa bị xáo trộn lung tung.<br>' +
+                    '• Bấm chọn 1 từ và 1 nghĩa tương ứng để chúng biến mất.<br>' +
+                    '• Đồng hồ đếm giây bấm giờ: Cố gắng ghép thật nhanh để phá <strong>Kỷ lục cá nhân (🏆 Best Record)</strong> của chính bạn!' +
+                  '</div>' +
+                '</div>' +
+              '</div>' +
+
+              // Tính năng thông minh: IPA + Fuzzy matching
+              '<h4 style="font-size:15px;margin:18px 0 12px 0;display:flex;align-items:center;gap:8px;">' +
+                '✨ Các tính năng thông minh hỗ trợ bạn học tập:' +
+              '</h4>' +
+
+              '<div class="help-grid-2">' +
+                '<div class="help-card">' +
+                  '<div class="help-card-title">🤖 Chấm tự luận thông minh (Fuzzy Matching)</div>' +
+                  '<div class="help-card-body" style="margin-top:8px;">' +
+                    'Không lo bị trừ điểm oan khi gõ câu trả lời:<br>' +
+                    '• <strong>Bỏ qua từ chỉ loại:</strong> Đáp án là <em>"con mèo"</em>, bạn gõ <em>"mèo"</em> vẫn tính là <strong>ĐÚNG ✅</strong>!<br>' +
+                    '• <strong>Bỏ qua mạo từ tiếng Anh:</strong> Đáp án là <em>"an apple"</em> hay <em>"to study"</em>, bạn chỉ cần gõ <em>"apple"</em> hay <em>"study"</em>.<br>' +
+                    '• <strong>Tha thứ lỗi gõ nhầm nhẹ:</strong> Lỡ gõ nhầm 1 chữ cái? Máy báo <strong>"Gần đúng"</strong> và nhắc bạn chú ý chứ không bắt học lại từ đầu!' +
+                  '</div>' +
+                '</div>' +
+
+                '<div class="help-card">' +
+                  '<div class="help-card-title">🔊 Phát âm bản xứ & Phiên âm IPA chuẩn</div>' +
+                  '<div class="help-card-body" style="margin-top:8px;">' +
+                    '• <strong>Tự sinh phiên âm quốc tế IPA:</strong> Mọi thẻ tiếng Anh đều có phiên âm rõ ràng (ví dụ: <code>dog /dɒɡ/</code>, <code>apple /ˈæp.l̩/</code>) giúp bạn phát âm chuẩn xác.<br>' +
+                    '• <strong>Nút loa 🔊:</strong> Bấm vào loa ở bất cứ đâu để nghe lại phát âm.<br>' +
+                    '• <strong>Cài đặt giọng đọc:</strong> Bấm nút <em>"🔊 Giọng..."</em> ở thanh công cụ để chọn giọng Nam / Nữ hoặc ghim giọng đọc tự nhiên (Natural Voice) bạn ưng ý nhất.' +
+                  '</div>' +
+                '</div>' +
+              '</div>' +
+
+              // Bảng phím tắt
+              '<div class="help-card" style="margin-top:14px;">' +
+                '<div class="help-card-title">⌨️ Bảng phím tắt thần tốc (cho máy tính)</div>' +
+                '<table class="help-kbd-table">' +
+                  '<tbody>' +
+                    '<tr><td style="width:160px;"><span class="help-kbd">Space</span> (Phím cách)</td><td>Lật mặt trước ↔ mặt sau của thẻ</td></tr>' +
+                    '<tr><td><span class="help-kbd">←</span> và <span class="help-kbd">→</span></td><td>Chuyển sang thẻ trước hoặc thẻ kế tiếp</td></tr>' +
+                    '<tr><td><span class="help-kbd">1</span> <span class="help-kbd">2</span> <span class="help-kbd">3</span> <span class="help-kbd">4</span></td><td>Chọn nhanh đáp án trắc nghiệm A, B, C, D</td></tr>' +
+                    '<tr><td><span class="help-kbd">Enter</span></td><td>Gửi câu trả lời tự luận hoặc chuyển sang câu tiếp theo</td></tr>' +
+                    '<tr><td><span class="help-kbd">Esc</span></td><td>Thoát khỏi chế độ học và quay lại danh sách bộ thẻ</td></tr>' +
+                  '</tbody>' +
+                '</table>' +
+              '</div>' +
+            '</div>' +
+
+            // ── TAB 2: BÀI TẬP & NỘP BÀI ──
+            '<div class="help-tab-pane" id="help-tab-homework">' +
+              '<div class="help-hero-banner">' +
+                '<div class="help-hero-icon">📝</div>' +
+                '<div>' +
+                  '<div class="help-hero-title">Xem bài tập & Nộp bài cho thầy cô cực kỳ đơn giản!</div>' +
+                  '<div class="help-hero-desc">Không lo bị sót bài tập về nhà! Bạn có thể xem đề bài, kiểm tra hạn chót, chụp ảnh bài làm trong vở rồi gửi lên để thầy cô chấm điểm và nhận xét ngay.</div>' +
+                '</div>' +
+              '</div>' +
+
+              '<div class="help-steps-wrap">' +
+                '<div class="help-step-item">' +
+                  '<div class="help-step-number">1</div>' +
+                  '<div class="help-step-info">' +
+                    '<div class="help-step-title">Xem bài tập & Kiểm tra hạn chót</div>' +
+                    '<div class="help-step-desc">' +
+                      'Vào mục <strong>Bài tập về nhà</strong> ở menu bên trái. Mỗi bài tập đều có huy hiệu đếm ngược hạn nộp:<br>' +
+                      '• <span class="help-pill green">Còn 3 ngày</span> hoặc <span class="help-pill amber">Còn vài giờ</span>: Hãy hoàn thành sớm để không bị vội.<br>' +
+                      '• <span class="help-pill" style="background:rgba(239,68,68,0.15);color:#ef4444;">Quá hạn</span>: Bài đã trễ hạn, cần nộp bù gấp cho thầy cô!' +
+                    '</div>' +
+                  '</div>' +
+                '</div>' +
+
+                '<div class="help-step-item">' +
+                  '<div class="help-step-number">2</div>' +
+                  '<div class="help-step-info">' +
+                    '<div class="help-step-title">Làm bài & Chụp ảnh / Tải tệp lên</div>' +
+                    '<div class="help-step-desc">' +
+                      'Bấm vào bài tập để mở trang chi tiết bài nộp:<br>' +
+                      '• Nếu dùng điện thoại: Bấm biểu tượng <strong>Máy ảnh 📷</strong> để chụp trực tiếp các trang vở bài làm.<br>' +
+                      '• Nếu dùng máy tính: Bấm nút <strong>Chọn tệp</strong> để tải lên ảnh chụp bài làm hoặc file PDF / Word.<br>' +
+                      '• Có thể tải nhiều ảnh cùng lúc nếu bài tập dài nhiều trang.' +
+                    '</div>' +
+                  '</div>' +
+                '</div>' +
+
+                '<div class="help-step-item">' +
+                  '<div class="help-step-number">3</div>' +
+                  '<div class="help-step-info">' +
+                    '<div class="help-step-title">Bấm Nộp bài & Cập nhật khi cần</div>' +
+                    '<div class="help-step-desc">' +
+                      'Bấm nút <strong>Nộp bài</strong> màu xanh. Hệ thống sẽ ghi nhận chính xác ngày giờ nộp của bạn.<br>' +
+                      '💡 <em>Mẹo nhỏ:</em> Nếu bạn chụp thiếu trang hoặc muốn sửa lại bài trước hạn chót, chỉ cần bấm vào bài đó và chọn tải lại bản mới rồi bấm <strong>Cập nhật bài nộp</strong>!' +
+                    '</div>' +
+                  '</div>' +
+                '</div>' +
+              '</div>' +
+
+              '<div class="help-card">' +
+                '<div class="help-card-title">🎯 Xem Điểm số & Lời phê của Thầy Cô</div>' +
+                '<div class="help-card-body" style="margin-top:8px;">' +
+                  'Khi thầy cô chấm bài xong, quả chuông 🔔 ở góc trên màn hình sẽ có thông báo đỏ.<br>' +
+                  'Bạn bấm vào thông báo hoặc mở bài tập đó ra sẽ thấy ngay: <strong>Điểm số</strong> (thang điểm 10) cùng <strong>Lời nhận xét chi tiết</strong> của thầy cô hướng dẫn bạn sửa những chỗ còn nhầm lẫn.' +
+                '</div>' +
+              '</div>' +
+            '</div>' +
+
+            // ── TAB 3: TẬP TRUNG & TIỆN ÍCH ──
+            '<div class="help-tab-pane" id="help-tab-focus">' +
+              '<div class="help-hero-banner">' +
+                '<div class="help-hero-icon">⏱️</div>' +
+                '<div>' +
+                  '<div class="help-hero-title">Góc tập trung — Học năng suất, không lo mỏi mắt!</div>' +
+                  '<div class="help-hero-desc">Kết hợp phương pháp quả cà chua Pomodoro cùng âm nhạc không lời giúp bạn giải bài nhanh hơn mà không bị cảm giác buồn ngủ hay mệt mỏi.</div>' +
+                '</div>' +
+              '</div>' +
+
+              '<div class="help-grid-2">' +
+                '<div class="help-card">' +
+                  '<div class="help-card-head">' +
+                    '<div class="help-card-title">🍅 Đồng hồ Pomodoro (25 phút)</div>' +
+                    '<span class="help-pill">Tập trung</span>' +
+                  '</div>' +
+                  '<div class="help-card-body">' +
+                    'Bí quyết học của các thủ khoa:<br>' +
+                    '• <strong>25 phút học tập trung:</strong> Tắt hết thông báo, chỉ tập trung giải quyết bài tập.<br>' +
+                    '• <strong>5 phút nghỉ giải lao:</strong> Đứng dậy uống nước, vươn vai, hít thở sâu.<br>' +
+                    '• Sau 4 phiên học thì nghỉ dài 15 - 20 phút. Vừa học nhanh vừa không bị mỏi não!' +
+                  '</div>' +
+                '</div>' +
+
+                '<div class="help-card">' +
+                  '<div class="help-card-head">' +
+                    '<div class="help-card-title">🎵 Góc âm nhạc Lo-Fi không lời</div>' +
+                    '<span class="help-pill purple">Thư giãn</span>' +
+                  '</div>' +
+                  '<div class="help-card-body">' +
+                    'Tích hợp sẵn ngay trong app không cần mở tab mới:<br>' +
+                    '• Nghe các danh sách nhạc nhẹ nhàng, Lo-Fi từ YouTube Music hoặc SoundCloud.<br>' +
+                    '• Nhạc không lời giúp át đi tiếng ồn xung quanh và kích thích não bộ tập trung giải đề nhanh hơn.' +
+                  '</div>' +
+                '</div>' +
+
+                '<div class="help-card">' +
+                  '<div class="help-card-head">' +
+                    '<div class="help-card-title">📅 Lịch học & Điểm danh</div>' +
+                    '<span class="help-pill green">Chuyên cần</span>' +
+                  '</div>' +
+                  '<div class="help-card-body">' +
+                    '• Vào mục <strong>Lịch học</strong> để xem thời khoá biểu các buổi học trong tuần, phòng học và thời gian bắt đầu.<br>' +
+                    '• Xem tỷ lệ chuyên cần (%) và lịch sử điểm danh từng buổi để luôn đi học đúng giờ.' +
+                  '</div>' +
+                '</div>' +
+
+                '<div class="help-card">' +
+                  '<div class="help-card-head">' +
+                    '<div class="help-card-title">🌙 Giao diện Tối (Dark Mode)</div>' +
+                    '<span class="help-pill amber">Bảo vệ mắt</span>' +
+                  '</div>' +
+                  '<div class="help-card-body">' +
+                    '• Bấm vào biểu tượng Mặt trăng / Mặt trời ở góc trên bên phải màn hình để đổi chế độ sáng/tối.<br>' +
+                    '• Khi học bài vào buổi tối, bạn nên bật <strong>Chế độ Tối</strong> để ánh sáng màn hình dịu nhẹ, không gây chói hay mỏi mắt.' +
+                  '</div>' +
+                '</div>' +
+              '</div>' +
+            '</div>' +
+
+            // ── TAB 4: HỎI ĐÁP FAQ ──
+            '<div class="help-tab-pane" id="help-tab-faq">' +
+              '<div class="help-hero-banner">' +
+                '<div class="help-hero-icon">❓</div>' +
+                '<div>' +
+                  '<div class="help-hero-title">Giải đáp thắc mắc thường gặp (FAQ)</div>' +
+                  '<div class="help-hero-desc">Bấm vào từng câu hỏi bên dưới để xem lời giải đáp, hoặc nhập từ khoá vào ô tìm kiếm để tìm nhanh nhé!</div>' +
+                '</div>' +
+              '</div>' +
+
+              '<input type="text" class="help-faq-search" placeholder="🔍 Nhập từ khoá tìm kiếm (ví dụ: phát âm, bài tập, mật khẩu, lặp lại)..." oninput="filterHelpFaq(this.value)">' +
+
+              '<details class="help-faq-card" open>' +
+                '<summary class="help-faq-q">1. Em gõ câu trả lời thiếu dấu hoặc nhầm 1 chữ cái có bị tính là sai không?</summary>' +
+                '<div class="help-faq-a">' +
+                  'Không bị phạt sai đâu nhé! Hệ thống có cơ chế so khớp thông minh (Fuzzy Answer Matching): nếu chỉ gõ nhầm 1 chữ cái nhỏ (sai số chính tả nhẹ) hoặc thiếu các từ chỉ loại tiếng Việt (như <em>"con", "cái", "quả"</em>) hoặc mạo từ tiếng Anh (<em>"a", "an", "the"</em>), máy vẫn tính là <strong>Gần đúng</strong> và nhắc bạn chú ý để rút kinh nghiệm chứ không trừ điểm oan!' +
+                '</div>' +
+              '</details>' +
+
+              '<details class="help-faq-card">' +
+                '<summary class="help-faq-q">2. Tại sao trong Chế độ Học (Learn Mode), có những từ cứ lặp đi lặp lại nhiều lần?</summary>' +
+                '<div class="help-faq-a">' +
+                  'Đây chính là bí quyết của phương pháp học ngắt quãng Leitner! Những từ bạn trả lời chưa đúng hoặc chưa chắc chắn sẽ được xếp vào hàng chờ và xuất hiện lại sau khoảng 2-3 câu hỏi để bạn luyện tập lại. Khi bạn trả lời đúng liên tục đến Hộp 3, từ đó mới được tính là <strong>"Đã thuộc làu"</strong>!' +
+                '</div>' +
+              '</details>' +
+
+              '<details class="help-faq-card">' +
+                '<summary class="help-faq-q">3. Em làm xong bài kiểm tra (Test Mode) có được làm lại không?</summary>' +
+                '<div class="help-faq-a">' +
+                  'Hoàn toàn được nhé! Mỗi lần bạn bấm nút <strong>"Làm lại bài test"</strong> hoặc <strong>"Đề mới"</strong>, hệ thống sẽ xáo trộn ngẫu nhiên bộ câu hỏi để bạn tha hồ thử sức lại đến khi nào đạt điểm 10 tuyệt đối thì thôi!' +
+                '</div>' +
+              '</details>' +
+
+              '<details class="help-faq-card">' +
+                '<summary class="help-faq-q">4. Tại sao máy em bấm nút loa 🔊 lại không nghe thấy tiếng phát âm?</summary>' +
+                '<div class="help-faq-a">' +
+                  'Bạn kiểm tra các bước sau nhé:<br>' +
+                  '1. Kiểm tra xem loa máy tính hoặc tai nghe đã bật âm lượng chưa.<br>' +
+                  '2. Kiểm tra xem tab trình duyệt có bị bấm tắt tiếng (Mute) không.<br>' +
+                  '3. Nên dùng trình duyệt <strong>Microsoft Edge</strong> hoặc <strong>Google Chrome</strong> vì các trình duyệt này có sẵn các giọng đọc tự nhiên (Natural/Neural Voice) rất trong trẻo và chuẩn xác.' +
+                '</div>' +
+              '</details>' +
+
+              '<details class="help-faq-card">' +
+                '<summary class="help-faq-q">5. Em nộp bài tập rồi nhưng phát hiện chụp thiếu 1 trang thì làm sao?</summary>' +
+                '<div class="help-faq-a">' +
+                  'Đừng lo! Miễn là bài tập đó chưa hết hạn nộp, bạn chỉ cần bấm lại vào bài tập đó, tải thêm trang ảnh bị thiếu lên và bấm <strong>"Cập nhật bài nộp"</strong>. Thầy cô sẽ chấm theo bản nộp mới nhất của bạn!' +
+                '</div>' +
+              '</details>' +
+
+              '<details class="help-faq-card">' +
+                '<summary class="help-faq-q">6. Em quên mật khẩu đăng nhập vào app thì phải làm thế nào?</summary>' +
+                '<div class="help-faq-a">' +
+                  'Rất nhanh và đơn giản: Bạn hãy nhắn tin hoặc báo cho thầy cô giáo hoặc người quản lý trung tâm. Thầy cô có thể đặt lại mật khẩu mới cho bạn trong vòng 30 giây!' +
+                '</div>' +
+              '</details>' +
+
+              '<details class="help-faq-card">' +
+                '<summary class="help-faq-q">7. Em dùng điện thoại thông minh thì có vào học được không?</summary>' +
+                '<div class="help-faq-a">' +
+                  'Có nhé! Trang web Tutor Hub chạy rất mượt trên cả điện thoại (iPhone, Samsung, Xiaomi...), iPad lẫn máy tính. Bạn có thể mở web trên điện thoại để lướt thẻ học và chụp ảnh bài tập nộp bất cứ lúc nào.' +
+                '</div>' +
+              '</details>' +
+
+              '<details class="help-faq-card">' +
+                '<summary class="help-faq-q">8. Làm sao để em tự tạo một bộ thẻ Flashcard mới theo ý mình?</summary>' +
+                '<div class="help-faq-a">' +
+                  'Vào mục <strong>Thẻ ghi nhớ (Flashcards)</strong> ở menu bên trái. Bạn có thể bấm nút <strong>"+ Tạo bộ thẻ"</strong> hoặc nếu đã mở một bộ thẻ, bấm <strong>"+ Thêm thẻ"</strong> hoặc <strong>"📋 Nhập hàng loạt"</strong> để dán nhanh danh sách từ vựng theo mẫu <em>Từ vựng - Định nghĩa</em> chỉ trong nháy mắt.' +
+                '</div>' +
+              '</details>' +
+            '</div>' +
+
+          '</div>' +
+        '</div>';
+
+      openModal(html, 'help-modal');
     }
 
     function renderQuickActions() {
